@@ -2,10 +2,14 @@ import SwiftUI
 import SwiftData
 import Charts
 
+/// Opens on top of Dash without moving the card: the hero card is laid out at the tapped card's exact
+/// screen frame and stays put, while everything around it fades in with a blur.
 struct ProjectDetailView: View {
     @Bindable var project: Project
+    /// Global frame of the tapped card. nil when opened from elsewhere (then the card fades in too).
+    var cardFrame: CGRect? = nil
+    var onClose: () -> Void = {}
     @Environment(\.modelContext) private var context
-    @Environment(\.dismiss) private var dismiss
     @Environment(DataRefresher.self) private var refresher
     @Environment(CelebrationCenter.self) private var celebration
     @Query private var profiles: [Profile]
@@ -19,27 +23,53 @@ struct ProjectDetailView: View {
     @State private var addingGoalTo: Milestone?
     @State private var newGoalTitle = ""
     @Environment(GitHubService.self) private var github
+    @State private var revealed = false
+    @State private var scrolledAway = false
 
     private var accent: Accent { project.accent }
+    private var heroWidth: CGFloat { cardFrame?.width ?? 230 }
+    /// The card stays fully visible only while it sits exactly on top of its carousel twin.
+    private var cardOpacity: Double { revealed || (cardFrame != nil && !scrolledAway) ? 1 : 0 }
+
+    private func reveal(_ on: Bool, then: @escaping () -> Void = {}) {
+        withAnimation(.easeOut(duration: on ? 0.38 : 0.26)) { revealed = on } completion: { then() }
+    }
+
+    private func close(then: @escaping () -> Void = {}) {
+        reveal(false) {
+            onClose()
+            then()
+        }
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
             VStack(spacing: 16) {
                 hero
-                timelineCard
-                metricsCard
-                milestonesCard
-                connectionCard
-                Button("Delete project") { confirmDelete = true }
-                    .buttonStyle(.chunky(.danger, height: 50))
-                    .padding(.top, 8)
+                VStack(spacing: 16) {
+                    timelineCard
+                    metricsCard
+                    milestonesCard
+                    connectionCard
+                    Button("Delete project") { confirmDelete = true }
+                        .buttonStyle(.chunky(.danger, height: 50))
+                        .padding(.top, 8)
+                }
+                .opacity(revealed ? 1 : 0)
+                .blur(radius: revealed ? 0 : 18)
             }
             .padding(.horizontal, 16)
             .padding(.bottom, 40)
         }
+        .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 2 } action: { _, away in
+            scrolledAway = away
+        }
         .ignoresSafeArea(.container, edges: .top)
-        .background(Theme.background.ignoresSafeArea())
-        .overlay(alignment: .top) { topBar }
+        .background(Theme.background.opacity(revealed ? 1 : 0).ignoresSafeArea())
+        .overlay(alignment: .top) {
+            topBar.opacity(revealed ? 1 : 0).blur(radius: revealed ? 0 : 8)
+        }
+        .onAppear { reveal(true) }
         .environment(\.accent, accent)
         .refreshable { await refresher.refresh(projects: [project], context: context, force: true) }
         #if DEBUG
@@ -49,11 +79,14 @@ struct ProjectDetailView: View {
         .sheet(isPresented: $showConnection) { ConnectionSheet(project: project) }
         .confirmationDialog("Delete \(project.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
-                for m in project.milestones ?? [] { Notifier.cancel(m) }
-                Keychain.delete(project.id.uuidString)
-                dismiss()
-                context.delete(project)
-                try? context.save()
+                let p = project
+                close {
+                    for m in p.milestones ?? [] { Notifier.cancel(m) }
+                    Keychain.delete(p.id.uuidString)
+                    Keychain.delete("gh-" + p.id.uuidString)
+                    context.delete(p)
+                    try? context.save()
+                }
             }
         } message: { Text("This also removes its deadlines and metrics history.") }
     }
@@ -62,7 +95,7 @@ struct ProjectDetailView: View {
 
     private var topBar: some View {
         HStack {
-            CircleIconButton(systemName: "xmark") { dismiss() }
+            CircleIconButton(systemName: "xmark") { close() }
             Spacer()
             Menu {
                 Button("Edit name & cover", systemImage: "paintbrush") { showEdit = true }
@@ -92,10 +125,13 @@ struct ProjectDetailView: View {
     private var hero: some View {
         VStack(spacing: 18) {
             ProjectCardFace(project: project, refresher: refresher)
-                .frame(width: 210)
-                .cardFloorShadow(width: 210)
-                .padding(.bottom, 26)
-                .padding(.top, 118)
+                .frame(width: heroWidth)
+                .opacity(cardOpacity)
+                // The carousel already draws a shadow at this spot; ours takes over as the page fades in.
+                .cardFloorShadow(width: heroWidth, strength: revealed ? 1 : 0)
+                .padding(.top, cardFrame?.minY ?? 118)
+                .padding(.bottom, heroWidth * 0.12)
+            Group {
             HStack(spacing: 8) {
                 Image(systemName: project.phase().symbol)
                 Text(project.phase().title)
@@ -112,13 +148,17 @@ struct ProjectDetailView: View {
                     .padding(.horizontal, 24)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            }
+            .opacity(revealed ? 1 : 0)
+            .blur(radius: revealed ? 0 : 12)
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 8)
         .background(alignment: .top) {
             LinearGradient(colors: [accent.base.opacity(0.28), accent.base.opacity(0)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 480)
+                .frame(height: (cardFrame?.maxY ?? 480) + 60)
                 .padding(.horizontal, -16)
+                .opacity(revealed ? 1 : 0)
         }
     }
 
@@ -306,6 +346,8 @@ struct ProjectDetailView: View {
                               onAddGoal: { newGoalTitle = ""; addingGoalTo = m })
                 if m.id != ms.last?.id { Divider().padding(.leading, 44) }
             }
+            Divider()
+            GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
         }
         .card()
         .alert("New goal", isPresented: Binding(get: { addingGoalTo != nil }, set: { if !$0 { addingGoalTo = nil } })) {
@@ -583,6 +625,7 @@ struct EditProjectSheet: View {
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar {
             Button("Save") {
                 let trimmed = name.trimmingCharacters(in: .whitespaces)
                 if !trimmed.isEmpty { project.name = trimmed }
@@ -594,7 +637,7 @@ struct EditProjectSheet: View {
                 dismiss()
             }
             .buttonStyle(.chunky)
-            .padding(20)
+            }
         }
         .background(Theme.background.ignoresSafeArea())
         .environment(\.accent, Accent(hex: accentHex))
@@ -640,6 +683,7 @@ struct ConnectionSheet: View {
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar {
             Button("Save") {
                 project.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
                 Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: project.id.uuidString)
@@ -658,7 +702,7 @@ struct ConnectionSheet: View {
                 dismiss()
             }
             .buttonStyle(.chunky)
-            .padding(20)
+            }
         }
         .background(Theme.background.ignoresSafeArea())
         .environment(\.accent, project.accent)

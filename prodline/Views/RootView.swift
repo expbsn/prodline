@@ -93,8 +93,13 @@ struct MainShell: View {
     @State private var tab: AppTab = .projects
     @State private var focusedID: UUID?
     @State private var showCreate = false
-    @State private var opened: Project?
+    @State private var opened: Opened?
     @Namespace private var zoom
+
+    struct Opened: Equatable {
+        let project: Project
+        let cardFrame: CGRect?
+    }
 
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -102,10 +107,10 @@ struct MainShell: View {
                 switch tab {
                 case .projects:
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
-                             onOpen: { opened = $0 }, onCreate: { showCreate = true },
+                             onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { showCreate = true },
                              onStreak: { tab = .me })
                 case .plan:
-                    PlanView(profile: profile, onOpen: { opened = $0 }, onCreate: { showCreate = true })
+                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { showCreate = true })
                 case .insights:
                     InsightsView()
                 case .me:
@@ -133,6 +138,12 @@ struct MainShell: View {
 
             FloatingTabBar(selection: $tab, onAdd: { showCreate = true })
                 .padding(.bottom, 2)
+
+            if let o = opened {
+                ProjectDetailView(project: o.project, cardFrame: o.cardFrame, onClose: { opened = nil })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .zIndex(10)
+            }
         }
         .ignoresSafeArea(.keyboard)
         #if DEBUG
@@ -143,15 +154,11 @@ struct MainShell: View {
             if let name = d.string(forKey: "PRODLINE_OPEN") {
                 Task {
                     try? await Task.sleep(for: .milliseconds(600))
-                    opened = projects.first { $0.name == name }
+                    if let p = projects.first(where: { $0.name == name }) { opened = Opened(project: p, cardFrame: nil) }
                 }
             }
         }
         #endif
-        .fullScreenCover(item: $opened) { p in
-            ProjectDetailView(project: p)
-                .navigationTransition(.zoom(sourceID: p.id, in: zoom))
-        }
         .sheet(isPresented: $showCreate) {
             CreateProjectFlow(profile: profile) { newID in
                 tab = .projects

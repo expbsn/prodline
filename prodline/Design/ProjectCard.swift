@@ -226,9 +226,9 @@ extension View {
     func cardFloorShadow(width: CGFloat, strength: Double = 1) -> some View {
         background(alignment: .bottom) {
             Ellipse()
-                .fill(RadialGradient(colors: [.black.opacity(0.32 * strength), .black.opacity(0)],
-                                     center: .center, startRadius: 0, endRadius: width * 0.45))
-                .frame(width: width * 0.95, height: width * 0.2)
+                .fill(RadialGradient(colors: [.black.opacity(0.3 * strength), .black.opacity(0)],
+                                     center: .center, startRadius: 0, endRadius: width * 0.62))
+                .frame(width: width * 1.3, height: width * 0.22)
                 .blur(radius: width * 0.05)
                 .offset(y: width * 0.2)
                 .allowsHitTesting(false)

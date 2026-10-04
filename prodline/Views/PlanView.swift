@@ -112,7 +112,8 @@ struct PlanView: View {
                 }
                 .padding(.horizontal, 16)
             }
-            .onAppear { proxy.scrollTo(Date.now.startOfDay.adding(days: -1), anchor: .leading) }
+            // Today sits at the leading edge, yesterday just peeking in from the left.
+            .onAppear { proxy.scrollTo(Date.now.startOfDay, anchor: UnitPoint(x: 0.04, y: 0.5)) }
         }
     }
 

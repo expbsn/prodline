@@ -58,8 +58,7 @@ struct CreateProjectFlow: View {
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.immediately)
-
-            bottomBar
+            .bottomActionBar { bottomBar }
         }
         .background(Theme.background.ignoresSafeArea())
         .environment(\.accent, accent)
@@ -71,6 +70,10 @@ struct CreateProjectFlow: View {
             let used = Set(projects.map(\.accentHex))
             accentHex = Theme.swatches.first { !used.contains($0) } ?? Theme.swatches[projects.count % Theme.swatches.count]
             focus = .name
+            #if DEBUG
+            let jump = UserDefaults.standard.integer(forKey: "PRODLINE_CREATE_STEP")
+            if jump > 0 { name = "Kite"; details = "A kite-surf spot finder."; step = min(jump, steps - 1); focus = nil }
+            #endif
         }
     }
 
@@ -115,19 +118,14 @@ struct CreateProjectFlow: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
+    @ViewBuilder
     private var bottomBar: some View {
-        VStack(spacing: 6) {
-            Button(step == steps - 1 ? "Create project" : "Continue", action: next)
-                .buttonStyle(.chunky)
-                .disabled(step == 0 && trimmedName.isEmpty)
-            if step == 3 && endpoint.isEmpty {
-                Text("No endpoint yet? You'll see sample data until you connect.")
-                    .font(.ui(13)).foregroundStyle(Theme.secondary)
-            }
+        Button(step == steps - 1 ? "Create project" : "Continue", action: next)
+            .buttonStyle(.chunky)
+            .disabled(step == 0 && trimmedName.isEmpty)
+        if step == 3 && endpoint.isEmpty {
+            BarFootnote("No endpoint yet? You'll see sample data until you connect.")
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
     }
 
     private func stepTitle(_ eyebrow: String, _ title: String) -> some View {
@@ -314,6 +312,8 @@ struct CreateProjectFlow: View {
                 infoCard(symbol: "chevron.left.forwardslash.chevron.right", title: "GitHub goals take priority",
                          text: "Issues in GitHub milestones or labeled “prodline” replace suggestions on their checkpoint and close themselves.")
             }
+            GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
+                .padding(.top, 4)
         }
         .task { await draft(force: false) }
     }

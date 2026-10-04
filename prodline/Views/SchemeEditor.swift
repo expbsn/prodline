@@ -186,17 +186,16 @@ struct OnboardingView: View {
                                         removal: .move(edge: .leading).combined(with: .opacity)))
             }
             .scrollBounceBehavior(.basedOnSize)
-
-            VStack(spacing: 4) {
+            .bottomActionBar {
                 Button(step == 2 ? "Turn on reminders" : (step == 0 ? "Get started" : "Continue"), action: next)
                     .buttonStyle(.chunky)
                 if step == 2 {
                     Button("Not now") { profile.remindersEnabled = false; finish() }
                         .font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
-                        .frame(height: 40)
+                        .frame(height: 32)
+                        .padding(.horizontal, 4)
                 }
             }
-            .padding(.horizontal, 24).padding(.bottom, 12)
         }
         .background(Theme.background.ignoresSafeArea())
     }

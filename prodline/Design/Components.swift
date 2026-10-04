@@ -369,3 +369,38 @@ struct ConfettiView: View {
         }
     }
 }
+
+// MARK: - Bottom action bar
+
+extension View {
+    /// Pins a primary button (plus optional footnote) to the bottom while the content keeps scrolling
+    /// behind it: the page background only starts halfway down the button, so content shows right
+    /// up to its corners instead of being cut off above it.
+    func bottomActionBar<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
+        safeAreaInset(edge: .bottom, spacing: 0) {
+            VStack(alignment: .leading, spacing: 8) { bar() }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 10)
+                .background {
+                    VStack(spacing: 0) {
+                        Color.clear.frame(height: 30)
+                        Theme.background
+                    }
+                    .ignoresSafeArea(edges: .bottom)
+                }
+        }
+    }
+}
+
+/// Small helper text under a bottom button, aligned with the button's leading edge.
+struct BarFootnote: View {
+    let text: String
+    init(_ text: String) { self.text = text }
+    var body: some View {
+        Text(text)
+            .font(.ui(13)).foregroundStyle(Theme.secondary)
+            .multilineTextAlignment(.leading)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 4)
+    }
+}

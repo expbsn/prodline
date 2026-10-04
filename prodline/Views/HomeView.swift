@@ -6,13 +6,15 @@ struct HomeView: View {
     let profile: Profile
     @Binding var focusedID: UUID?
     let zoom: Namespace.ID
-    var onOpen: (Project) -> Void
+    var onOpen: (Project, CGRect?) -> Void
     var onCreate: () -> Void
     var onStreak: () -> Void
 
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
     @Environment(\.modelContext) private var context
+    /// On-screen frames of the cards, so the project page can put its card exactly there.
+    @State private var cardFrames: [UUID: CGRect] = [:]
 
     static let createID = UUID(uuidString: "00000000-0000-0000-0000-00000000C0DE")!
     private let spacing: CGFloat = 16
@@ -101,10 +103,17 @@ struct HomeView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: spacing) {
                 ForEach(projects) { p in
-                    Button { onOpen(p) } label: {
+                    Button {
+                        if p.id == focusedID {
+                            onOpen(p, cardFrames[p.id])
+                        } else {
+                            // Side cards come to the center first.
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { focusedID = p.id }
+                        }
+                    } label: {
                         ProjectCardFace(project: p, refresher: refresher)
                             .frame(width: cardW)
-                            .matchedTransitionSource(id: p.id, in: zoom)
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cardFrames[p.id] = $0 }
                     }
                     .buttonStyle(PressableStyle(scale: 0.96))
                     .id(p.id)
@@ -150,7 +159,7 @@ struct HomeView: View {
     @ViewBuilder
     private var infoPanel: some View {
         if let p = focused {
-            ProjectPanel(project: p) { onOpen(p) }
+            ProjectPanel(project: p) { onOpen(p, cardFrames[p.id]) }
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 Text(projects.isEmpty
