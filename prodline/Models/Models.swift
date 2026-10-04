@@ -63,6 +63,8 @@ enum Phase: String {
 final class Project {
     var id: UUID = UUID()
     var name: String = ""
+    /// Short pitch shown on the project screen.
+    var details: String = ""
     var accentHex: Int = 0x58CC02
     /// Square JPEG cover. Its dominant color usually becomes the accent.
     @Attribute(.externalStorage) var coverImage: Data? = nil

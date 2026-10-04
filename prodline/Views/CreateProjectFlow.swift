@@ -1,115 +1,7 @@
 import SwiftUI
 import SwiftData
-import PhotosUI
 
-/// Square cover photo + accent color. The photo's dominant color becomes the accent unless overridden.
-struct CoverPicker: View {
-    @Binding var imageData: Data?
-    @Binding var accentHex: Int
-    let initial: String
-
-    @State private var item: PhotosPickerItem?
-    @State private var extractedHex: Int?
-    @State private var loading = false
-
-    private var image: UIImage? { imageData.flatMap(UIImage.init(data:)) }
-
-    var body: some View {
-        VStack(spacing: 22) {
-            PhotosPicker(selection: $item, matching: .images, photoLibrary: .shared()) {
-                ZStack {
-                    if let image {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    } else {
-                        RoundedRectangle(cornerRadius: 34, style: .continuous).fill(.white)
-                        VStack(spacing: 10) {
-                            Image(systemName: "photo.badge.plus")
-                                .font(.system(size: 34, weight: .semibold))
-                                .foregroundStyle(Theme.ink)
-                            Text("Choose a square cover").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
-                            Text("We'll match the colors to it").font(.ui(13)).foregroundStyle(Theme.secondary)
-                        }
-                    }
-                    if loading { ProgressView().tint(Theme.ink) }
-                }
-                .frame(width: 190, height: 190)
-                .clipShape(RoundedRectangle(cornerRadius: 34, style: .continuous))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 34, style: .continuous)
-                        .strokeBorder(image == nil ? Theme.tertiary : .white,
-                                      style: StrokeStyle(lineWidth: 2, dash: image == nil ? [8, 7] : []))
-                )
-                .shadow(color: .black.opacity(image == nil ? 0 : 0.15), radius: 16, y: 8)
-            }
-            .buttonStyle(PressableStyle())
-
-            if image != nil {
-                Button {
-                    Haptics.soft()
-                    withAnimation(.spring) { imageData = nil; extractedHex = nil; item = nil }
-                } label: {
-                    Label("Remove photo", systemImage: "xmark").font(.ui(14, .semibold)).foregroundStyle(Theme.secondary)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text(image == nil ? "Or pick a color" : "Accent color").eyebrow()
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 6), spacing: 12) {
-                    if let extractedHex {
-                        swatch(extractedHex, label: "photo")
-                    }
-                    ForEach(Theme.swatches, id: \.self) { swatch($0) }
-                    ColorPicker("", selection: Binding(
-                        get: { Color(hex: accentHex) },
-                        set: { accentHex = $0.hex }
-                    ), supportsOpacity: false)
-                    .labelsHidden()
-                    .frame(width: 44, height: 44)
-                }
-            }
-        }
-        .onChange(of: item) { _, new in
-            guard let new else { return }
-            loading = true
-            Task {
-                defer { loading = false }
-                guard let raw = try? await new.loadTransferable(type: Data.self),
-                      let square = ImageTools.squareJPEG(from: raw),
-                      let img = UIImage(data: square) else { return }
-                let hex = ImageTools.dominantAccentHex(img)
-                withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                    imageData = square
-                    extractedHex = hex
-                    if let hex { accentHex = hex }
-                }
-                Haptics.success()
-            }
-        }
-    }
-
-    private func swatch(_ hex: Int, label: String? = nil) -> some View {
-        let selected = accentHex == hex
-        return Button {
-            Haptics.select()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { accentHex = hex }
-        } label: {
-            ZStack {
-                Circle().fill(Color(hex: hex))
-                if label != nil {
-                    Image(systemName: "photo").font(.system(size: 13, weight: .bold)).foregroundStyle(Accent(hex: hex).on)
-                }
-            }
-            .frame(width: 44, height: 44)
-            .padding(4)
-            .overlay(Circle().strokeBorder(selected ? Theme.ink : .clear, lineWidth: 2.5))
-            .scaleEffect(selected ? 1.05 : 1)
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label == nil ? "Color" : "Color from photo")
-    }
-}
-
-/// Four short steps with the card building itself at the top.
+/// Four short steps: basics → look (card + color) → schedule → connection.
 struct CreateProjectFlow: View {
     let profile: Profile
     var onCreated: (UUID) -> Void
@@ -121,52 +13,43 @@ struct CreateProjectFlow: View {
 
     @State private var step = 0
     @State private var name = ""
+    @State private var details = ""
     @State private var imageData: Data?
+    @State private var photoHex: Int?
+    @State private var lockedToPhoto = false
     @State private var accentHex = Theme.swatches[0]
     @State private var startDate = Date.now.startOfDay
     @State private var buildDays = 14
     @State private var endpoint = ""
     @State private var apiKey = ""
     @State private var probe: ProbeState = .idle
-    @FocusState private var nameFocused: Bool
+    @FocusState private var focus: Field?
+    private enum Field { case name, details }
 
     private let steps = 4
     private var accent: Accent { Accent(hex: accentHex) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
-    private var initial: String { trimmedName.first.map { String($0).uppercased() } ?? "?" }
 
     var body: some View {
         VStack(spacing: 0) {
             topBar
             ScrollView {
-                VStack(spacing: 26) {
-                    ProjectCardFace(name: trimmedName, initial: initial, accent: accent,
-                                    cover: imageData.flatMap(UIImage.init(data:)),
-                                    cornerLabel: "Day", cornerValue: "1",
-                                    footnote: "Building · \(buildDays)d")
-                        .frame(width: step == 0 ? 190 : 128)
-                        .rotation3DEffect(.degrees(step.isMultiple(of: 2) ? -4 : 4), axis: (0, 1, 0), perspective: 0.5)
-                        .shadow(color: accent.base.opacity(0.3), radius: 22, y: 12)
-                        .animation(.spring(response: 0.5, dampingFraction: 0.75), value: step)
-                        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: accentHex)
-                        .padding(.top, 8)
-
-                    Group {
-                        switch step {
-                        case 0: nameStep
-                        case 1: coverStep
-                        case 2: scheduleStep
-                        default: connectStep
-                        }
+                Group {
+                    switch step {
+                    case 0: basicsStep
+                    case 1: lookStep
+                    case 2: scheduleStep
+                    default: connectStep
                     }
-                    .id(step)
-                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                            removal: .move(edge: .leading).combined(with: .opacity)))
                 }
+                .id(step)
+                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                        removal: .move(edge: .leading).combined(with: .opacity)))
                 .padding(.horizontal, 24)
+                .padding(.top, 12)
                 .padding(.bottom, 20)
             }
-            .scrollDismissesKeyboard(.interactively)
+            .scrollDismissesKeyboard(.immediately)
 
             bottomBar
         }
@@ -179,14 +62,14 @@ struct CreateProjectFlow: View {
             startDate = max(ScheduleEngine.nextProjectDate(projects: projects, profile: profile), .now.startOfDay)
             let used = Set(projects.map(\.accentHex))
             accentHex = Theme.swatches.first { !used.contains($0) } ?? Theme.swatches[projects.count % Theme.swatches.count]
-            nameFocused = true
+            focus = .name
         }
     }
 
     // MARK: Chrome
 
     private var topBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 14) {
             Button {
                 Haptics.soft()
                 if step == 0 { dismiss() } else { withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step -= 1 } }
@@ -197,10 +80,31 @@ struct CreateProjectFlow: View {
                     .frame(width: 36, height: 36)
             }
             ChunkyProgressBar(value: Double(step + 1) / Double(steps), height: 14)
+            // Once it has a face, the project rides along in the corner.
+            if step >= 2 {
+                miniMark.transition(.scale.combined(with: .opacity))
+            }
         }
         .padding(.horizontal, 20)
         .padding(.top, 18)
         .padding(.bottom, 8)
+        .animation(.spring(response: 0.4, dampingFraction: 0.75), value: step)
+    }
+
+    private var miniMark: some View {
+        Group {
+            if let data = imageData, let img = UIImage(data: data) {
+                Image(uiImage: img).resizable().scaledToFill()
+            } else {
+                Text(trimmedName.first.map { String($0).uppercased() } ?? "?")
+                    .display(17, 800)
+                    .foregroundStyle(accent.on)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(accent.base)
+            }
+        }
+        .frame(width: 34, height: 34)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 
     private var bottomBar: some View {
@@ -208,11 +112,9 @@ struct CreateProjectFlow: View {
             Button(step == steps - 1 ? "Create project" : "Continue", action: next)
                 .buttonStyle(.chunky)
                 .disabled(step == 0 && trimmedName.isEmpty)
-            if step == 1 && imageData == nil {
-                Text("A photo makes it yours. You can add one later.").font(.ui(13)).foregroundStyle(Theme.secondary)
-            }
             if step == steps - 1 && endpoint.isEmpty {
-                Text("No endpoint yet? You'll see sample data until you connect.").font(.ui(13)).foregroundStyle(Theme.secondary)
+                Text("No endpoint yet? You'll see sample data until you connect.")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
             }
         }
         .padding(.horizontal, 24)
@@ -220,37 +122,86 @@ struct CreateProjectFlow: View {
         .padding(.bottom, 10)
     }
 
-    // MARK: Steps
-
     private func stepTitle(_ eyebrow: String, _ title: String) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
             Text(eyebrow).eyebrow(accent.text)
-            Text(title).font(.display(32, 750)).foregroundStyle(Theme.ink)
+            Text(title).display(32, 750).foregroundStyle(Theme.ink)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var nameStep: some View {
-        VStack(alignment: .leading, spacing: 16) {
+    // MARK: Steps
+
+    private var basicsStep: some View {
+        VStack(alignment: .leading, spacing: 22) {
             stepTitle("Step 1 of 4", "What are you building?")
-            TextField("Project name", text: $name)
-                .font(.display(28, 650))
-                .focused($nameFocused)
-                .submitLabel(.continue)
-                .onSubmit(next)
-                .padding(.horizontal, 18)
-                .frame(height: 66)
-                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
-                .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .strokeBorder(nameFocused ? accent.base : Theme.line, lineWidth: 2))
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Name").eyebrow()
+                TextField("", text: $name, prompt: Text("e.g. Habit Hero").foregroundStyle(Theme.tertiary))
+                    .focused($focus, equals: .name)
+                    .submitLabel(.next)
+                    .onSubmit { focus = .details }
+                    .inputField(focused: focus == .name)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Description").eyebrow()
+                TextField("", text: $details,
+                          prompt: Text("One or two lines on what it is and who it's for").foregroundStyle(Theme.tertiary),
+                          axis: .vertical)
+                    .lineLimit(3...6)
+                    .focused($focus, equals: .details)
+                    .padding(.vertical, 14)
+                    .inputField(focused: focus == .details)
+            }
+
+            collaborators
         }
     }
 
-    private var coverStep: some View {
-        VStack(alignment: .leading, spacing: 18) {
+    private var collaborators: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Collaborators").eyebrow()
+                Spacer()
+                Text("Coming soon")
+                    .font(.ui(11, .semibold))
+                    .foregroundStyle(Theme.secondary)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .background(Capsule().fill(Theme.line))
+            }
+            HStack(spacing: 12) {
+                ZStack {
+                    Circle().fill(Theme.ink).frame(width: 40, height: 40)
+                    Text("You").font(.ui(12, .semibold)).foregroundStyle(.white)
+                }
+                Circle()
+                    .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                    .frame(width: 40, height: 40)
+                    .overlay(Image(systemName: "plus").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.tertiary))
+                Text("Invite people to build with you")
+                    .font(.ui(15)).foregroundStyle(Theme.secondary)
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.line, lineWidth: 2))
+            .opacity(0.55)
+            .allowsHitTesting(false)
+            .accessibilityLabel("Collaborators, coming soon")
+        }
+    }
+
+    private var lookStep: some View {
+        VStack(alignment: .leading, spacing: 22) {
             stepTitle("Step 2 of 4", "Give it a face")
-            CoverPicker(imageData: $imageData, accentHex: $accentHex, initial: initial)
+            CardCoverEditor(name: trimmedName, imageData: $imageData, accentHex: $accentHex,
+                            photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                            footnote: "Building · \(buildDays)d")
+                .frame(width: 236)
                 .frame(maxWidth: .infinity)
+            AccentSlider(accentHex: $accentHex, locked: $lockedToPhoto, photoHex: photoHex)
         }
     }
 
@@ -271,14 +222,14 @@ struct CreateProjectFlow: View {
                 HStack {
                     Text("Build phase").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Text(buildDays.durationText).font(.display(20, 700)).foregroundStyle(accent.text)
+                    Text(buildDays.durationText).display(20, 700).foregroundStyle(accent.text)
                         .contentTransition(.numericText())
                 }
                 ChunkySlider(value: $buildDays, range: 3...42)
             }
             .card()
 
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 Text("Your deadlines").eyebrow()
                 ForEach(ms, id: \.id) { m in
                     HStack {
@@ -306,8 +257,8 @@ struct CreateProjectFlow: View {
 
     private func next() {
         guard !(step == 0 && trimmedName.isEmpty) else { return }
+        focus = nil
         if step < steps - 1 {
-            nameFocused = false
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += 1 }
         } else {
             create()
@@ -317,6 +268,7 @@ struct CreateProjectFlow: View {
     private func create() {
         let p = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
                         buildDays: buildDays, observeDays: profile.observeDays)
+        p.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
         p.coverImage = imageData
         p.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
         Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: p.id.uuidString)

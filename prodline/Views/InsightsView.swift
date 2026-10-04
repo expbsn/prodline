@@ -53,7 +53,7 @@ struct InsightsView: View {
             ForEach(MetricKey.allCases) { k in
                 VStack(alignment: .leading, spacing: 6) {
                     Image(systemName: k.symbol).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.ink)
-                    Text(k.format(total(k))).font(.display(22, 750)).foregroundStyle(Theme.ink)
+                    Text(k.format(total(k))).display(22, 750).foregroundStyle(Theme.ink)
                         .lineLimit(1).minimumScaleFactor(0.6).contentTransition(.numericText())
                     Text(k.title).font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
                 }

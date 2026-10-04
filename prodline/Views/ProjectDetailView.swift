@@ -98,6 +98,14 @@ struct ProjectDetailView: View {
             .foregroundStyle(accent.on)
             .padding(.horizontal, 14).padding(.vertical, 7)
             .background(Capsule().fill(accent.base))
+            if !project.details.isEmpty {
+                Text(project.details)
+                    .font(.ui(16))
+                    .foregroundStyle(Theme.inkSoft)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.bottom, 8)
@@ -159,7 +167,7 @@ struct ProjectDetailView: View {
         let extras = refresher.extras(for: project)
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Traction").font(.display(24, 700)).foregroundStyle(Theme.ink)
+                Text("Traction").display(24, 700).foregroundStyle(Theme.ink)
                 Spacer()
                 statusLabel
             }
@@ -173,7 +181,7 @@ struct ProjectDetailView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Image(systemName: key.symbol).font(.system(size: 15, weight: .semibold))
                             Text(refresher.value(key, for: project).map(key.format) ?? "–")
-                                .font(.display(22, 700))
+                                .display(22, 700)
                                 .lineLimit(1).minimumScaleFactor(0.6)
                                 .contentTransition(.numericText())
                             Text(key.title).font(.ui(11, .semibold)).opacity(0.75).lineLimit(1)
@@ -365,26 +373,48 @@ struct EditProjectSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @State private var name = ""
+    @State private var details = ""
     @State private var imageData: Data?
+    @State private var photoHex: Int?
+    @State private var locked = false
     @State private var accentHex = 0
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Edit project").font(.display(26, 750)).foregroundStyle(Theme.ink)
+                Text("Edit project").display(26, 750).foregroundStyle(Theme.ink)
                 Spacer()
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }
             .padding(20)
             ScrollView {
-                VStack(spacing: 22) {
-                    TextField("Name", text: $name).inputField()
-                    CoverPicker(imageData: $imageData, accentHex: $accentHex, initial: project.initial)
+                VStack(alignment: .leading, spacing: 22) {
+                    CardCoverEditor(name: name, imageData: $imageData, accentHex: $accentHex,
+                                    photoHex: $photoHex, lockedToPhoto: $locked)
+                        .frame(width: 220)
+                        .frame(maxWidth: .infinity)
+                    AccentSlider(accentHex: $accentHex, locked: $locked, photoHex: photoHex)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Name").eyebrow()
+                        TextField("Name", text: $name).inputField()
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description").eyebrow()
+                        TextField("", text: $details, prompt: Text("What is it, who is it for?").foregroundStyle(Theme.tertiary),
+                                  axis: .vertical)
+                            .lineLimit(2...6)
+                            .padding(.vertical, 14)
+                            .inputField()
+                    }
                 }
                 .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
+            .scrollDismissesKeyboard(.immediately)
             Button("Save") {
-                project.name = name.trimmingCharacters(in: .whitespaces).isEmpty ? project.name : name
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty { project.name = trimmed }
+                project.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
                 project.coverImage = imageData
                 project.accentHex = accentHex
                 try? context.save()
@@ -398,8 +428,11 @@ struct EditProjectSheet: View {
         .environment(\.accent, Accent(hex: accentHex))
         .onAppear {
             name = project.name
+            details = project.details
             imageData = project.coverImage
             accentHex = project.accentHex
+            photoHex = project.cover.flatMap(ImageTools.dominantAccentHex)
+            locked = photoHex == project.accentHex
         }
     }
 }
@@ -416,7 +449,7 @@ struct ConnectionSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Connection").font(.display(26, 750)).foregroundStyle(Theme.ink)
+                Text("Connection").display(26, 750).foregroundStyle(Theme.ink)
                 Spacer()
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }

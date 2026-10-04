@@ -17,6 +17,8 @@ struct ProjectCardFace: View {
             let w = geo.size.width
             let h = geo.size.height
             let s = w / 260
+            // Small cards drop the tiny labels so they stay legible.
+            let compact = w < 200
 
             ZStack(alignment: .topLeading) {
                 background(w: w, h: h, s: s)
@@ -30,7 +32,7 @@ struct ProjectCardFace: View {
                 // Top row: badge + corner stat.
                 HStack(alignment: .top) {
                     Text(initial)
-                        .font(.display(24 * s, 800))
+                        .display(24 * s, 800)
                         .foregroundStyle(accent.on)
                         .frame(width: 46 * s, height: 46 * s)
                         .background(RoundedRectangle(cornerRadius: 13 * s, style: .continuous).fill(accent.base))
@@ -40,11 +42,13 @@ struct ProjectCardFace: View {
                     Spacer()
                     if !cornerValue.isEmpty {
                         VStack(alignment: .trailing, spacing: 0) {
-                            Text(cornerLabel)
-                                .font(.ui(11 * s, .semibold)).tracking(2.2 * s).textCase(.uppercase)
-                                .foregroundStyle(cover == nil ? Theme.secondary : .white.opacity(0.85))
+                            if !compact {
+                                Text(cornerLabel)
+                                    .font(.ui(11 * s, .semibold)).tracking(2.2 * s).textCase(.uppercase)
+                                    .foregroundStyle(cover == nil ? Theme.secondary : .white.opacity(0.85))
+                            }
                             Text(cornerValue)
-                                .font(.display(38 * s, 700))
+                                .display(38 * s, 700)
                                 .foregroundStyle(cover == nil ? Theme.ink : .white)
                                 .contentTransition(.numericText())
                         }
@@ -52,22 +56,20 @@ struct ProjectCardFace: View {
                 }
                 .padding(20 * s)
 
-                // Name on the slab.
-                VStack(alignment: .leading, spacing: 2 * s) {
-                    Spacer()
-                    if !footnote.isEmpty {
+                // Name on the slab; the footnote hugs the name, long names shrink instead of growing upward.
+                VStack(alignment: .leading, spacing: 4 * s) {
+                    if !footnote.isEmpty && !compact {
                         Text(footnote)
                             .font(.ui(11 * s, .semibold)).tracking(1.8 * s).textCase(.uppercase)
                             .foregroundStyle(accent.on.opacity(0.8))
                     }
                     Text(name.isEmpty ? "Untitled" : name)
-                        .font(.display(46 * s, 800))
+                        .display(46 * s, 800)
                         .foregroundStyle(accent.on)
                         .lineLimit(2)
                         .minimumScaleFactor(0.4)
-                        // Keep the title on the slab: long names shrink instead of growing upward.
-                        .frame(maxWidth: .infinity, maxHeight: h * 0.17, alignment: .bottomLeading)
                 }
+                .frame(maxWidth: .infinity, maxHeight: h * 0.27, alignment: .bottomLeading)
                 .padding(.horizontal, 22 * s)
                 .padding(.bottom, 22 * s)
                 .frame(width: w, height: h, alignment: .bottomLeading)
@@ -86,7 +88,7 @@ struct ProjectCardFace: View {
             Image(uiImage: cover)
                 .resizable()
                 .scaledToFill()
-                .frame(width: w, height: h * 0.72, alignment: .center)
+                .frame(width: w, height: h * 0.66, alignment: .center)
                 .clipped()
                 .frame(width: w, height: h, alignment: .top)
                 .overlay(alignment: .top) {
@@ -101,7 +103,7 @@ struct ProjectCardFace: View {
                 RadialGradient(colors: [accent.base.opacity(0.18), .clear], center: .topTrailing,
                                startRadius: 0, endRadius: w * 0.9)
                 Text(initial)
-                    .font(.display(300 * s, 900))
+                    .display(300 * s, 900)
                     .foregroundStyle(accent.base.opacity(0.11))
                     .offset(x: 30 * s, y: -10 * s)
             }
@@ -113,8 +115,8 @@ struct ProjectCardFace: View {
 private struct Slab: Shape {
     func path(in r: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: 0, y: r.height * 0.67))
-        p.addLine(to: CGPoint(x: r.width, y: r.height * 0.5))
+        p.move(to: CGPoint(x: 0, y: r.height * 0.61))
+        p.addLine(to: CGPoint(x: r.width, y: r.height * 0.45))
         p.addLine(to: CGPoint(x: r.width, y: r.height))
         p.addLine(to: CGPoint(x: 0, y: r.height))
         p.closeSubpath()
@@ -161,11 +163,8 @@ struct CreateProjectCardFace: View {
                     .frame(width: 64 * s, height: 64 * s)
                     .background(Circle().fill(Theme.ink))
                 Spacer()
-                VStack(alignment: .leading, spacing: -12 * s) {
-                    Text("New")
-                    Text("project")
-                }
-                .font(.display(48 * s, 800))
+                Text("New\nproject")
+                    .display(48 * s, 800)
                 .foregroundStyle(Theme.ink)
                 Text(subtitle)
                     .font(.ui(14 * s, .medium))
@@ -195,7 +194,7 @@ struct ProjectThumb: View {
                 Image(uiImage: cover).resizable().scaledToFill()
             } else {
                 Text(project.initial)
-                    .font(.display(size * 0.5, 800))
+                    .display(size * 0.5, 800)
                     .foregroundStyle(project.accent.on)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(project.accent.base)

@@ -92,10 +92,17 @@ struct MainShell: View {
             .safeAreaPadding(.bottom, 92)
             .transition(.opacity)
 
-            LinearGradient(colors: [Theme.background.opacity(0), Theme.background], startPoint: .top, endPoint: .bottom)
-                .frame(height: 120)
-                .ignoresSafeArea()
-                .allowsHitTesting(false)
+            // Fade content out behind the tab bar, all the way to the screen edge.
+            VStack(spacing: 0) {
+                Spacer()
+                LinearGradient(stops: [.init(color: Theme.background.opacity(0), location: 0),
+                                       .init(color: Theme.background.opacity(0.9), location: 0.4),
+                                       .init(color: Theme.background, location: 0.6)],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 150)
+            }
+            .ignoresSafeArea()
+            .allowsHitTesting(false)
 
             FloatingTabBar(selection: $tab, onAdd: { showCreate = true })
                 .padding(.bottom, 2)

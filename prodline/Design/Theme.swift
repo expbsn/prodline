@@ -111,6 +111,14 @@ extension Font {
     }
 }
 
+extension View {
+    /// Accent font for prominent text. The bundled font's vertical metrics are tightened
+    /// (tools/tighten_font_metrics.py) so wrapped lines and single lines both sit balanced.
+    func display(_ size: CGFloat, _ weight: CGFloat = 700) -> some View {
+        self.font(.display(size, weight))
+    }
+}
+
 extension Text {
     /// Small tracked uppercase label ("MINIGAMES" style).
     func eyebrow(_ color: Color = Theme.secondary, size: CGFloat = 12) -> some View {

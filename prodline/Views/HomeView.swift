@@ -22,7 +22,8 @@ struct HomeView: View {
 
     var body: some View {
         GeometryReader { geo in
-            let cardW = min(geo.size.width * 0.58, 300)
+            // Fit the card to the space left after header, dots and panel (~370pt) so the CTA stays visible.
+            let cardW = max(150, min(geo.size.width * 0.6, (geo.size.height - 370) * 5 / 7, 300))
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") { streakBadge }
@@ -74,7 +75,7 @@ struct HomeView: View {
             }
             .frame(width: 58, height: 58)
             Text("\(profile.streak)")
-                .font(.display(15, 800))
+                .display(15, 800)
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 10).padding(.vertical, 1)
                 .background(Capsule().fill(.white))
@@ -145,7 +146,7 @@ struct HomeView: View {
         } else {
             VStack(alignment: .leading, spacing: 14) {
                 Text(projects.isEmpty
-                     ? "Start your first build. Pick a cover, set a deadline rhythm, and connect your numbers."
+                     ? "Start your first build: pick a cover, set the clock, connect your numbers."
                      : "Next project due \(ScheduleEngine.nextProjectDate(projects: projects, profile: profile).shortDay). New builds start every \(profile.newProjectEveryDays.durationText).")
                     .font(.ui(19))
                     .foregroundStyle(Theme.ink)

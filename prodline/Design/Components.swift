@@ -29,7 +29,7 @@ private struct ChunkyButtonBody: View {
         let (fill, edge, fg, border) = colors
         let radius = height * 0.34
         configuration.label
-            .font(.display(height < 48 ? 15 : 19, 700))
+            .display(height < 48 ? 15 : 19, 700)
             .tracking(height < 48 ? 1.2 : 2.4)
             .textCase(.uppercase)
             .lineLimit(1)
@@ -129,7 +129,7 @@ struct ScreenHeader<Trailing: View>: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(eyebrow).eyebrow()
-                Text(title).font(.display(42, 750)).foregroundStyle(Theme.ink)
+                Text(title).display(42, 750).foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.7)
             }
             Spacer(minLength: 12)
@@ -152,7 +152,7 @@ struct SectionTitle: View {
     init(_ text: String, trailing: String? = nil) { self.text = text; self.trailing = trailing }
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(text).font(.display(24, 700)).foregroundStyle(Theme.ink)
+            Text(text).display(24, 700).foregroundStyle(Theme.ink)
             Spacer()
             if let trailing { Text(trailing).eyebrow(size: 11) }
         }
@@ -308,7 +308,7 @@ struct CelebrationOverlay: View {
             if let b = center.banner {
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(b.title).font(.display(22, 750))
+                        Text(b.title).display(22, 750)
                         Text(b.subtitle).font(.ui(14, .medium)).opacity(0.85)
                     }
                     Spacer(minLength: 0)

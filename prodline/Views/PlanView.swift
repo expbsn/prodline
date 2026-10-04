@@ -70,7 +70,7 @@ struct PlanView: View {
     private func stat(symbol: String, tint: Color, value: String, title: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Image(systemName: symbol).font(.system(size: 18)).foregroundStyle(tint)
-            Text(value).font(.display(26, 750)).foregroundStyle(Theme.ink).contentTransition(.numericText())
+            Text(value).display(26, 750).foregroundStyle(Theme.ink).contentTransition(.numericText())
             Text(title).font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
         }
         .card(padding: 14, radius: 22)
@@ -91,7 +91,7 @@ struct PlanView: View {
                                 Text(day.formatted(.dateTime.weekday(.abbreviated)))
                                     .font(.ui(12, .semibold)).textCase(.uppercase)
                                 Text(day.formatted(.dateTime.day()))
-                                    .font(.display(24, 750))
+                                    .display(24, 750)
                                 HStack(spacing: 3) {
                                     ForEach(Array(dots.prefix(3).enumerated()), id: \.offset) { _, a in
                                         Circle().fill(selected ? .white : a.base).frame(width: 6, height: 6)
@@ -150,7 +150,7 @@ struct PlanView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("Next project").eyebrow()
             Text(due ? "It's time to start a new build" : "Starts in \(daysLeft.durationText)")
-                .font(.display(26, 750)).foregroundStyle(Theme.ink)
+                .display(26, 750).foregroundStyle(Theme.ink)
             if due {
                 Button("Create project", action: onCreate).buttonStyle(.chunky)
             } else {

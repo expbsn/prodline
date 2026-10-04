@@ -6,13 +6,15 @@ import SwiftUI
 /// Creates projects wired to the local mock server (MockProject/server.py) for end-to-end testing.
 enum DemoData {
     struct Spec {
-        let slug: String, name: String, key: String, startedDaysAgo: Int, accent: Int, coverHues: [Int]?
+        let slug: String, name: String
+        var details: String = ""
+        let key: String, startedDaysAgo: Int, accent: Int, coverHues: [Int]?
     }
 
     /// Must match PROJECTS in MockProject/server.py.
     static let projects: [Spec] = [
-        Spec(slug: "habit-hero", name: "Habit Hero", key: "hh_live_demo", startedDaysAgo: 9, accent: 0x58CC02, coverHues: nil),
-        Spec(slug: "pixel-quest", name: "Pixel Quest", key: "pq_live_demo", startedDaysAgo: 23, accent: 0xA35CFF,
+        Spec(slug: "habit-hero", name: "Habit Hero", details: "A tiny habit tracker that rewards streaks with plant growth.", key: "hh_live_demo", startedDaysAgo: 9, accent: 0x58CC02, coverHues: nil),
+        Spec(slug: "pixel-quest", name: "Pixel Quest", details: "Daily five-minute pixel art puzzles.", key: "pq_live_demo", startedDaysAgo: 23, accent: 0xA35CFF,
              coverHues: [0xFF5FA2, 0xA35CFF, 0x2D1B69]),
         Spec(slug: "side-shop", name: "Side Shop", key: "ss_live_demo", startedDaysAgo: 2, accent: 0xFF9600, coverHues: nil),
         Spec(slug: "flaky-app", name: "Flaky App", key: "fa_live_demo", startedDaysAgo: 5, accent: 0x1CB0F6, coverHues: nil),
@@ -28,6 +30,7 @@ enum DemoData {
                 p.coverImage = data
                 p.accentHex = ImageTools.dominantAccentHex(UIImage(data: data)!) ?? spec.accent
             }
+            p.details = spec.details
             p.endpoint = "\(base)/projects/\(spec.slug)/metrics"
             Keychain.set(spec.key, for: p.id.uuidString)
             context.insert(p)

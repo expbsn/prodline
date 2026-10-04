@@ -43,7 +43,7 @@ struct SchemeEditor: View {
             HStack(alignment: .firstTextBaseline) {
                 Text(title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                Text(value).font(.display(20, 700)).foregroundStyle(Theme.ink).contentTransition(.numericText())
+                Text(value).display(20, 700).foregroundStyle(Theme.ink).contentTransition(.numericText())
             }
             content()
         }
@@ -126,7 +126,7 @@ struct MeView: View {
                         HStack {
                             Text("Morning reminder").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
                             Spacer()
-                            Text(String(format: "%02d:00", profile.reminderHour)).font(.display(20, 700)).foregroundStyle(Theme.ink)
+                            Text(String(format: "%02d:00", profile.reminderHour)).display(20, 700).foregroundStyle(Theme.ink)
                         }
                         ChunkySlider(value: $profile.reminderHour, range: 5...12)
                             .onChange(of: profile.reminderHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
@@ -207,20 +207,21 @@ struct OnboardingView: View {
                 ForEach(Array(sampleCards.enumerated()), id: \.offset) { i, c in
                     ProjectCardFace(name: c.0, initial: String(c.0.prefix(1)), accent: Accent(hex: c.1), cover: nil,
                                     cornerLabel: "Day", cornerValue: "\(c.2)", footnote: c.3)
-                        .frame(width: 180)
-                        .rotationEffect(.degrees(fanned ? Double(i - 1) * 12 : 0), anchor: .bottom)
-                        .offset(x: fanned ? CGFloat(i - 1) * 46 : 0, y: fanned ? abs(CGFloat(i - 1)) * 16 : 0)
+                        .frame(width: 200)
+                        .rotationEffect(.degrees(fanned ? Double(i - 1) * 9 : 0), anchor: .bottom)
+                        .offset(x: fanned ? CGFloat(i - 1) * 44 : 0, y: fanned ? abs(CGFloat(i - 1)) * 14 : 0)
                         .shadow(color: .black.opacity(0.12), radius: 16, y: 10)
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 330)
+            .frame(height: 340)
+            .padding(.top, 8)
             .onAppear {
                 withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.15)) { fanned = true }
             }
 
             Text("Welcome to").eyebrow()
-            Text("Prodline").font(.display(60, 800)).foregroundStyle(Theme.ink).padding(.top, -14)
+            Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
             Text("Ship a project every cycle, watch its numbers come in, and keep the streak going.")
                 .font(.ui(19)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -237,7 +238,7 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Your rhythm").eyebrow()
-                Text("How do you like to build?").font(.display(34, 750)).foregroundStyle(Theme.ink)
+                Text("How do you like to build?").display(34, 750).foregroundStyle(Theme.ink)
             }
             SchemeEditor(profile: profile).card()
         }
@@ -247,13 +248,13 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 4) {
                 Text("Stay on time").eyebrow()
-                Text("A nudge on deadline days").font(.display(34, 750)).foregroundStyle(Theme.ink)
+                Text("A nudge on deadline days").display(34, 750).foregroundStyle(Theme.ink)
             }
             // Notification preview.
             HStack(alignment: .top, spacing: 12) {
                 RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: 0x58CC02))
                     .frame(width: 38, height: 38)
-                    .overlay(Text("H").font(.display(20, 800)).foregroundStyle(.white))
+                    .overlay(Text("H").display(20, 800).foregroundStyle(.white))
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text("Habit Hero: deadline day").font(.ui(15, .semibold))
