@@ -1,6 +1,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import UIKit
 
 // All properties have defaults and relationships are optional so the schema is CloudKit-compatible.
 
@@ -11,12 +12,14 @@ final class Profile {
     var xp: Int = 0
     var streak: Int = 0
     var bestStreak: Int = 0
+    var completedOnTime: Int = 0
+    var completedLate: Int = 0
 
     // Custom building scheme
     var buildDays: Int = 14
     var observeDays: Int = 28
     var newProjectEveryDays: Int = 14
-    /// Bit (weekday - 1) set => milestone on that weekday (Calendar weekday, Sunday = 1).
+    /// Bit (weekday - 1) set => checkpoint on that weekday (Calendar weekday, Sunday = 1).
     var milestoneWeekdayMask: Int = 34 // Mon + Fri
     var reminderHour: Int = 9
     var remindersEnabled: Bool = true
@@ -25,12 +28,16 @@ final class Profile {
 
     var level: Int { xp / 100 + 1 }
     var levelProgress: Double { Double(xp % 100) / 100 }
+    var onTimeRate: Double? {
+        let total = completedOnTime + completedLate
+        return total == 0 ? nil : Double(completedOnTime) / Double(total)
+    }
 
     func hasWeekday(_ weekday: Int) -> Bool { milestoneWeekdayMask & (1 << (weekday - 1)) != 0 }
     func toggleWeekday(_ weekday: Int) { milestoneWeekdayMask ^= (1 << (weekday - 1)) }
 }
 
-enum Phase {
+enum Phase: String {
     case upcoming, building, observing, finished
 
     var title: String {
@@ -42,21 +49,12 @@ enum Phase {
         }
     }
 
-    var color: Color {
+    var symbol: String {
         switch self {
-        case .upcoming: Theme.inkLight
-        case .building: Theme.blue
-        case .observing: Theme.orange
-        case .finished: Theme.green
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .upcoming: "⏳"
-        case .building: "🛠️"
-        case .observing: "📈"
-        case .finished: "🏁"
+        case .upcoming: "hourglass"
+        case .building: "hammer.fill"
+        case .observing: "chart.line.uptrend.xyaxis"
+        case .finished: "flag.checkered"
         }
     }
 }
@@ -65,8 +63,9 @@ enum Phase {
 final class Project {
     var id: UUID = UUID()
     var name: String = ""
-    var emoji: String = "🚀"
-    var colorIndex: Int = 0
+    var accentHex: Int = 0x58CC02
+    /// Square JPEG cover. Its dominant color usually becomes the accent.
+    @Attribute(.externalStorage) var coverImage: Data? = nil
     var startDate: Date = Date.now.startOfDay
     var buildDays: Int = 14
     var observeDays: Int = 28
@@ -79,18 +78,21 @@ final class Project {
     @Relationship(deleteRule: .cascade, inverse: \MetricSnapshot.project)
     var snapshots: [MetricSnapshot]? = []
 
-    init(name: String, emoji: String, colorIndex: Int, startDate: Date, buildDays: Int, observeDays: Int) {
+    init(name: String, accentHex: Int, startDate: Date, buildDays: Int, observeDays: Int) {
         self.name = name
-        self.emoji = emoji
-        self.colorIndex = colorIndex
+        self.accentHex = accentHex
         self.startDate = startDate.startOfDay
         self.buildDays = buildDays
         self.observeDays = observeDays
     }
 
-    var color: Color { Theme.palette[abs(colorIndex) % Theme.palette.count] }
+    var accent: Accent { Accent(hex: accentHex) }
+    var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
+    var cover: UIImage? { CoverCache.image(coverImage, key: id.uuidString) }
+
     var buildEnd: Date { startDate.adding(days: buildDays) }
     var observeEnd: Date { buildEnd.adding(days: observeDays) }
+    var launchDay: Date { buildEnd.adding(days: -1) }
 
     func phase(on date: Date = .now) -> Phase {
         let d = date.startOfDay
@@ -100,20 +102,25 @@ final class Project {
         return .finished
     }
 
+    var isActive: Bool { phase() == .building || phase() == .observing }
+
+    /// 1-based day within the current phase.
+    var dayInPhase: Int {
+        switch phase() {
+        case .upcoming: 0
+        case .building: Date.days(from: startDate, to: .now) + 1
+        case .observing: Date.days(from: buildEnd, to: .now) + 1
+        case .finished: observeDays
+        }
+    }
+
+    var phaseLength: Int { phase() == .observing ? observeDays : buildDays }
+
     /// 0...1 across build + observe.
     var overallProgress: Double {
         let total = Double(buildDays + observeDays)
         let done = Double(Date.days(from: startDate, to: .now))
         return min(max(done / total, 0), 1)
-    }
-
-    var phaseProgress: Double {
-        switch phase() {
-        case .upcoming: return 0
-        case .building: return Double(Date.days(from: startDate, to: .now)) / Double(max(buildDays, 1))
-        case .observing: return Double(Date.days(from: buildEnd, to: .now)) / Double(max(observeDays, 1))
-        case .finished: return 1
-        }
     }
 
     var daysLeftInPhase: Int {
@@ -126,8 +133,14 @@ final class Project {
     }
 
     var sortedMilestones: [Milestone] { (milestones ?? []).sorted { $0.dueDate < $1.dueDate } }
+    var nextMilestone: Milestone? { sortedMilestones.first { !$0.isDone } }
     var sortedSnapshots: [MetricSnapshot] { (snapshots ?? []).sorted { $0.date < $1.date } }
-    var latestSnapshot: MetricSnapshot? { sortedSnapshots.last }
+    var latestSnapshot: MetricSnapshot? { (snapshots ?? []).max { $0.date < $1.date } }
+
+    var hasEndpoint: Bool {
+        guard let url = URL(string: endpoint.trimmingCharacters(in: .whitespaces)) else { return false }
+        return url.scheme?.hasPrefix("http") == true && url.host() != nil
+    }
 }
 
 @Model
@@ -147,8 +160,10 @@ final class Milestone {
     }
 
     var isDone: Bool { completedAt != nil }
-    var isOverdue: Bool { !isDone && dueDate < Date.now.startOfDay }
+    func isOverdue(on now: Date = .now) -> Bool { !isDone && dueDate < now.startOfDay }
+    var isOverdue: Bool { isOverdue() }
     var isDueToday: Bool { !isDone && dueDate == Date.now.startOfDay }
+    var completedOnTime: Bool { completedAt.map { $0.startOfDay <= dueDate } ?? false }
 }
 
 @Model
@@ -157,13 +172,16 @@ final class MetricSnapshot {
     var visits: Double = 0
     var socialViews: Double = 0
     var revenue: Double = 0
+    /// Any non-standard metrics the endpoint reports (e.g. "signups").
+    var extras: [String: Double] = [:]
     var project: Project? = nil
 
-    init(date: Date, visits: Double, socialViews: Double, revenue: Double) {
+    init(date: Date, visits: Double, socialViews: Double, revenue: Double, extras: [String: Double] = [:]) {
         self.date = date
         self.visits = visits
         self.socialViews = socialViews
         self.revenue = revenue
+        self.extras = extras
     }
 
     func value(_ key: MetricKey) -> Double {

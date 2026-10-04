@@ -1,16 +1,18 @@
 import Foundation
 import Security
 
-// MARK: - Wire format
+// MARK: - Wire format (see docs/API.md)
 //
-// GET <endpoint>   Authorization: Bearer <api key>
+// GET <endpoint>[?since=<ISO8601>]     Authorization: Bearer <api key>
 // {
+//   "schemaVersion": 1,
 //   "project": "My App",
 //   "asOf": "2026-10-04T12:00:00Z",
 //   "metrics": [ {"key": "visits", "value": 1234}, {"key": "social_views", "value": 560},
-//                {"key": "revenue", "value": 56.7, "unit": "USD"} ],
-//   "history": [ {"asOf": "...", "metrics": [ ... ]} ]      // optional, for backfilling charts
+//                {"key": "revenue", "value": 56.7, "unit": "USD"}, {"key": "signups", "value": 42} ],
+//   "history": [ {"asOf": "...", "metrics": [ ... ]} ]      // optional; points after `since`
 // }
+// All values are cumulative totals.
 
 nonisolated enum MetricKey: String, CaseIterable, Sendable, Identifiable {
     case visits
@@ -27,22 +29,31 @@ nonisolated enum MetricKey: String, CaseIterable, Sendable, Identifiable {
         }
     }
 
-    var icon: String {
+    var symbol: String {
         switch self {
-        case .visits: "🌐"
-        case .socialViews: "👀"
-        case .revenue: "💰"
+        case .visits: "globe"
+        case .socialViews: "eye.fill"
+        case .revenue: "dollarsign.circle.fill"
         }
     }
 
     func format(_ v: Double) -> String {
         switch self {
-        case .revenue:
-            return v.formatted(.currency(code: "USD").precision(.fractionLength(v >= 1000 ? 0 : 2)))
-        default:
-            return v >= 10_000 ? v.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)))
-                               : v.formatted(.number.precision(.fractionLength(0)))
+        case .revenue: Self.money(v)
+        default: Self.count(v)
         }
+    }
+
+    static func money(_ v: Double) -> String {
+        let style = FloatingPointFormatStyle<Double>.Currency(code: "USD", locale: Locale(identifier: "en_US"))
+        if v >= 10_000 { return "$" + v.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US"))) }
+        return v.formatted(style.precision(.fractionLength(v >= 1000 ? 0 : 2)))
+    }
+
+    static func count(_ v: Double) -> String {
+        v >= 10_000
+            ? v.formatted(.number.notation(.compactName).precision(.fractionLength(0...1)).locale(Locale(identifier: "en_US")))
+            : v.formatted(.number.precision(.fractionLength(0)).locale(Locale(identifier: "en_US")))
     }
 }
 
@@ -57,68 +68,142 @@ nonisolated struct MetricsPayload: Codable, Sendable, Equatable {
         var metrics: [Metric]
     }
 
+    var schemaVersion: Int?
     var project: String?
     var asOf: Date
     var metrics: [Metric]
     var history: [Point]?
 
-    func value(_ key: MetricKey) -> Double {
-        metrics.first { $0.key == key.rawValue }?.value ?? 0
+    func value(_ key: MetricKey) -> Double { metrics.value(key.rawValue) }
+    var extras: [String: Double] { metrics.extras }
+
+    static func decoder() -> JSONDecoder {
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .custom { decoder in
+            let s = try decoder.singleValueContainer().decode(String.self)
+            if let date = parseDate(s) { return date }
+            throw DecodingError.dataCorrupted(.init(codingPath: decoder.codingPath, debugDescription: "Invalid date \(s)"))
+        }
+        return d
+    }
+
+    static func parseDate(_ s: String) -> Date? {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = f.date(from: s) { return d }
+        f.formatOptions = [.withInternetDateTime]
+        return f.date(from: s)
+    }
+
+    static func iso(_ date: Date) -> String {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f.string(from: date)
+    }
+}
+
+nonisolated extension Array where Element == MetricsPayload.Metric {
+    func value(_ key: String) -> Double { first { $0.key == key }?.value ?? 0 }
+    var extras: [String: Double] {
+        let core = Set(MetricKey.allCases.map(\.rawValue))
+        return Dictionary(filter { !core.contains($0.key) }.map { ($0.key, $0.value) }, uniquingKeysWith: { a, _ in a })
     }
 }
 
 nonisolated extension MetricsPayload.Point {
-    func value(_ key: MetricKey) -> Double { metrics.first { $0.key == key.rawValue }?.value ?? 0 }
+    func value(_ key: MetricKey) -> Double { metrics.value(key.rawValue) }
+}
+
+// MARK: - Errors
+
+nonisolated enum MetricsError: LocalizedError, Equatable, Sendable {
+    case invalidURL
+    case unauthorized
+    case notFound
+    case rateLimited(retryAfter: TimeInterval?)
+    case server(Int)
+    case badPayload(String)
+    case offline(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidURL: "The endpoint URL isn't valid."
+        case .unauthorized: "The API key was rejected (401)."
+        case .notFound: "Endpoint not found (404). Check the URL."
+        case .rateLimited: "Too many requests. Backing off."
+        case .server(let code): "The project's server answered \(code)."
+        case .badPayload(let why): "Unexpected response: \(why)"
+        case .offline(let why): why
+        }
+    }
+
+    var retryAfter: TimeInterval? {
+        if case .rateLimited(let t) = self { return t }
+        return nil
+    }
 }
 
 // MARK: - Clients
 
 nonisolated protocol MetricsClient: Sendable {
-    func fetch() async throws -> MetricsPayload
+    /// `since`: the newest point the app already has; servers may limit `history` to newer points.
+    func fetch(since: Date?) async throws -> MetricsPayload
 }
 
 nonisolated struct RESTMetricsClient: MetricsClient {
     let url: URL
     let apiKey: String
+    var session: URLSession = .shared
 
-    enum ClientError: LocalizedError {
-        case http(Int)
-        var errorDescription: String? {
-            switch self {
-            case .http(401), .http(403): "The API key was rejected."
-            case .http(let c): "Server answered with \(c)."
-            }
+    func fetch(since: Date?) async throws -> MetricsPayload {
+        guard var comps = URLComponents(url: url, resolvingAgainstBaseURL: false) else { throw MetricsError.invalidURL }
+        if let since {
+            comps.queryItems = (comps.queryItems ?? []) + [URLQueryItem(name: "since", value: MetricsPayload.iso(since))]
         }
-    }
+        guard let finalURL = comps.url else { throw MetricsError.invalidURL }
 
-    func fetch() async throws -> MetricsPayload {
-        var req = URLRequest(url: url, timeoutInterval: 15)
+        var req = URLRequest(url: finalURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        let (data, response) = try await URLSession.shared.data(for: req)
-        if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-            throw ClientError.http(http.statusCode)
+        req.setValue("Prodline/1.0", forHTTPHeaderField: "User-Agent")
+
+        let data: Data, response: URLResponse
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch let e as URLError {
+            throw MetricsError.offline(e.code == .notConnectedToInternet ? "You're offline." : "Can't reach the server (\(e.code.rawValue)).")
         }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .custom { d in
-            let s = try d.singleValueContainer().decode(String.self)
-            let f = ISO8601DateFormatter()
-            f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            if let date = f.date(from: s) { return date }
-            f.formatOptions = [.withInternetDateTime]
-            if let date = f.date(from: s) { return date }
-            throw DecodingError.dataCorrupted(.init(codingPath: d.codingPath, debugDescription: "Bad date \(s)"))
+
+        if let http = response as? HTTPURLResponse {
+            switch http.statusCode {
+            case 200..<300: break
+            case 401, 403: throw MetricsError.unauthorized
+            case 404: throw MetricsError.notFound
+            case 429: throw MetricsError.rateLimited(retryAfter: http.value(forHTTPHeaderField: "Retry-After").flatMap(TimeInterval.init))
+            default: throw MetricsError.server(http.statusCode)
+            }
         }
-        return try decoder.decode(MetricsPayload.self, from: data)
+
+        do {
+            return try MetricsPayload.decoder().decode(MetricsPayload.self, from: data)
+        } catch let DecodingError.keyNotFound(key, _) {
+            throw MetricsError.badPayload("missing \"\(key.stringValue)\"")
+        } catch let DecodingError.typeMismatch(_, ctx) {
+            throw MetricsError.badPayload("wrong type at \(ctx.codingPath.map(\.stringValue).joined(separator: "."))")
+        } catch let DecodingError.dataCorrupted(ctx) {
+            throw MetricsError.badPayload(ctx.debugDescription)
+        } catch {
+            throw MetricsError.badPayload("not valid JSON")
+        }
     }
 }
 
-/// Deterministic, slowly growing fake numbers so the app is fully usable before a project is connected.
-nonisolated struct MockMetricsClient: MetricsClient {
+/// Deterministic, slowly growing fake numbers so the app is usable before a project is connected.
+nonisolated struct SampleMetricsClient: MetricsClient {
     let seed: Int
     let start: Date
 
-    private func values(at date: Date) -> (Double, Double, Double) {
+    func values(at date: Date) -> (Double, Double, Double) {
         let days = max(0, date.timeIntervalSince(start) / 86_400)
         let s = Double(abs(seed) % 53 + 20)
         let visits = s * 6 * pow(days + 0.5, 1.25) + days * s
@@ -128,21 +213,23 @@ nonisolated struct MockMetricsClient: MetricsClient {
     }
 
     private func metrics(_ v: (Double, Double, Double)) -> [MetricsPayload.Metric] {
-        [.init(key: "visits", value: v.0, unit: nil),
-         .init(key: "social_views", value: v.1, unit: nil),
-         .init(key: "revenue", value: v.2, unit: "USD")]
+        [.init(key: "visits", value: v.0), .init(key: "social_views", value: v.1), .init(key: "revenue", value: v.2, unit: "USD")]
     }
 
-    func fetch() async throws -> MetricsPayload {
-        try? await Task.sleep(for: .milliseconds(350))
+    func fetch(since: Date?) async throws -> MetricsPayload {
+        try? await Task.sleep(for: .milliseconds(250))
         let now = Date()
         var history: [MetricsPayload.Point] = []
         for back in stride(from: 14, through: 1, by: -1) {
             let d = Calendar.current.startOfDay(for: now).addingTimeInterval(-Double(back) * 86_400)
-            if d >= start { history.append(.init(asOf: d, metrics: metrics(values(at: d)))) }
+            if d >= start, since.map({ d > $0 }) ?? true { history.append(.init(asOf: d, metrics: metrics(values(at: d)))) }
         }
-        return MetricsPayload(project: nil, asOf: now, metrics: metrics(values(at: now)), history: history)
+        return MetricsPayload(schemaVersion: 1, project: nil, asOf: now, metrics: metrics(values(at: now)), history: history)
     }
+}
+
+nonisolated extension MetricsPayload.Metric {
+    init(key: String, value: Double) { self.init(key: key, value: value, unit: nil) }
 }
 
 // MARK: - Keychain (API keys never touch SwiftData / iCloud records)
@@ -163,6 +250,7 @@ enum Keychain {
         var q = base(account)
         q[kSecAttrSynchronizable as String] = true // iCloud Keychain
         q[kSecValueData as String] = Data(value.utf8)
+        q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock // background refresh
         SecItemAdd(q as CFDictionary, nil)
     }
 

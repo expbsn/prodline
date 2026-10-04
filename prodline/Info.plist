@@ -7,9 +7,14 @@
 		<string>remote-notification</string>
 		<string>fetch</string>
 	</array>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>UIAppFonts</key>
 	<array>
-		<string>GeistPixel-Regular-VariableFont_ELSH.ttf</string>
+		<string>AfacadFlux-VariableFont_slnt,wght.ttf</string>
 	</array>
 	<key>BGTaskSchedulerPermittedIdentifiers</key>
 	<array>

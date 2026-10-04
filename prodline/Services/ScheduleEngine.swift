@@ -5,13 +5,14 @@ import UserNotifications
 enum ScheduleEngine {
     // MARK: Milestones
 
-    /// Checkpoints on the user's chosen weekdays during the build phase, a launch day, and a traction review.
+    /// Checkpoints on the chosen weekdays during the build phase, a launch day, and a traction review.
     static func makeMilestones(for p: Project, weekdayMask: Int) -> [Milestone] {
         let cal = Calendar.current
         var out: [Milestone] = []
         var n = 1
-        if p.buildDays > 1 {
-            for d in 1..<p.buildDays {
+        // Checkpoints fall strictly between start and launch day.
+        if p.buildDays > 2 {
+            for d in 1..<(p.buildDays - 1) {
                 let date = p.startDate.adding(days: d)
                 let wd = cal.component(.weekday, from: date)
                 if weekdayMask & (1 << (wd - 1)) != 0 {
@@ -20,7 +21,7 @@ enum ScheduleEngine {
                 }
             }
         }
-        out.append(Milestone(title: "Ship it! 🚀", dueDate: p.startDate.adding(days: max(p.buildDays - 1, 0)), isLaunch: true))
+        out.append(Milestone(title: "Ship it", dueDate: p.launchDay, isLaunch: true))
         out.append(Milestone(title: "Traction review", dueDate: p.observeEnd.adding(days: -1)))
         return out
     }
@@ -41,41 +42,54 @@ enum ScheduleEngine {
         return last.adding(days: profile.newProjectEveryDays)
     }
 
+    /// Projects that are building or observing on `date`.
+    static func overlap(on date: Date, projects: [Project]) -> Int {
+        projects.filter { [.building, .observing].contains($0.phase(on: date)) }.count
+    }
+
     // MARK: Completing & missing
 
+    static let checkpointXP = 10
+    static let launchXP = 50
+    static let lateXP = 3
+
     @discardableResult
-    static func complete(_ m: Milestone, profile: Profile, celebration: CelebrationCenter) -> Int {
+    static func complete(_ m: Milestone, profile: Profile, celebration: CelebrationCenter?, now: Date = .now) -> Int {
         guard !m.isDone else { return 0 }
-        let onTime = Date.now.startOfDay <= m.dueDate
+        let onTime = now.startOfDay <= m.dueDate
         let oldLevel = profile.level
-        m.completedAt = .now
+        m.completedAt = now
         Notifier.cancel(m)
 
         let gained: Int
         if onTime {
-            gained = m.isLaunch ? 50 : 10
+            gained = m.isLaunch ? launchXP : checkpointXP
             profile.streak += 1
             profile.bestStreak = max(profile.bestStreak, profile.streak)
+            profile.completedOnTime += 1
         } else {
-            gained = 3
+            gained = lateXP
+            profile.completedLate += 1
         }
         profile.xp += gained
 
+        let accent = m.project?.accent ?? .neutral
         if profile.level > oldLevel {
-            celebration.fire(title: "Level \(profile.level)! 🎉", subtitle: "+\(gained) XP · You're on a roll")
+            celebration?.fire(title: "Level \(profile.level)", subtitle: "+\(gained) XP · you're on a roll", accent: accent)
         } else if onTime {
-            celebration.fire(title: "+\(gained) XP", subtitle: "\(praise()) 🔥 \(profile.streak) on-time in a row")
+            celebration?.fire(title: m.isLaunch ? "Shipped! +\(gained) XP" : "+\(gained) XP",
+                              subtitle: "\(praise()) · \(profile.streak) on time in a row", accent: accent)
         } else {
-            celebration.fire(title: "+\(gained) XP", subtitle: "Late is better than never. Keep going!", confetti: false)
+            celebration?.fire(title: "+\(gained) XP", subtitle: "Late beats never. Keep going.", accent: accent, confetti: false)
         }
         return gained
     }
 
     /// Flags deadlines that slipped past; resets the streak once per slip.
     @discardableResult
-    static func evaluateMissed(projects: [Project], profile: Profile) -> Int {
+    static func evaluateMissed(projects: [Project], profile: Profile, now: Date = .now) -> Int {
         var count = 0
-        for m in projects.flatMap({ $0.milestones ?? [] }) where m.isOverdue && !m.missed {
+        for m in projects.flatMap({ $0.milestones ?? [] }) where m.isOverdue(on: now) && !m.missed {
             m.missed = true
             count += 1
         }
@@ -84,7 +98,7 @@ enum ScheduleEngine {
     }
 
     static func praise() -> String {
-        ["Nailed it!", "Right on time!", "Look at you go!", "Shipping machine!", "Crushing it!", "That's the spirit!"].randomElement()!
+        ["Nailed it", "Right on time", "Look at you go", "Shipping machine", "Crushing it", "That's the spirit"].randomElement()!
     }
 }
 
@@ -107,10 +121,10 @@ enum Notifier {
             let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }
-        add(m.id.uuidString, hour: hour, title: "\(project.emoji) Deadline day!",
-            body: "\(m.title) for \(project.name) is due today. You've got this!")
-        add(m.id.uuidString + "-pm", hour: 18, title: "Still time today ⏰",
-            body: "\(m.title) · \(project.name). Finish it and keep your streak alive!")
+        add(m.id.uuidString, hour: hour, title: "\(project.name): deadline day",
+            body: "\(m.title) is due today. You've got this.")
+        add(m.id.uuidString + "-pm", hour: 18, title: "Still time today",
+            body: "\(m.title) · \(project.name). Finish it and keep your streak alive.")
     }
 
     static func cancel(_ m: Milestone) {

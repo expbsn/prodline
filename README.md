@@ -1,28 +1,43 @@
 # Prodline
 
-A SwiftUI iOS app (macOS later) that tracks your projects on a custom build cadence, pulls their metrics via API, and keeps you on deadline with Duolingo-style streaks, XP and haptics.
+A SwiftUI iOS app (macOS later) for people who ship a project every cycle. You set your own rhythm (for example, 2 weeks building, 4 weeks observing, a new project every 2 weeks). Prodline turns that rhythm into weekday checkpoints, keeps you on deadline with streaks, XP and haptics, and pulls each project's numbers (visits, social views, revenue, custom metrics) through a small API.
 
-## Metrics API contract
+## Design
 
-Each project exposes one endpoint. The app sends `Authorization: Bearer <api key>` (key stored in the Keychain, never in git).
+- **Neutral chrome, colorful projects.** The app UI is ink on light gray. Each project has its own accent, either extracted from its square cover photo or picked by you. The accent carries through the project's card, buttons, charts and deadlines.
+- **Projects are playing cards** (5:7) in a 3D carousel. The same card appears in the carousel, the create flow preview and the detail hero.
+- Custom floating tab bar, chunky 3D-press buttons, sliders that tick, and confetti on deadlines.
+- Fonts: **Afacad Flux** (variable) for prominent text, SF Pro for body text.
+- Light mode only, portrait only on iPhone.
 
-```json
-{
-  "project": "My App",
-  "asOf": "2026-10-04T12:00:00Z",
-  "metrics": [
-    { "key": "visits", "value": 1234 },
-    { "key": "social_views", "value": 560 },
-    { "key": "revenue", "value": 56.7, "unit": "USD" }
-  ],
-  "history": [ { "asOf": "2026-10-03T00:00:00Z", "metrics": [ { "key": "visits", "value": 1100 } ] } ]
-}
+## Structure
+
 ```
-`history` is optional and backfills charts. A project with no endpoint shows sample data.
+prodline/
+  Design/     Theme (palette, Accent, fonts), components, ProjectCard, TabBar, ImageTools (color extraction)
+  Models/     SwiftData models (CloudKit-compatible)
+  Services/   Metrics API client, DataRefresher (polling/backoff), ScheduleEngine, DemoData
+  Views/      Home (carousel), Plan, Insights, Me/Scheme, Create flow, Project detail, Connection
+prodlineTests/  Unit tests, a 12-week schedule backtest, and mock-server integration tests
+MockProject/    Local server that simulates projects sending data
+docs/API.md     The metrics API contract
+```
 
-## Refresh behavior
-- Foreground: every 30 s while the app is active, plus immediately on open and on pull-to-refresh.
-- Background: opportunistic `BGAppRefresh` (iOS decides the timing).
+## Data & sync
 
-## Setup
-Open `prodline.xcodeproj`, select your team, run on an iPhone simulator/device. iCloud container: `iCloud.expbsn.app.prodline`.
+- SwiftData syncs through the private CloudKit database (`iCloud.expbsn.app.prodline`) and falls back to local storage when iCloud is unavailable.
+- API keys live in the Keychain (iCloud Keychain), never in synced records.
+- Polling: every 30 s in the foreground, plus on open and on pull-to-refresh; BGAppRefresh in the background; exponential backoff for failing endpoints. See [docs/API.md](docs/API.md).
+
+## Run
+
+1. Open `prodline.xcodeproj` and run on an iPhone simulator.
+2. Optional: `python3 MockProject/server.py`, then Me → *Load demo projects* (see [MockProject/README.md](MockProject/README.md)).
+
+## Test
+
+```bash
+python3 MockProject/server.py &
+TEST_RUNNER_PRODLINE_MOCK_SERVER=http://127.0.0.1:8787 xcodebuild test -project prodline.xcodeproj \
+  -scheme prodline -destination 'platform=iOS Simulator,name=iPhone 17 Pro' -only-testing:prodlineTests
+```
