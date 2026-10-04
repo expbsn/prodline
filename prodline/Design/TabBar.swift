@@ -7,9 +7,9 @@ enum AppTab: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .projects: "Projects"
+        case .projects: "Dash"
         case .plan: "Plan"
-        case .insights: "Insights"
+        case .insights: "Data"
         case .me: "Me"
         }
     }
@@ -24,11 +24,10 @@ enum AppTab: String, CaseIterable, Identifiable {
     }
 }
 
-/// Floating, color-neutral tab bar with a sliding selection pill and a separate round "+" button.
+/// Floating, color-neutral tab bar (no animations) with a separate round "+" button.
 struct FloatingTabBar: View {
     @Binding var selection: AppTab
     var onAdd: () -> Void
-    @Namespace private var ns
 
     var body: some View {
         HStack(spacing: 10) {
@@ -38,12 +37,12 @@ struct FloatingTabBar: View {
                     Button {
                         guard !selected else { return }
                         Haptics.select()
-                        withAnimation(.spring(response: 0.38, dampingFraction: 0.78)) { selection = tab }
+                        selection = tab
                     } label: {
                         VStack(spacing: 3) {
                             Image(systemName: tab.symbol)
                                 .font(.system(size: 18, weight: .semibold))
-                                .symbolEffect(.bounce, value: selected)
+                                .frame(height: 22) // symbols differ in height; keep labels on one baseline
                             Text(tab.title)
                                 .font(.ui(11, .semibold))
                                 .tracking(0.6)
@@ -52,14 +51,11 @@ struct FloatingTabBar: View {
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
                         .background {
-                            if selected {
-                                Capsule().fill(Theme.ink)
-                                    .matchedGeometryEffect(id: "pill", in: ns)
-                            }
+                            if selected { Capsule().fill(Theme.ink) }
                         }
                         .contentShape(Capsule())
                     }
-                    .buttonStyle(PressableStyle(scale: 0.94))
+                    .buttonStyle(.plain)
                     .accessibilityLabel(tab.title)
                     .accessibilityAddTraits(selected ? .isSelected : [])
                 }

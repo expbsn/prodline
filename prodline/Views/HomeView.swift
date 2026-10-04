@@ -8,6 +8,7 @@ struct HomeView: View {
     let zoom: Namespace.ID
     var onOpen: (Project) -> Void
     var onCreate: () -> Void
+    var onStreak: () -> Void
 
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
@@ -64,6 +65,14 @@ struct HomeView: View {
     // MARK: Header
 
     private var streakBadge: some View {
+        Button {
+            Haptics.select()
+            onStreak()
+        } label: { streakBadgeLabel }
+        .buttonStyle(PressableStyle(scale: 0.92))
+    }
+
+    private var streakBadgeLabel: some View {
         VStack(spacing: -6) {
             ZStack {
                 Circle().fill(.white)

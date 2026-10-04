@@ -80,7 +80,8 @@ struct MainShell: View {
                 switch tab {
                 case .projects:
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
-                             onOpen: { opened = $0 }, onCreate: { showCreate = true })
+                             onOpen: { opened = $0 }, onCreate: { showCreate = true },
+                             onStreak: { tab = .me })
                 case .plan:
                     PlanView(profile: profile, onOpen: { opened = $0 }, onCreate: { showCreate = true })
                 case .insights:
@@ -95,11 +96,15 @@ struct MainShell: View {
             // Fade content out behind the tab bar, all the way to the screen edge.
             VStack(spacing: 0) {
                 Spacer()
+                // Eased stops so the fade starts imperceptibly instead of with a visible edge.
                 LinearGradient(stops: [.init(color: Theme.background.opacity(0), location: 0),
-                                       .init(color: Theme.background.opacity(0.9), location: 0.4),
-                                       .init(color: Theme.background, location: 0.6)],
+                                       .init(color: Theme.background.opacity(0.06), location: 0.2),
+                                       .init(color: Theme.background.opacity(0.28), location: 0.4),
+                                       .init(color: Theme.background.opacity(0.62), location: 0.58),
+                                       .init(color: Theme.background.opacity(0.9), location: 0.72),
+                                       .init(color: Theme.background, location: 0.82)],
                                startPoint: .top, endPoint: .bottom)
-                    .frame(height: 150)
+                    .frame(height: 180)
             }
             .ignoresSafeArea()
             .allowsHitTesting(false)
