@@ -136,7 +136,7 @@ struct ScreenHeader<Trailing: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(alignment: .bottomTrailing) { trailing.padding(.bottom, 4) }
         .padding(.horizontal, 24)
-        .padding(.top, 4)
+        .padding(.top, 16)
     }
 }
 

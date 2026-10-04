@@ -14,17 +14,19 @@ enum AppTab: String, CaseIterable, Identifiable {
         }
     }
 
-    var symbol: String {
-        switch self {
-        case .projects: "rectangle.stack.fill"
-        case .plan: "calendar"
-        case .insights: "chart.bar.fill"
-        case .me: "person.fill"
+    /// Outline when idle, filled when selected.
+    func symbol(selected: Bool) -> String {
+        let base: String = switch self {
+        case .projects: "rectangle.stack"
+        case .plan: "list.bullet.rectangle"
+        case .insights: "chart.bar"
+        case .me: "person"
         }
+        return selected ? base + ".fill" : base
     }
 }
 
-/// Floating, color-neutral tab bar (no animations) with a separate round "+" button.
+/// Floating, color-neutral tab bar (no animations): the selected tab shows a filled black icon.
 struct FloatingTabBar: View {
     @Binding var selection: AppTab
     var onAdd: () -> Void
@@ -40,19 +42,16 @@ struct FloatingTabBar: View {
                         selection = tab
                     } label: {
                         VStack(spacing: 3) {
-                            Image(systemName: tab.symbol)
+                            Image(systemName: tab.symbol(selected: selected))
                                 .font(.system(size: 18, weight: .semibold))
                                 .frame(height: 22) // symbols differ in height; keep labels on one baseline
                             Text(tab.title)
                                 .font(.ui(11, .semibold))
                                 .tracking(0.6)
                         }
-                        .foregroundStyle(selected ? .white : Theme.secondary)
+                        .foregroundStyle(selected ? Theme.ink : Theme.secondary)
                         .frame(maxWidth: .infinity)
                         .frame(height: 56)
-                        .background {
-                            if selected { Capsule().fill(Theme.ink) }
-                        }
                         .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)

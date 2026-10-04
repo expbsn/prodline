@@ -4,7 +4,9 @@ import SwiftData
 /// Shared geometry for the Dash card, so the project page can mirror it exactly.
 enum DashLayout {
     /// Eyebrow + title + spacing above the carousel.
-    static let header: CGFloat = 88
+    static let header: CGFloat = 122
+    /// Header → top of the card.
+    static let cardTop: CGFloat = 34
     /// Card bottom → page dots. The floor shadow lives in this gap.
     static let shadowGap: CGFloat = 46
     /// Dots, summary, meta row and the button below them.
@@ -50,7 +52,7 @@ struct HomeView: View {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") { streakBadge }
 
                     carousel(cardW: cardW, screenW: geo.size.width)
-                        .padding(.top, 14)
+                        .padding(.top, DashLayout.cardTop)
 
                     dots.frame(maxWidth: .infinity).padding(.top, DashLayout.shadowGap)
 
@@ -146,6 +148,7 @@ struct HomeView: View {
                 Button(action: onCreate) {
                     CreateProjectCardFace(subtitle: "Your rhythm: every \(profile.newProjectEveryDays.durationText)")
                         .frame(width: cardW)
+                        .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cardFrames[Self.createID] = $0 }
                 }
                 .buttonStyle(PressableStyle(scale: 0.96))
                 .id(Self.createID)
@@ -170,6 +173,12 @@ struct HomeView: View {
                 try? await Task.sleep(for: .milliseconds(60))
                 proxy.scrollTo(focusedID, anchor: .center)
             }
+            // Safety net: whatever ends up centered is what the panel, colors and button describe.
+            try? await Task.sleep(for: .milliseconds(150))
+            if let centered = cardFrames.min(by: { abs($0.value.midX - screenW / 2) < abs($1.value.midX - screenW / 2) })?.key,
+               centered != focusedID {
+                focusedID = centered
+            }
         }
         .onChange(of: cardW) { proxy.scrollTo(focusedID, anchor: .center) }
         }
@@ -179,7 +188,7 @@ struct HomeView: View {
         HStack(spacing: 7) {
             ForEach(ids, id: \.self) { id in
                 Capsule()
-                    .fill(id == focusedID ? Theme.ink : Theme.tertiary)
+                    .fill(id == focusedID ? Theme.ink : Theme.secondary.opacity(0.55))
                     .frame(width: id == focusedID ? 26 : 7, height: 7)
                     .onTapGesture { withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { focusedID = id } }
             }

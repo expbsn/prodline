@@ -315,3 +315,46 @@ struct GoalIntegrationTests {
         }
     }
 }
+
+/// Backtest against the real GitHub API: this repo's own prodline.json.
+/// Run with  TEST_RUNNER_PRODLINE_REAL_GITHUB=expbsn/prodline xcodebuild test …
+@MainActor
+@Suite("Real GitHub backtest", .enabled(if: ProcessInfo.processInfo.environment["PRODLINE_REAL_GITHUB"] != nil))
+struct RealGitHubBacktest {
+    @Test func ownRepoPlanMapsOntoCheckpoints() async throws {
+        let slug = try #require(ProcessInfo.processInfo.environment["PRODLINE_REAL_GITHUB"])
+        let snap = try await GitHubClient(repo: try #require(GitHubRepoRef(slug))).fetch()
+        #expect(snap.planFileError == nil)
+        let plan = try #require(snap.planFile)
+        #expect(plan.goals.count >= 5)
+        #expect(Set(plan.goals.map(\.id)).count == plan.goals.count) // stable, unique ids
+        #expect(!snap.readme.isEmpty || !snap.description.isEmpty || snap.lastCommit != nil)
+
+        // Prodline as a project: Sun Oct 4 2026, 14-day build, Mon+Fri checkpoints
+        // → CP1 Mon 5, CP2 Fri 9, CP3 Mon 12, CP4 Fri 16, Ship it Sat 17, review.
+        let ctx = try makeContext()
+        let profile = Profile()
+        profile.milestoneWeekdayMask = (1 << 1) | (1 << 5)
+        profile.remindersEnabled = false
+        ctx.insert(profile)
+        let p = Project(name: "Prodline", accentHex: 0x1CB0F6, startDate: day(2026, 10, 4), buildDays: 14, observeDays: 28)
+        p.githubRepo = slug
+        ScheduleEngine.createProject(p, profile: profile, context: ctx)
+        GoalEngine.syncGitHub(snap, project: p, context: ctx)
+        try ctx.save()
+
+        let ms = p.sortedMilestones
+        let fileGoals = ms.flatMap { $0.goals ?? [] }.filter { $0.source == .repoFile }
+        #expect(fileGoals.count == plan.goals.count)
+        // Every goal lands on the first deadline on/after its due date.
+        for g in plan.goals {
+            guard let due = g.due else { continue }
+            let expected = ms.first { $0.dueDate >= due.startOfDay } ?? ms.last!
+            #expect(expected.goals?.contains { $0.externalID == "file:\(g.id)" } == true, "\(g.id) misplaced")
+        }
+        // Checkpoint 1 is fully done in the file → completes itself.
+        let done = GoalEngine.autoComplete(projects: [p], profile: profile, celebration: nil, now: day(2026, 10, 5))
+        #expect(done.contains { $0 === ms[0] })
+        #expect(!ms[1].isDone) // still has open goals
+    }
+}

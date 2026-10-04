@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "goals": [
+    { "id": "design-system", "title": "Ship design system and card carousel", "due": "2026-10-05", "done": true },
+    { "id": "metrics-api", "title": "Metrics API with mock server", "due": "2026-10-05", "done": true },
+    { "id": "checkpoint-goals", "title": "Checkpoint goals from API and GitHub", "due": "2026-10-05", "done": true },
+
+    { "id": "plan-file", "title": "Read prodline.json from the repo", "due": "2026-10-09", "done": true },
+    { "id": "device-test", "title": "Test on a physical iPhone", "due": "2026-10-09", "done": false },
+    { "id": "ai-on-device", "title": "Verify goal suggestions on device", "due": "2026-10-09", "done": false },
+
+    { "id": "app-icon", "title": "Design app icon and launch screen", "due": "2026-10-12", "done": false },
+    { "id": "onboarding-copy", "title": "Polish onboarding copy", "due": "2026-10-12", "done": false },
+
+    { "id": "testflight-build", "title": "Upload first TestFlight build", "due": "2026-10-16", "done": false },
+    { "id": "mac-prototype", "title": "Prototype the macOS layout", "due": "2026-10-16", "done": false },
+
+    { "id": "testers", "title": "Invite first TestFlight testers", "due": "2026-10-17", "done": false }
+  ]
+}

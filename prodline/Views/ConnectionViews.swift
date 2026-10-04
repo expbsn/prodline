@@ -401,7 +401,7 @@ struct GoalsGuideView: View {
                         UIPasteboard.general.string = Self.agentInstructions
                         Haptics.success()
                     } label: {
-                        Label("Copy Claude Code prompt", systemImage: "sparkles").font(.ui(14, .semibold))
+                        Label("Copy prompt", systemImage: "sparkles").font(.ui(14, .semibold))
                     }
                 }
                 .buttonStyle(.plain)
