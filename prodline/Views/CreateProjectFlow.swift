@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Four short steps: basics → look (card + color) → schedule → connection.
+/// Five short steps: basics → look (card + color) → schedule → connections → goals.
 struct CreateProjectFlow: View {
     let profile: Profile
     var onCreated: (UUID) -> Void
@@ -23,10 +23,17 @@ struct CreateProjectFlow: View {
     @State private var endpoint = ""
     @State private var apiKey = ""
     @State private var probe: ProbeState = .idle
+    @State private var repo = ""
+    @State private var token = ""
+    @State private var repoCheck: RepoCheck = .idle
+    /// Draft goals per deadline (index = position in the deadline list).
+    @State private var draftGoals: [[String]] = []
+    @State private var drafting = false
+    @State private var draftNote: String?
     @FocusState private var focus: Field?
     private enum Field { case name, details }
 
-    private let steps = 4
+    private let steps = 5
     private var accent: Accent { Accent(hex: accentHex) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
@@ -39,7 +46,8 @@ struct CreateProjectFlow: View {
                     case 0: basicsStep
                     case 1: lookStep
                     case 2: scheduleStep
-                    default: connectStep
+                    case 3: connectStep
+                    default: goalsStep
                     }
                 }
                 .id(step)
@@ -112,7 +120,7 @@ struct CreateProjectFlow: View {
             Button(step == steps - 1 ? "Create project" : "Continue", action: next)
                 .buttonStyle(.chunky)
                 .disabled(step == 0 && trimmedName.isEmpty)
-            if step == steps - 1 && endpoint.isEmpty {
+            if step == 3 && endpoint.isEmpty {
                 Text("No endpoint yet? You'll see sample data until you connect.")
                     .font(.ui(13)).foregroundStyle(Theme.secondary)
             }
@@ -134,7 +142,7 @@ struct CreateProjectFlow: View {
 
     private var basicsStep: some View {
         VStack(alignment: .leading, spacing: 22) {
-            stepTitle("Step 1 of 4", "What are you building?")
+            stepTitle("Step 1 of 5", "What are you building?")
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Name").eyebrow()
@@ -195,7 +203,7 @@ struct CreateProjectFlow: View {
 
     private var lookStep: some View {
         VStack(alignment: .leading, spacing: 22) {
-            stepTitle("Step 2 of 4", "Give it a face")
+            stepTitle("Step 2 of 5", "Give it a face")
             CardCoverEditor(name: trimmedName, imageData: $imageData, accentHex: $accentHex,
                             photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
                             footnote: "Building · \(buildDays)d")
@@ -210,7 +218,7 @@ struct CreateProjectFlow: View {
                             buildDays: buildDays, observeDays: profile.observeDays)
         let ms = ScheduleEngine.makeMilestones(for: draft, weekdayMask: profile.milestoneWeekdayMask)
         return VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 3 of 4", "Set the clock")
+            stepTitle("Step 3 of 5", "Set the clock")
             VStack(alignment: .leading, spacing: 16) {
                 HStack {
                     Text("Starts").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
@@ -248,8 +256,139 @@ struct CreateProjectFlow: View {
 
     private var connectStep: some View {
         VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 4 of 4", "Connect your numbers")
+            stepTitle("Step 4 of 5", "Connect your project")
             ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
+            Divider().padding(.vertical, 6)
+            GitHubFields(repo: $repo, token: $token, check: $repoCheck)
+        }
+    }
+
+    // MARK: Goals
+
+    private var deadlines: [Milestone] {
+        let draft = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
+                            buildDays: buildDays, observeDays: profile.observeDays)
+        return ScheduleEngine.makeMilestones(for: draft, weekdayMask: profile.milestoneWeekdayMask)
+    }
+
+    private var githubSnapshot: GitHubSnapshot? {
+        if case .ok(let snap) = repoCheck { return snap }
+        return nil
+    }
+
+    private var goalsStep: some View {
+        let ms = deadlines
+        return VStack(alignment: .leading, spacing: 18) {
+            stepTitle("Step 5 of 5", "Plan the checkpoints")
+
+            if !GoalPlanner.isAvailable {
+                infoCard(symbol: "sparkles", title: "Suggestions aren't available",
+                         text: GoalPlanner.unavailableReason + " Checkpoints stay simple: tick them off when you're done." +
+                               (repo.isEmpty && endpoint.isEmpty ? "" : " Goals from your API or GitHub still sync in automatically."))
+            } else if drafting {
+                HStack(spacing: 12) {
+                    ProgressView().tint(accent.text)
+                    Text(githubSnapshot == nil ? "Planning goals from your description…" : "Planning goals from your description and repo…")
+                        .font(.ui(15, .medium)).foregroundStyle(Theme.inkSoft)
+                }
+                .card()
+            } else {
+                Text("Suggested on your iPhone. Edit freely: each checkpoint completes once its goals are done.")
+                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                ForEach(Array(ms.enumerated()).dropLast(), id: \.offset) { i, m in
+                    goalEditor(index: i, milestone: m)
+                }
+                Button {
+                    Task { await draft(force: true) }
+                } label: {
+                    Label("Suggest again", systemImage: "arrow.clockwise")
+                        .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let note = draftNote {
+                Text(note).font(.ui(13)).foregroundStyle(Theme.secondary)
+            }
+            if !repo.isEmpty {
+                infoCard(symbol: "chevron.left.forwardslash.chevron.right", title: "GitHub goals take priority",
+                         text: "Issues in GitHub milestones or labeled “prodline” replace suggestions on their checkpoint and close themselves.")
+            }
+        }
+        .task { await draft(force: false) }
+    }
+
+    private func goalEditor(index i: Int, milestone m: Milestone) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text(m.title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                Text(m.dueDate.shortDay).font(.ui(13)).foregroundStyle(Theme.secondary)
+            }
+            if draftGoals.indices.contains(i) {
+                ForEach(draftGoals[i].indices, id: \.self) { j in
+                    HStack(spacing: 10) {
+                        Image(systemName: "sparkles").font(.system(size: 12)).foregroundStyle(accent.text)
+                        TextField("Goal", text: Binding(
+                            get: { draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) ? draftGoals[i][j] : "" },
+                            set: { if draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) { draftGoals[i][j] = $0 } }))
+                            .font(.ui(15))
+                        Button {
+                            Haptics.soft()
+                            withAnimation(.snappy) { _ = draftGoals[i].remove(at: j) }
+                        } label: {
+                            Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.tertiary)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Button {
+                    withAnimation(.snappy) { draftGoals[i].append("") }
+                } label: {
+                    Label("Add goal", systemImage: "plus").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .card(padding: 16, radius: 22)
+    }
+
+    private func infoCard(symbol: String, title: String, text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol).font(.system(size: 16, weight: .semibold)).foregroundStyle(accent.text)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                Text(text).font(.ui(14)).foregroundStyle(Theme.secondary).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .card(padding: 16, radius: 22)
+    }
+
+    private func draft(force: Bool) async {
+        let ms = deadlines
+        if !force && draftGoals.count == ms.count { return }
+        draftGoals = Array(repeating: [], count: ms.count)
+        guard GoalPlanner.isAvailable else { return }
+        drafting = true
+        defer { drafting = false }
+        // Read the repo for context if it was linked but not checked yet.
+        var snap = githubSnapshot
+        if snap == nil, let ref = GitHubRepoRef(repo) {
+            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base).fetch()
+            if let snap { repoCheck = .ok(snap) }
+        }
+        do {
+            let plan = try await GoalPlanner.draft(name: trimmedName, details: details, buildDays: buildDays,
+                                                   deadlines: ms.map { .init(title: $0.title, date: $0.dueDate) },
+                                                   github: snap)
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
+                for (n, titles) in plan where (1...ms.count).contains(n) { draftGoals[n - 1] = titles }
+            }
+            draftNote = nil
+            Haptics.success()
+        } catch {
+            draftNote = "Couldn't suggest goals right now. You can add them later from the project."
         }
     }
 
@@ -272,7 +411,17 @@ struct CreateProjectFlow: View {
         p.coverImage = imageData
         p.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
         Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: p.id.uuidString)
+        p.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
+        Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + p.id.uuidString)
         ScheduleEngine.createProject(p, profile: profile, context: context)
+        // Suggested goals first, then GitHub issues (which replace suggestions on their checkpoint).
+        let ms = p.sortedMilestones
+        for (i, titles) in draftGoals.enumerated() where ms.indices.contains(i) {
+            GoalEngine.addGoals(titles, source: .ai, to: ms[i], context: context)
+        }
+        if let snap = githubSnapshot { GoalEngine.syncGitHub(snap, project: p, context: context) }
+        try? context.save()
+        if profile.remindersEnabled { for m in ms { Notifier.schedule(m, hour: profile.reminderHour) } }
         if profile.remindersEnabled { Task { _ = await Notifier.requestAuth() } }
         celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(buildDays.durationText). Let's ship.", accent: p.accent)
         onCreated(p.id)

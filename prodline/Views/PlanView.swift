@@ -180,11 +180,22 @@ struct DeadlineRow: View {
                 Text("\(milestone.project?.name ?? "") · \(subtitle)")
                     .font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
                     .lineLimit(1)
+                if let next = milestone.openGoals.first {
+                    Label(next.title, systemImage: next.source.symbol)
+                        .font(.ui(13, .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
             if milestone.isDone {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 28))
                     .foregroundStyle(milestone.project?.accent.base ?? Theme.success)
+            } else if milestone.hasGoals {
+                // Goal-driven checkpoints complete themselves; open the project to work the list.
+                Button(action: onOpen) { GoalRing(milestone: milestone) }
+                    .buttonStyle(PressableStyle(scale: 0.9))
+                    .accessibilityLabel("\(milestone.openGoals.count) goals left")
             } else {
                 Button("Done", action: onDone)
                     .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
@@ -199,5 +210,24 @@ struct DeadlineRow: View {
         if milestone.isOverdue { return "was due \(milestone.dueDate.shortDay)" }
         if milestone.isDueToday { return "Due today" }
         return milestone.dueDate.shortDay
+    }
+}
+
+/// Done / total goals as a ring with the count in the middle.
+struct GoalRing: View {
+    let milestone: Milestone
+    @Environment(\.accent) private var accent
+
+    var body: some View {
+        let gs = milestone.goals ?? []
+        let done = gs.filter(\.isDone).count
+        ZStack {
+            Circle().stroke(Theme.line, lineWidth: 4)
+            Circle().trim(from: 0, to: gs.isEmpty ? 0 : Double(done) / Double(gs.count))
+                .stroke(accent.base, style: StrokeStyle(lineWidth: 4, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(done)/\(gs.count)").font(.display(14, 750)).foregroundStyle(Theme.ink)
+        }
+        .frame(width: 46, height: 46)
     }
 }

@@ -73,6 +73,9 @@ final class Project {
     var observeDays: Int = 28
     /// Metrics endpoint. Empty => sample data. The API key lives in the Keychain.
     var endpoint: String = ""
+    /// Linked GitHub repository as "owner/name". An optional token lives in the Keychain.
+    var githubRepo: String = ""
+    var lastCommitAt: Date? = nil
     var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
@@ -154,6 +157,8 @@ final class Milestone {
     var missed: Bool = false
     var isLaunch: Bool = false
     var project: Project? = nil
+    @Relationship(deleteRule: .cascade, inverse: \Goal.milestone)
+    var goals: [Goal]? = []
 
     init(title: String, dueDate: Date, isLaunch: Bool = false) {
         self.title = title
@@ -166,6 +171,70 @@ final class Milestone {
     var isOverdue: Bool { isOverdue() }
     var isDueToday: Bool { !isDone && dueDate == Date.now.startOfDay }
     var completedOnTime: Bool { completedAt.map { $0.startOfDay <= dueDate } ?? false }
+
+    var sortedGoals: [Goal] { (goals ?? []).sorted { ($0.order, $0.title) < ($1.order, $1.title) } }
+    var openGoals: [Goal] { sortedGoals.filter { !$0.isDone } }
+    var hasGoals: Bool { !(goals ?? []).isEmpty }
+}
+
+enum GoalSource: String, CaseIterable {
+    case api, github, ai, metric, manual
+
+    var label: String {
+        switch self {
+        case .api: "From your API"
+        case .github: "From GitHub"
+        case .ai: "Suggested"
+        case .metric: "Traction target"
+        case .manual: "Added by you"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .api: "bolt.fill"
+        case .github: "chevron.left.forwardslash.chevron.right"
+        case .ai: "sparkles"
+        case .metric: "chart.line.uptrend.xyaxis"
+        case .manual: "pencil"
+        }
+    }
+
+    /// Remote and metric goals complete themselves; the user can't tick them.
+    var isAutomatic: Bool { self == .api || self == .github || self == .metric }
+}
+
+/// A concrete deliverable inside a checkpoint. A checkpoint with goals completes once all are done.
+@Model
+final class Goal {
+    var id: UUID = UUID()
+    /// Stable key for synced goals: "api:<id>", "gh:<issue>", "metric:<key>". Empty for local goals.
+    var externalID: String = ""
+    var sourceRaw: String = GoalSource.manual.rawValue
+    var title: String = ""
+    var detail: String = ""
+    var url: String = ""
+    var metricKey: String? = nil
+    var target: Double? = nil
+    var isDone: Bool = false
+    var doneAt: Date? = nil
+    var order: Int = 0
+    var milestone: Milestone? = nil
+
+    init(title: String, source: GoalSource, externalID: String = "", order: Int = 0) {
+        self.title = title
+        self.sourceRaw = source.rawValue
+        self.externalID = externalID
+        self.order = order
+    }
+
+    var source: GoalSource { GoalSource(rawValue: sourceRaw) ?? .manual }
+
+    func setDone(_ done: Bool, at date: Date = .now) {
+        guard done != isDone else { return }
+        isDone = done
+        doneAt = done ? date : nil
+    }
 }
 
 @Model

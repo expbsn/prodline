@@ -27,7 +27,8 @@ struct CardCoverEditor: View {
         ProjectCardFace(name: name, initial: initial, accent: Accent(hex: accentHex), cover: image,
                         cornerLabel: cornerLabel, cornerValue: cornerValue, footnote: footnote)
             .overlay { GeometryReader { geo in photoControls(size: geo.size) } }
-            .shadow(color: Accent(hex: accentHex).base.opacity(0.3), radius: 24, y: 12)
+            .cardFloorShadow(width: 236)
+            .padding(.bottom, 30)
             .onChange(of: item) { _, new in load(new) }
             .animation(.spring(response: 0.45, dampingFraction: 0.8), value: imageData)
     }
@@ -80,8 +81,8 @@ struct CardCoverEditor: View {
                 .padding(14 * s)
             }
         }
-        // Photo area: below the badge row, above the slab's left edge.
-        .frame(width: size.width, height: size.height * 0.44)
+        // Photo area: the square artwork below the badge row, above the fade.
+        .frame(width: size.width, height: size.width * 0.72)
         .padding(.top, size.height * 0.15)
         .frame(width: size.width, height: size.height, alignment: .top)
     }

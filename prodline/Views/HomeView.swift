@@ -24,7 +24,7 @@ struct HomeView: View {
     var body: some View {
         GeometryReader { geo in
             // Fit the card to the space left after header, dots and panel (~370pt) so the CTA stays visible.
-            let cardW = max(150, min(geo.size.width * 0.6, (geo.size.height - 370) * 5 / 7, 300))
+            let cardW = max(150, min(geo.size.width * 0.6, (geo.size.height - 390) * 5 / 7, 300))
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") { streakBadge }
@@ -32,7 +32,7 @@ struct HomeView: View {
                     carousel(cardW: cardW, screenW: geo.size.width)
                         .padding(.top, 4)
 
-                    dots.frame(maxWidth: .infinity).padding(.top, 6)
+                    dots.frame(maxWidth: .infinity).padding(.top, 22)
 
                     infoPanel
                         .padding(.horizontal, 24)
@@ -76,15 +76,15 @@ struct HomeView: View {
         VStack(spacing: -6) {
             ZStack {
                 Circle().fill(.white)
-                Circle().strokeBorder(Theme.flame.opacity(0.9), lineWidth: 3)
+                Circle().strokeBorder(Theme.flame.opacity(0.9), lineWidth: 2.5)
                 Image(systemName: "flame.fill")
-                    .font(.system(size: 24))
+                    .font(.system(size: 20))
                     .foregroundStyle(profile.streak > 0 ? Theme.flame : Theme.tertiary)
                     .symbolEffect(.bounce, value: profile.streak)
             }
-            .frame(width: 58, height: 58)
+            .frame(width: 46, height: 46)
             Text("\(profile.streak)")
-                .display(15, 800)
+                .display(13, 800)
                 .foregroundStyle(Theme.ink)
                 .padding(.horizontal, 10).padding(.vertical, 1)
                 .background(Capsule().fill(.white))
@@ -125,12 +125,11 @@ struct HomeView: View {
         .scrollPosition(id: $focusedID, anchor: .center)
         .contentMargins(.horizontal, (screenW - cardW) / 2, for: .scrollContent)
         .scrollClipDisabled()
+        // One floor shadow under the centered card (side cards tilt away from it).
         .background(alignment: .bottom) {
-            Ellipse()
-                .fill(.black.opacity(0.16))
-                .frame(width: cardW * 0.85, height: 34)
-                .blur(radius: 22)
-                .offset(y: -6)
+            Color.clear.frame(width: cardW, height: 1)
+                .cardFloorShadow(width: cardW)
+                .offset(y: -24)
         }
     }
 

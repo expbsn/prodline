@@ -4,7 +4,7 @@ import SwiftData
 @main
 struct prodlineApp: App {
     let container: ModelContainer = {
-        let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self])
+        let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self])
         // Unit tests get a throwaway in-memory store.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])

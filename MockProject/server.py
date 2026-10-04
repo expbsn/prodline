@@ -14,6 +14,11 @@ Endpoints
     POST /projects/<slug>/events   {"type": "sale", "amount": 19.99}
                                    {"type": "visits", "count": 500}
                                    {"type": "viral"}            (+25k social views)
+                                   {"type": "goal", "id": "onboarding", "done": true}
+                                   {"type": "close_issue" | "reopen_issue", "number": 12}   (mock GitHub)
+
+    Mock GitHub API (point the app's githubAPIBase at http://host:port/github):
+    GET  /github/repos/demo/<repo>[/readme|/milestones|/issues|/commits]
 
 All project endpoints need  Authorization: Bearer <key>.  No third-party dependencies.
 """
@@ -41,6 +46,39 @@ HISTORY_DAYS = 7
 SERVER_START = datetime.now(timezone.utc)
 LOCK = threading.Lock()
 EVENTS = {slug: [] for slug in PROJECTS}   # (timestamp, metric, amount)
+
+# Goals the project reports through its API ("checkpoint" = position in the app's deadline list).
+GOALS = {
+    "habit-hero": [
+        {"id": "onboarding", "title": "Onboarding flow live", "checkpoint": 3, "done": False},
+        {"id": "streak-share", "title": "Shareable streak card", "checkpoint": 3, "done": True},
+        {"id": "signups-500", "title": "500 signups", "checkpoint": 4,
+         "metric": {"key": "signups", "target": 500}},
+    ],
+}
+
+# A tiny GitHub: one repo per demo project that links one.
+def _days_ago(n):
+    return iso(datetime.now(timezone.utc) - timedelta(days=n)).replace(".000Z", "Z")
+
+GITHUB = {
+    "side-shop": {
+        "repo": {"description": "A one-page shop for limited print runs.", "pushed_at": None},
+        "readme": "# Side Shop\nSell limited poster runs. Next.js storefront, Stripe checkout, email receipts.\n",
+        "milestones": [
+            {"number": 1, "title": "MVP", "state": "open", "due_on": None},
+            {"number": 2, "title": "Payments", "state": "open", "due_on": None},
+        ],
+        "issues": [
+            {"number": 11, "title": "Product grid", "state": "closed", "milestone": 1, "labels": []},
+            {"number": 12, "title": "Cart drawer", "state": "open", "milestone": 1, "labels": []},
+            {"number": 13, "title": "Stripe checkout", "state": "open", "milestone": 2, "labels": []},
+            {"number": 14, "title": "Bump deps", "state": "open", "milestone": None, "labels": [], "pull": True},
+            {"number": 15, "title": "Order confirmation email", "state": "open", "milestone": None, "labels": ["prodline"]},
+        ],
+        "last_commit_days_ago": 3,
+    },
+}
 
 
 def iso(dt):
@@ -90,6 +128,16 @@ def metrics_list(v):
     ]
 
 
+def github_issue(slug, i):
+    out = {"number": i["number"], "title": i["title"], "state": i["state"],
+           "html_url": f"https://github.com/demo/{slug}/issues/{i['number']}",
+           "labels": [{"name": n} for n in i["labels"]],
+           "milestone": {"number": i["milestone"]} if i["milestone"] else None}
+    if i.get("pull"):
+        out["pull_request"] = {"url": "https://api.github.com/pr"}
+    return out
+
+
 def payload(slug, since):
     now = datetime.now(timezone.utc)
     begin = max(start_of(slug), now - timedelta(days=HISTORY_DAYS))
@@ -107,6 +155,7 @@ def payload(slug, since):
         "asOf": iso(now),
         "metrics": metrics_list(totals(slug, now)),
         "history": history,
+        **({"goals": GOALS[slug]} if slug in GOALS else {}),
     }
 
 
@@ -151,8 +200,33 @@ class Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         return auth == f"Bearer {PROJECTS[slug]['key']}"
 
+    def github(self, parts):
+        # parts: ["github", "repos", "demo", "<repo>", optional resource]
+        if len(parts) < 4 or parts[1] != "repos" or parts[3] not in GITHUB:
+            return self.send_json(404, {"message": "Not Found"})
+        repo = GITHUB[parts[3]]
+        res = parts[4] if len(parts) > 4 else ""
+        if res == "":
+            return self.send_json(200, {**repo["repo"], "pushed_at": _days_ago(repo["last_commit_days_ago"])})
+        if res == "readme":
+            data = repo["readme"].encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/plain")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
+        if res == "milestones":
+            return self.send_json(200, repo["milestones"])
+        if res == "issues":
+            return self.send_json(200, [github_issue(parts[3], i) for i in repo["issues"]])
+        if res == "commits":
+            return self.send_json(200, [{"commit": {"committer": {"date": _days_ago(repo["last_commit_days_ago"])}}}])
+        return self.send_json(404, {"message": "Not Found"})
+
     def do_GET(self):
         url, parts, q = self.route()
+        if parts and parts[0] == "github":
+            return self.github(parts)
         if parts == ["health"]:
             return self.send_json(200, {"ok": True, "projects": list(PROJECTS), "started": iso(SERVER_START)})
         if len(parts) != 3 or parts[0] != "projects" or parts[2] != "metrics":
@@ -206,8 +280,21 @@ class Handler(BaseHTTPRequestHandler):
             elif kind == "viral":
                 EVENTS[slug].append((now, "social_views", 25000))
                 EVENTS[slug].append((now, "visits", 1500))
+            elif kind == "goal":
+                for g in GOALS.get(slug, []):
+                    if g["id"] == body.get("id"):
+                        g["done"] = bool(body.get("done", True))
+            elif kind == "reopen_issue":
+                for i in GITHUB.get(slug, {}).get("issues", []):
+                    if i["number"] == body.get("number"):
+                        i["state"] = "open"
+            elif kind == "close_issue":
+                for i in GITHUB.get(slug, {}).get("issues", []):
+                    if i["number"] == body.get("number"):
+                        i["state"] = "closed"
+                GITHUB.get(slug, {})["last_commit_days_ago"] = 0
             else:
-                return self.send_json(400, {"error": "type must be sale, visits or viral"})
+                return self.send_json(400, {"error": "type must be sale, visits, viral, goal or close_issue"})
         self.send_json(200, {"ok": True})
 
 

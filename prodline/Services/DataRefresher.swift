@@ -88,6 +88,7 @@ final class DataRefresher {
                 nextAttempt[id] = nil
                 status[id] = isSample ? .sample : .live(now)
                 store(payload, in: project, context: context)
+                if let goals = payload.goals { GoalEngine.syncAPI(goals, project: project, context: context) }
             case .failure(let error):
                 let n = (failures[id] ?? 0) + 1
                 failures[id] = n

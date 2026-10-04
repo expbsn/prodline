@@ -9,6 +9,7 @@ enum DemoData {
         let slug: String, name: String
         var details: String = ""
         let key: String, startedDaysAgo: Int, accent: Int, coverHues: [Int]?
+        var githubRepo: String = ""
     }
 
     /// Must match PROJECTS in MockProject/server.py.
@@ -16,12 +17,14 @@ enum DemoData {
         Spec(slug: "habit-hero", name: "Habit Hero", details: "A tiny habit tracker that rewards streaks with plant growth.", key: "hh_live_demo", startedDaysAgo: 9, accent: 0x58CC02, coverHues: nil),
         Spec(slug: "pixel-quest", name: "Pixel Quest", details: "Daily five-minute pixel art puzzles.", key: "pq_live_demo", startedDaysAgo: 23, accent: 0xA35CFF,
              coverHues: [0xFF5FA2, 0xA35CFF, 0x2D1B69]),
-        Spec(slug: "side-shop", name: "Side Shop", key: "ss_live_demo", startedDaysAgo: 2, accent: 0xFF9600, coverHues: nil),
+        Spec(slug: "side-shop", name: "Side Shop", details: "A one-page shop for limited print runs.", key: "ss_live_demo", startedDaysAgo: 2, accent: 0xFF9600, coverHues: nil, githubRepo: "demo/side-shop"),
         Spec(slug: "flaky-app", name: "Flaky App", key: "fa_live_demo", startedDaysAgo: 5, accent: 0x1CB0F6, coverHues: nil),
     ]
 
     static func load(baseURL: String, profile: Profile, context: ModelContext) {
         let base = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
+        // The mock server also plays GitHub for repos named demo/<project>.
+        UserDefaults.standard.set("\(base)/github", forKey: "githubAPIBase")
         for spec in projects {
             let p = Project(name: spec.name, accentHex: spec.accent,
                             startDate: Date.now.startOfDay.adding(days: -spec.startedDaysAgo),
@@ -31,6 +34,7 @@ enum DemoData {
                 p.accentHex = ImageTools.dominantAccentHex(UIImage(data: data)!) ?? spec.accent
             }
             p.details = spec.details
+            p.githubRepo = spec.githubRepo
             p.endpoint = "\(base)/projects/\(spec.slug)/metrics"
             Keychain.set(spec.key, for: p.id.uuidString)
             context.insert(p)

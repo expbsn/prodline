@@ -67,12 +67,32 @@ nonisolated struct MetricsPayload: Codable, Sendable, Equatable {
         var asOf: Date
         var metrics: [Metric]
     }
+    /// A deliverable the project wants done by a checkpoint.
+    struct RemoteGoal: Codable, Sendable, Equatable {
+        struct Target: Codable, Sendable, Equatable {
+            var key: String
+            var target: Double
+        }
+        var id: String
+        var title: String
+        var detail: String?
+        /// 1-based position in the project's deadline list (checkpoints, launch, review).
+        var checkpoint: Int?
+        /// Alternative to `checkpoint`: the goal lands on the first deadline on or after this date.
+        var due: Date?
+        var done: Bool?
+        var url: String?
+        /// Completes automatically once the metric reaches the target.
+        var metric: Target?
+    }
 
     var schemaVersion: Int?
     var project: String?
     var asOf: Date
     var metrics: [Metric]
     var history: [Point]?
+    /// Optional. When present, it's the full list: goals missing from it are removed (unless done).
+    var goals: [RemoteGoal]?
 
     func value(_ key: MetricKey) -> Double { metrics.value(key.rawValue) }
     var extras: [String: Double] { metrics.extras }
@@ -224,7 +244,7 @@ nonisolated struct SampleMetricsClient: MetricsClient {
             let d = Calendar.current.startOfDay(for: now).addingTimeInterval(-Double(back) * 86_400)
             if d >= start, since.map({ d > $0 }) ?? true { history.append(.init(asOf: d, metrics: metrics(values(at: d)))) }
         }
-        return MetricsPayload(schemaVersion: 1, project: nil, asOf: now, metrics: metrics(values(at: now)), history: history)
+        return MetricsPayload(schemaVersion: 1, project: nil, asOf: now, metrics: metrics(values(at: now)), history: history, goals: nil)
     }
 }
 

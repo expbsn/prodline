@@ -14,6 +14,11 @@ struct ProjectDetailView: View {
     @State private var showEdit = false
     @State private var showConnection = false
     @State private var confirmDelete = false
+    @State private var drafting = false
+    @State private var draftError: String?
+    @State private var addingGoalTo: Milestone?
+    @State private var newGoalTitle = ""
+    @Environment(GitHubService.self) private var github
 
     private var accent: Accent { project.accent }
 
@@ -88,7 +93,8 @@ struct ProjectDetailView: View {
         VStack(spacing: 18) {
             ProjectCardFace(project: project, refresher: refresher)
                 .frame(width: 210)
-                .shadow(color: accent.base.opacity(0.35), radius: 26, y: 14)
+                .cardFloorShadow(width: 210)
+                .padding(.bottom, 26)
                 .padding(.top, 118)
             HStack(spacing: 8) {
                 Image(systemName: project.phase().symbol)
@@ -269,22 +275,95 @@ struct ProjectDetailView: View {
     private var milestonesCard: some View {
         let ms = project.sortedMilestones
         let done = ms.filter(\.isDone).count
+        let canSuggest = GoalPlanner.isAvailable && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
         return VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Deadlines", trailing: "\(done)/\(ms.count) done")
             ChunkyProgressBar(value: ms.isEmpty ? 0 : Double(done) / Double(ms.count), height: 12)
                 .padding(.bottom, 4)
-            ForEach(ms) { m in
-                MilestoneLine(milestone: m) {
-                    if let profile = profiles.first {
-                        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
-                            ScheduleEngine.complete(m, profile: profile, celebration: celebration)
-                        }
-                        try? context.save()
+            if canSuggest || drafting {
+                Button { Task { await suggestGoals() } } label: {
+                    HStack(spacing: 8) {
+                        if drafting { ProgressView().tint(accent.text) } else { Image(systemName: "sparkles") }
+                        Text(drafting ? "Planning goals on device" : "Suggest goals for open checkpoints")
+                            .font(.ui(15, .semibold))
+                        Spacer()
                     }
+                    .foregroundStyle(accent.text)
+                    .padding(14)
+                    .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(accent.soft))
                 }
+                .buttonStyle(PressableStyle())
+                .disabled(drafting)
+            }
+            if let draftError {
+                Text(draftError).font(.ui(13)).foregroundStyle(Theme.danger)
+            }
+            ForEach(ms) { m in
+                MilestoneLine(milestone: m,
+                              onDone: { complete(m) },
+                              onToggleGoal: { toggle($0) },
+                              onDeleteGoal: { g in context.delete(g); try? context.save() },
+                              onAddGoal: { newGoalTitle = ""; addingGoalTo = m })
+                if m.id != ms.last?.id { Divider().padding(.leading, 44) }
             }
         }
         .card()
+        .alert("New goal", isPresented: Binding(get: { addingGoalTo != nil }, set: { if !$0 { addingGoalTo = nil } })) {
+            TextField("e.g. Ship pricing page", text: $newGoalTitle)
+            Button("Add") {
+                if let m = addingGoalTo {
+                    GoalEngine.addGoals([newGoalTitle], source: .manual, to: m, context: context)
+                    try? context.save()
+                    Haptics.success()
+                }
+                addingGoalTo = nil
+            }
+            Button("Cancel", role: .cancel) { addingGoalTo = nil }
+        } message: {
+            Text("The checkpoint completes once all of its goals are done.")
+        }
+    }
+
+    private func complete(_ m: Milestone) {
+        guard let profile = profiles.first else { return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
+            ScheduleEngine.complete(m, profile: profile, celebration: celebration)
+        }
+        try? context.save()
+    }
+
+    private func toggle(_ g: Goal) {
+        guard !g.source.isAutomatic else { return }
+        Haptics.select()
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { g.setDone(!g.isDone) }
+        if g.isDone, let profile = profiles.first {
+            GoalEngine.autoComplete(projects: [project], profile: profile, celebration: celebration)
+        }
+        try? context.save()
+    }
+
+    private func suggestGoals() async {
+        drafting = true
+        draftError = nil
+        defer { drafting = false }
+        let ms = project.sortedMilestones
+        do {
+            let plan = try await GoalPlanner.draft(
+                name: project.name, details: project.details, buildDays: project.buildDays,
+                deadlines: ms.map { .init(title: $0.title, date: $0.dueDate) },
+                github: github.snapshots[project.id])
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+                for (i, titles) in plan where (1...ms.count).contains(i) {
+                    let m = ms[i - 1]
+                    guard !m.isDone, !m.hasGoals else { continue }
+                    GoalEngine.addGoals(titles, source: .ai, to: m, context: context)
+                }
+            }
+            try? context.save()
+            Haptics.success()
+        } catch {
+            draftError = "Couldn't plan goals right now. Try again in a moment."
+        }
     }
 
     // MARK: Connection
@@ -318,51 +397,144 @@ struct ProjectDetailView: View {
     }
 }
 
-/// Checkable deadline row (used in detail).
+/// A deadline with its goals. Without goals it's ticked by hand; with goals it completes itself.
 struct MilestoneLine: View {
     let milestone: Milestone
     var onDone: () -> Void
+    var onToggleGoal: (Goal) -> Void = { _ in }
+    var onDeleteGoal: (Goal) -> Void = { _ in }
+    var onAddGoal: () -> Void = {}
     @Environment(\.accent) private var accent
+    @Environment(DataRefresher.self) private var refresher
 
     var body: some View {
-        HStack(spacing: 14) {
-            Button {
-                guard !milestone.isDone else { return }
-                onDone()
-            } label: {
-                ZStack {
-                    Circle().strokeBorder(milestone.isDone ? accent.base : Theme.tertiary, lineWidth: 2.5)
-                    if milestone.isDone {
-                        Circle().fill(accent.base)
-                        Image(systemName: "checkmark").font(.system(size: 13, weight: .heavy)).foregroundStyle(accent.on)
-                            .transition(.scale.combined(with: .opacity))
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 14) {
+                Button {
+                    guard !milestone.isDone else { return }
+                    onDone()
+                } label: {
+                    ZStack {
+                        if milestone.hasGoals && !milestone.isDone {
+                            // Progress ring: the checkpoint closes when the ring does.
+                            Circle().stroke(Theme.line, lineWidth: 3)
+                            Circle().trim(from: 0, to: progress)
+                                .stroke(accent.base, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                                .rotationEffect(.degrees(-90))
+                        } else {
+                            Circle().strokeBorder(milestone.isDone ? accent.base : Theme.tertiary, lineWidth: 2.5)
+                        }
+                        if milestone.isDone {
+                            Circle().fill(accent.base)
+                            Image(systemName: "checkmark").font(.system(size: 13, weight: .heavy)).foregroundStyle(accent.on)
+                                .transition(.scale.combined(with: .opacity))
+                        }
+                    }
+                    .frame(width: 30, height: 30)
+                    .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
+                }
+                .buttonStyle(PressableStyle(scale: 0.85))
+                .disabled(milestone.isDone)
+                .accessibilityLabel(milestone.isDone ? "Done" : "Mark \(milestone.title) done")
+
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(milestone.title).font(.ui(16, .semibold))
+                            .foregroundStyle(milestone.isDone ? Theme.secondary : Theme.ink)
+                        if milestone.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 12)).foregroundStyle(accent.text) }
+                    }
+                    Text(subtitle).font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
+                }
+                Spacer()
+            }
+
+            if milestone.hasGoals || !milestone.isDone {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(milestone.sortedGoals) { g in goalRow(g) }
+                    if !milestone.isDone {
+                        Button(action: onAddGoal) {
+                            Label("Add goal", systemImage: "plus")
+                                .font(.ui(13, .semibold))
+                                .foregroundStyle(Theme.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
-                .frame(width: 30, height: 30)
+                .padding(.leading, 44)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+
+    /// Metric goals show live progress ("412 of 500"), others their source.
+    private func goalCaption(_ g: Goal) -> String {
+        guard let key = g.metricKey, let target = g.target, !g.isDone, let project = milestone.project,
+              let v = GoalEngine.value(for: key, project: project, refresher: refresher) else { return g.source.label }
+        let isMoney = key == MetricKey.revenue.rawValue
+        let fmt: (Double) -> String = { isMoney ? MetricKey.money($0) : MetricKey.count($0) }
+        return "\(fmt(v)) of \(fmt(target)) · \(g.source.label)"
+    }
+
+    private var progress: Double {
+        let gs = milestone.goals ?? []
+        return gs.isEmpty ? 0 : Double(gs.filter(\.isDone).count) / Double(gs.count)
+    }
+
+    @ViewBuilder
+    private func goalRow(_ g: Goal) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Button { onToggleGoal(g) } label: {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 6, style: .continuous)
+                        .strokeBorder(g.isDone ? accent.base : Theme.tertiary, lineWidth: 2)
+                    if g.isDone {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous).fill(accent.base)
+                        Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(accent.on)
+                    }
+                }
+                .frame(width: 20, height: 20)
             }
             .buttonStyle(PressableStyle(scale: 0.85))
-            .disabled(milestone.isDone)
+            .disabled(g.source.isAutomatic)
+            .accessibilityLabel(g.source.isAutomatic ? "\(g.title), completes automatically" : "Toggle \(g.title)")
 
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(milestone.title).font(.ui(16, .semibold)).foregroundStyle(milestone.isDone ? Theme.secondary : Theme.ink)
-                        .strikethrough(milestone.isDone, color: Theme.secondary)
-                    if milestone.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 12)).foregroundStyle(accent.text) }
+                Text(g.title)
+                    .font(.ui(14, .medium))
+                    .foregroundStyle(g.isDone ? Theme.secondary : Theme.ink)
+                    .strikethrough(g.isDone, color: Theme.secondary)
+                HStack(spacing: 4) {
+                    Image(systemName: g.source.symbol)
+                    Text(goalCaption(g))
+                    if let url = URL(string: g.url), !g.url.isEmpty {
+                        Link(destination: url) { Image(systemName: "arrow.up.right") }
+                    }
                 }
-                Text(subtitle).font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
+                .font(.ui(11, .medium))
+                .foregroundStyle(Theme.tertiary)
             }
-            Spacer()
+            Spacer(minLength: 0)
         }
-        .padding(.vertical, 4)
+        .contextMenu {
+            if !g.source.isAutomatic {
+                Button("Delete goal", systemImage: "trash", role: .destructive) { onDeleteGoal(g) }
+            }
+        }
     }
 
     private var subtitle: String {
         if let done = milestone.completedAt {
             return milestone.completedOnTime ? "Done \(done.dayMonth) · on time" : "Done \(done.dayMonth) · late"
         }
-        if milestone.isOverdue { return "Overdue since \(milestone.dueDate.shortDay)" }
-        if milestone.isDueToday { return "Due today" }
-        return milestone.dueDate.shortDay
+        var s: String
+        if milestone.isOverdue { s = "Overdue since \(milestone.dueDate.shortDay)" }
+        else if milestone.isDueToday { s = "Due today" }
+        else { s = milestone.dueDate.shortDay }
+        if milestone.hasGoals {
+            let gs = milestone.goals ?? []
+            s += " · \(gs.filter(\.isDone).count)/\(gs.count) goals"
+        }
+        return s
     }
 }
 
@@ -442,9 +614,13 @@ struct ConnectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(DataRefresher.self) private var refresher
+    @Environment(GitHubService.self) private var github
     @State private var endpoint = ""
     @State private var apiKey = ""
     @State private var probe: ProbeState = .idle
+    @State private var repo = ""
+    @State private var token = ""
+    @State private var repoCheck: RepoCheck = .idle
 
     var body: some View {
         VStack(spacing: 0) {
@@ -455,15 +631,30 @@ struct ConnectionSheet: View {
             }
             .padding(20)
             ScrollView {
-                ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
-                    .padding(.horizontal, 20)
+                VStack(alignment: .leading, spacing: 28) {
+                    ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
+                    Divider()
+                    GitHubFields(repo: $repo, token: $token, check: $repoCheck)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
             }
+            .scrollDismissesKeyboard(.immediately)
             Button("Save") {
                 project.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
                 Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: project.id.uuidString)
+                project.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
+                Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + project.id.uuidString)
+                if case .ok(let snap) = repoCheck { GoalEngine.syncGitHub(snap, project: project, context: context) }
                 try? context.save()
                 Haptics.success()
-                Task { await refresher.refresh(projects: [project], context: context, force: true) }
+                Task {
+                    await refresher.refresh(projects: [project], context: context, force: true)
+                    if let snap = (await github.refresh(projects: [project], force: true)).isEmpty ? nil : github.snapshots[project.id] {
+                        GoalEngine.syncGitHub(snap, project: project, context: context)
+                        try? context.save()
+                    }
+                }
                 dismiss()
             }
             .buttonStyle(.chunky)
@@ -474,6 +665,8 @@ struct ConnectionSheet: View {
         .onAppear {
             endpoint = project.endpoint
             apiKey = Keychain.get(project.id.uuidString) ?? ""
+            repo = project.githubRepo
+            token = Keychain.get("gh-" + project.id.uuidString) ?? ""
         }
     }
 }

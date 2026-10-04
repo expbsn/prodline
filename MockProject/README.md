@@ -23,6 +23,13 @@ curl -X POST -H "Authorization: Bearer ss_live_demo" -d '{"type":"sale","amount"
 curl -X POST -H "Authorization: Bearer hh_live_demo" -d '{"type":"viral"}' localhost:8787/projects/habit-hero/events
 ```
 
+Habit Hero's API also returns **goals** (checkpoint 3 + a `signups` metric goal). Side Shop links the mock **GitHub** repo `demo/side-shop` (milestones, issues, README, a 3-day-old last commit), served under `/github`; the demo loader points the app there.
+
+```bash
+curl -X POST -H "Authorization: Bearer hh_live_demo" -d '{"type":"goal","id":"onboarding","done":true}' localhost:8787/projects/habit-hero/events
+curl -X POST -H "Authorization: Bearer ss_live_demo" -d '{"type":"close_issue","number":12}' localhost:8787/projects/side-shop/events
+```
+
 Force failures: `?fail=401|429|500|503`, `?fail=200` (malformed JSON), `?delay=3000`.
 
 ## Use it from the app

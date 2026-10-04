@@ -23,12 +23,6 @@ struct ProjectCardFace: View {
             ZStack(alignment: .topLeading) {
                 background(w: w, h: h, s: s)
 
-                // Diagonal accent slab.
-                Slab()
-                    .fill(accent.base)
-                    .overlay(Slab().fill(LinearGradient(colors: [.white.opacity(0.16), .clear],
-                                                        startPoint: .top, endPoint: .bottom)))
-
                 // Top row: badge + corner stat.
                 HStack(alignment: .top) {
                     Text(initial)
@@ -82,45 +76,67 @@ struct ProjectCardFace: View {
         .aspectRatio(5 / 7, contentMode: .fit)
     }
 
-    @ViewBuilder
+    /// Square artwork on top (the cover, or a tinted letter), melting into the accent below:
+    /// the lower part of the square fades to the accent color and blurs progressively.
     private func background(w: CGFloat, h: CGFloat, s: CGFloat) -> some View {
-        if let cover {
-            Image(uiImage: cover)
-                .resizable()
-                .scaledToFill()
-                .frame(width: w, height: h * 0.66, alignment: .center)
+        let fadeStart = 0.42 // of the square
+        let fade = LinearGradient(stops: [.init(color: .clear, location: fadeStart),
+                                          .init(color: .black, location: 1)],
+                                  startPoint: .top, endPoint: .bottom)
+        return ZStack(alignment: .top) {
+            accent.base
+
+            artwork(w: w, s: s)
+                .frame(width: w, height: w)
                 .clipped()
-                .frame(width: w, height: h, alignment: .top)
-                .overlay(alignment: .top) {
-                    LinearGradient(colors: [.black.opacity(0.38), .clear], startPoint: .top, endPoint: .center)
+                // Covered by solid accent before the edge, so no anti-aliased seam shows below the square.
+                .padding(.bottom, 1)
+                // Progressive blur on photos: a blurred copy revealed toward the bottom of the square.
+                .overlay {
+                    if let cover {
+                        Image(uiImage: cover).resizable().scaledToFill()
+                            .frame(width: w, height: w)
+                            .clipped()
+                            .blur(radius: 16 * s)
+                            .mask(fade)
+                    }
                 }
-                .background(accent.base)
+                // Color fade into the accent, eased so there's no visible edge.
+                .overlay {
+                    LinearGradient(stops: [.init(color: accent.base.opacity(0), location: fadeStart),
+                                           .init(color: accent.base.opacity(0.35), location: 0.68),
+                                           .init(color: accent.base.opacity(0.8), location: 0.84),
+                                           .init(color: accent.base, location: 0.96)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                // Keeps the corner stat readable on photos.
+                .overlay(alignment: .top) {
+                    if cover != nil {
+                        LinearGradient(colors: [.black.opacity(0.32), .clear], startPoint: .top, endPoint: .center)
+                            .frame(height: w * 0.4)
+                    }
+                }
+        }
+        .frame(width: w, height: h, alignment: .top)
+    }
+
+    @ViewBuilder
+    private func artwork(w: CGFloat, s: CGFloat) -> some View {
+        if let cover {
+            Image(uiImage: cover).resizable().scaledToFill()
         } else {
             ZStack(alignment: .topTrailing) {
-                LinearGradient(colors: [.white, accent.base.opacity(0.10), accent.base.opacity(0.22)],
+                Color.white
+                LinearGradient(colors: [.white, accent.base.opacity(0.12), accent.base.opacity(0.28)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
-                // Soft iridescent wash.
-                RadialGradient(colors: [accent.base.opacity(0.18), .clear], center: .topTrailing,
+                RadialGradient(colors: [accent.base.opacity(0.2), .clear], center: .topTrailing,
                                startRadius: 0, endRadius: w * 0.9)
                 Text(initial)
                     .display(300 * s, 900)
-                    .foregroundStyle(accent.base.opacity(0.11))
+                    .foregroundStyle(accent.base.opacity(0.12))
                     .offset(x: 30 * s, y: -10 * s)
             }
-            .background(.white)
         }
-    }
-}
-
-private struct Slab: Shape {
-    func path(in r: CGRect) -> Path {
-        var p = Path()
-        p.move(to: CGPoint(x: 0, y: r.height * 0.61))
-        p.addLine(to: CGPoint(x: r.width, y: r.height * 0.45))
-        p.addLine(to: CGPoint(x: r.width, y: r.height))
-        p.addLine(to: CGPoint(x: 0, y: r.height))
-        p.closeSubpath()
-        return p
     }
 }
 
@@ -202,5 +218,20 @@ struct ProjectThumb: View {
         }
         .frame(width: size, height: size)
         .clipShape(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
+    }
+}
+
+extension View {
+    /// A soft, detached floor shadow, as if the card hovers above the page.
+    func cardFloorShadow(width: CGFloat, strength: Double = 1) -> some View {
+        background(alignment: .bottom) {
+            Ellipse()
+                .fill(RadialGradient(colors: [.black.opacity(0.32 * strength), .black.opacity(0)],
+                                     center: .center, startRadius: 0, endRadius: width * 0.45))
+                .frame(width: width * 0.95, height: width * 0.2)
+                .blur(radius: width * 0.05)
+                .offset(y: width * 0.2)
+                .allowsHitTesting(false)
+        }
     }
 }

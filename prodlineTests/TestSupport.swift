@@ -4,7 +4,7 @@ import SwiftData
 
 @MainActor
 func makeContext() throws -> ModelContext {
-    let container = try ModelContainer(for: Profile.self, Project.self, Milestone.self, MetricSnapshot.self,
+    let container = try ModelContainer(for: Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self,
                                        configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     return ModelContext(container)
 }
@@ -15,14 +15,15 @@ func day(_ y: Int, _ m: Int, _ d: Int) -> Date {
 }
 
 func payload(asOf: Date, visits: Double, social: Double = 0, revenue: Double = 0,
-             extras: [String: Double] = [:], history: [MetricsPayload.Point]? = nil) -> MetricsPayload {
+             extras: [String: Double] = [:], history: [MetricsPayload.Point]? = nil,
+             goals: [MetricsPayload.RemoteGoal]? = nil) -> MetricsPayload {
     var metrics: [MetricsPayload.Metric] = [
         .init(key: "visits", value: visits),
         .init(key: "social_views", value: social),
         .init(key: "revenue", value: revenue, unit: "USD"),
     ]
     metrics += extras.map { .init(key: $0.key, value: $0.value) }
-    return MetricsPayload(schemaVersion: 1, project: "Test", asOf: asOf, metrics: metrics, history: history)
+    return MetricsPayload(schemaVersion: 1, project: "Test", asOf: asOf, metrics: metrics, history: history, goals: goals)
 }
 
 /// Scriptable client that counts calls.

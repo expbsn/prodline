@@ -8,6 +8,7 @@ struct RootView: View {
     @Query private var projects: [Project]
 
     @State private var refresher = DataRefresher()
+    @State private var github = GitHubService()
     @State private var celebration = CelebrationCenter()
 
     var body: some View {
@@ -26,6 +27,7 @@ struct RootView: View {
         .animation(.easeInOut(duration: 0.35), value: profiles.first?.onboarded)
         .overlay { CelebrationOverlay() }
         .environment(refresher)
+        .environment(github)
         .environment(celebration)
         .onAppear {
             if profiles.isEmpty {
@@ -57,6 +59,11 @@ struct RootView: View {
             }
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
+                await syncGitHub()
+                if let profile = profiles.first, profile.onboarded {
+                    GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
+                                            celebration: celebration, context: context)
+                }
                 try? await Task.sleep(for: DataRefresher.foregroundInterval)
             }
         }
@@ -64,6 +71,21 @@ struct RootView: View {
 }
 
 /// Tabs + floating tab bar + global sheets.
+extension RootView {
+    /// GitHub issues → goals, plus the "repo has gone quiet" nudge.
+    func syncGitHub() async {
+        let changed = await github.refresh(projects: projects)
+        guard let profile = profiles.first else { return }
+        for p in changed {
+            if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }
+            if profile.remindersEnabled {
+                Notifier.staleRepoNudge(project: p, hour: profile.reminderHour)
+                for m in p.sortedMilestones where !m.isDone { Notifier.schedule(m, hour: profile.reminderHour) }
+            }
+        }
+    }
+}
+
 struct MainShell: View {
     let profile: Profile
     @Query(sort: \Project.startDate) private var projects: [Project]

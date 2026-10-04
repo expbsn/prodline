@@ -121,10 +121,35 @@ enum Notifier {
             let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
             center.add(UNNotificationRequest(identifier: id, content: content, trigger: trigger))
         }
+        let open = m.openGoals.map(\.title)
+        let goalsText = open.isEmpty ? "" : " Left: " + open.prefix(2).joined(separator: ", ") + (open.count > 2 ? " +\(open.count - 2)" : "") + "."
         add(m.id.uuidString, hour: hour, title: "\(project.name): deadline day",
-            body: "\(m.title) is due today. You've got this.")
+            body: "\(m.title) is due today.\(goalsText.isEmpty ? " You've got this." : goalsText)")
         add(m.id.uuidString + "-pm", hour: 18, title: "Still time today",
-            body: "\(m.title) · \(project.name). Finish it and keep your streak alive.")
+            body: "\(m.title) · \(project.name).\(goalsText.isEmpty ? " Finish it and keep your streak alive." : goalsText)")
+    }
+
+    /// A GitHub-aware nudge: the repo has gone quiet while a checkpoint is coming up.
+    static func staleRepoNudge(project: Project, hour: Int, now: Date = .now) {
+        let id = "stale-" + project.id.uuidString
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        guard project.phase(on: now) == .building, let last = project.lastCommitAt,
+              now.timeIntervalSince(last) > 2 * 86_400,
+              let next = project.nextMilestone, Date.days(from: now, to: next.dueDate) <= 2 else { return }
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: now)
+        comps.hour = hour
+        if let fire = Calendar.current.date(from: comps), fire <= now {
+            comps = Calendar.current.dateComponents([.year, .month, .day], from: now.adding(days: 1))
+            comps.hour = hour
+        }
+        let content = UNMutableNotificationContent()
+        content.title = "\(project.name) has gone quiet"
+        let left = next.openGoals.count
+        content.body = "No commits since \(last.formatted(.dateTime.weekday(.wide))). \(next.title) is due \(next.dueDate.formatted(.dateTime.weekday(.wide)))" + (left > 0 ? " with \(left) goal\(left == 1 ? "" : "s") left." : ".")
+        content.sound = .default
+        center.add(UNNotificationRequest(identifier: id, content: content,
+                                         trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
     }
 
     static func cancel(_ m: Milestone) {

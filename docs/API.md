@@ -42,6 +42,36 @@ User-Agent: Prodline/1.0
 | `history` | no | Points for charts, ideally hourly. Prodline de-duplicates by minute, so re-sending is harmless. |
 | `schemaVersion` | no | Currently `1`. |
 
+## Goals (optional)
+
+Projects can tell Prodline what has to be done by each checkpoint. Add a `goals` array to the same response:
+
+```json
+"goals": [
+  { "id": "onboarding", "title": "Onboarding flow live", "checkpoint": 3, "done": false },
+  { "id": "launch-post", "title": "Launch post published", "due": "2026-10-08T00:00:00Z", "url": "https://…" },
+  { "id": "signups-500", "title": "500 signups", "checkpoint": 4, "metric": { "key": "signups", "target": 500 } }
+]
+```
+
+| Field | Notes |
+|---|---|
+| `id` | Stable per goal. Used to update goals between polls. |
+| `checkpoint` | 1-based position in the project's deadline list (checkpoints, then "Ship it", then "Traction review"). |
+| `due` | Alternative to `checkpoint`: the goal lands on the first deadline on or after this date. Neither → next open deadline. |
+| `done` | Ticks the goal off. |
+| `metric` | Ticks itself when the metric (built-in or custom key) reaches `target`. |
+
+- When `goals` is present it is the full list: goals missing from it are removed (unless already done).
+- A checkpoint whose goals are all done **completes automatically** (XP and streak as if tapped).
+- Goals from your API or GitHub replace on-device suggestions on the same checkpoint.
+
+### Other goal sources
+
+- **GitHub:** link a repo on the project. Issues in a GitHub milestone, or labeled `prodline`, become goals and tick off when closed. A milestone's due date picks the checkpoint; without one, the Nth milestone maps to the Nth checkpoint. Pull requests are ignored. Repos are read every 10 min (token optional, for private repos / higher rate limit; stored in the Keychain). The README and open issues also feed suggestions, and a quiet repo (no commits for 2+ days) right before a checkpoint triggers a nudge.
+- **On-device suggestions:** with Apple Intelligence, Prodline drafts 1–3 goals per checkpoint from the name, description and linked repo, both in the create flow and from the project screen. Nothing leaves the device. Without Apple Intelligence (and without API/GitHub goals) checkpoints stay plain and are ticked by hand.
+- **Traction targets:** during the observe phase the "Traction review" gets stretch targets for visits (and revenue, if any) based on the last week's pace; they tick themselves.
+
 ## Errors
 
 | Status | How Prodline reacts |

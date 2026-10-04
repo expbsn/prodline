@@ -126,15 +126,15 @@ struct ScreenHeader<Trailing: View>: View {
     @ViewBuilder var trailing: Trailing
 
     var body: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(eyebrow).eyebrow()
-                Text(title).display(42, 750).foregroundStyle(Theme.ink)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-            }
-            Spacer(minLength: 12)
-            trailing
+        // Trailing content is an overlay so it can never change the header height:
+        // titles sit at the same position on every tab.
+        VStack(alignment: .leading, spacing: 2) {
+            Text(eyebrow).eyebrow()
+            Text(title).display(42, 750).foregroundStyle(Theme.ink)
+                .lineLimit(1).minimumScaleFactor(0.7)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottomTrailing) { trailing.padding(.bottom, 4) }
         .padding(.horizontal, 24)
         .padding(.top, 4)
     }

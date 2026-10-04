@@ -172,3 +172,99 @@ struct APISpecView: View {
         .card(padding: 14, radius: 18)
     }
 }
+
+// MARK: - GitHub
+
+enum RepoCheck: Equatable {
+    case idle, running
+    case ok(GitHubSnapshot)
+    case failed(String)
+}
+
+/// Repo + optional token. Linking a repo personalizes goals (issues), AI suggestions (README) and nudges (commits).
+struct GitHubFields: View {
+    @Binding var repo: String
+    @Binding var token: String
+    @Binding var check: RepoCheck
+    @FocusState private var focus: Field?
+    private enum Field { case repo, token }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text("GitHub repo").eyebrow()
+                    Spacer()
+                    Text("Optional").font(.ui(12)).foregroundStyle(Theme.tertiary)
+                }
+                TextField("", text: $repo, prompt: Text(verbatim: "owner/repo").foregroundStyle(Theme.tertiary))
+                    .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                    .focused($focus, equals: .repo)
+                    .inputField(focused: focus == .repo)
+                SecureField("", text: $token, prompt: Text("Token, only for private repos").foregroundStyle(Theme.tertiary))
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .focused($focus, equals: .token)
+                    .inputField(focused: focus == .token)
+                Text("Issues in GitHub milestones or labeled “prodline” become checkpoint goals and close themselves. Your README guides suggestions, and quiet weeks get a nudge.")
+                    .font(.ui(12)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if !repo.trimmingCharacters(in: .whitespaces).isEmpty {
+                Button {
+                    focus = nil
+                    run()
+                } label: {
+                    HStack(spacing: 8) {
+                        if check == .running { ProgressView().tint(Theme.ink) }
+                        Text(check == .running ? "Checking" : "Check repo")
+                    }
+                }
+                .buttonStyle(.chunky(.neutral, height: 50))
+                .disabled(check == .running)
+            }
+
+            switch check {
+            case .idle, .running: EmptyView()
+            case .failed(let msg):
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Theme.danger)
+                    Text(msg).font(.ui(14, .medium)).foregroundStyle(Theme.ink)
+                }
+                .card(padding: 14, radius: 18)
+            case .ok(let snap):
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "checkmark.seal.fill").foregroundStyle(Theme.success)
+                        Text(GitHubRepoRef(repo)?.slug ?? repo).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                    }
+                    if !snap.description.isEmpty {
+                        Text(snap.description).font(.ui(14)).foregroundStyle(Theme.secondary)
+                    }
+                    let planned = snap.issues.filter(\.isPlanned)
+                    Text("\(planned.count) planned issue\(planned.count == 1 ? "" : "s") · \(snap.milestones.count) milestone\(snap.milestones.count == 1 ? "" : "s")" +
+                         (snap.lastCommit.map { " · last commit \($0.formatted(.relative(presentation: .named)))" } ?? ""))
+                        .font(.ui(13)).foregroundStyle(Theme.secondary)
+                }
+                .card(padding: 14, radius: 18)
+            }
+        }
+        .onChange(of: repo) { check = .idle }
+    }
+
+    private func run() {
+        guard let ref = GitHubRepoRef(repo) else { check = .failed(GitHubError.badRepo.localizedDescription); return }
+        check = .running
+        let client = GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base)
+        Task {
+            do {
+                let snap = try await client.fetch()
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { check = .ok(snap) }
+                Haptics.success()
+            } catch {
+                withAnimation { check = .failed(error.localizedDescription) }
+                Haptics.warning()
+            }
+        }
+    }
+}
