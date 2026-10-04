@@ -5,6 +5,15 @@
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+	<key>UIAppFonts</key>
+	<array>
+		<string>GeistPixel-Regular-VariableFont_ELSH.ttf</string>
+	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>expbsn.app.prodline.refresh</string>
 	</array>
 </dict>
 </plist>

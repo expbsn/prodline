@@ -1,32 +1,30 @@
-//
-//  prodlineApp.swift
-//  prodline
-//
-//  Created by Kian Jain on 04.10.26.
-//
-
 import SwiftUI
 import SwiftData
 
 @main
 struct prodlineApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
+    let container: ModelContainer = {
+        let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self])
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            // Private CloudKit database (container from the entitlements) keeps devices in sync.
+            let cloud = ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)
+            return try ModelContainer(for: schema, configurations: [cloud])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // No iCloud available (e.g. unsigned simulator): stay local rather than crash.
+            let local = ModelConfiguration(schema: schema, cloudKitDatabase: .none)
+            do { return try ModelContainer(for: schema, configurations: [local]) }
+            catch { fatalError("Could not create ModelContainer: \(error)") }
         }
     }()
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
+                .preferredColorScheme(.light)
         }
-        .modelContainer(sharedModelContainer)
+        .modelContainer(container)
+        .backgroundTask(.appRefresh(DataRefresher.backgroundTaskID)) {
+            await DataRefresher.runBackground(container: container)
+        }
     }
 }
