@@ -1,6 +1,25 @@
 import SwiftUI
 import SwiftData
 
+/// Shared geometry for the Dash card, so the project page can mirror it exactly.
+enum DashLayout {
+    /// Eyebrow + title + spacing above the carousel.
+    static let header: CGFloat = 88
+    /// Card bottom → page dots. The floor shadow lives in this gap.
+    static let shadowGap: CGFloat = 46
+    /// Dots, summary, meta row and the button below them.
+    static let panel: CGFloat = 185
+
+    /// As large as the screen allows while the panel's button stays above the tab bar.
+    static func cardWidth(in size: CGSize) -> CGFloat {
+        let byHeight = (size.height - header - shadowGap - panel) * 5 / 7
+        return max(170, min(size.width * 0.66, byHeight, 320))
+    }
+
+    /// Last on-screen frame of the focused Dash card; used when a project opens from elsewhere.
+    static var lastCardFrame: CGRect?
+}
+
 /// Projects as playing cards in a horizontal 3D carousel; the focused card drives the panel below.
 struct HomeView: View {
     let profile: Profile
@@ -25,20 +44,19 @@ struct HomeView: View {
 
     var body: some View {
         GeometryReader { geo in
-            // Fit the card to the space left after header, dots and panel (~370pt) so the CTA stays visible.
-            let cardW = max(150, min(geo.size.width * 0.6, (geo.size.height - 390) * 5 / 7, 300))
+            let cardW = DashLayout.cardWidth(in: geo.size)
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") { streakBadge }
 
                     carousel(cardW: cardW, screenW: geo.size.width)
-                        .padding(.top, 4)
+                        .padding(.top, 14)
 
-                    dots.frame(maxWidth: .infinity).padding(.top, 22)
+                    dots.frame(maxWidth: .infinity).padding(.top, DashLayout.shadowGap)
 
                     infoPanel
                         .padding(.horizontal, 24)
-                        .padding(.top, 16)
+                        .padding(.top, 22)
                         .environment(\.accent, accent)
                         .id(focusedID)
                         .transition(.opacity.combined(with: .offset(y: 8)))
@@ -56,12 +74,14 @@ struct HomeView: View {
                 .ignoresSafeArea()
                 .animation(.easeInOut(duration: 0.5), value: accent)
         }
-        .onAppear {
-            if focusedID == nil || !ids.contains(focusedID!) {
-                focusedID = (projects.first { $0.phase() == .building } ?? projects.last)?.id ?? Self.createID
-            }
-        }
+        .onAppear(perform: ensureFocus)
         .onChange(of: focusedID) { Haptics.select() }
+    }
+
+    private func ensureFocus() {
+        if focusedID == nil || !ids.contains(focusedID!) {
+            focusedID = (projects.first { $0.phase() == .building } ?? projects.last)?.id ?? Self.createID
+        }
     }
 
     // MARK: Header
@@ -100,6 +120,7 @@ struct HomeView: View {
     // MARK: Carousel
 
     private func carousel(cardW: CGFloat, screenW: CGFloat) -> some View {
+        ScrollViewReader { proxy in
         ScrollView(.horizontal, showsIndicators: false) {
             LazyHStack(spacing: spacing) {
                 ForEach(projects) { p in
@@ -113,7 +134,10 @@ struct HomeView: View {
                     } label: {
                         ProjectCardFace(project: p, refresher: refresher)
                             .frame(width: cardW)
-                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { cardFrames[p.id] = $0 }
+                            .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frame in
+                                cardFrames[p.id] = frame
+                                if p.id == focusedID { DashLayout.lastCardFrame = frame }
+                            }
                     }
                     .buttonStyle(PressableStyle(scale: 0.96))
                     .id(p.id)
@@ -128,7 +152,6 @@ struct HomeView: View {
                 .modifier(CarouselEffect(step: cardW + spacing))
             }
             .scrollTargetLayout()
-            .padding(.vertical, 24)
         }
         .scrollTargetBehavior(.viewAligned)
         .scrollPosition(id: $focusedID, anchor: .center)
@@ -138,7 +161,17 @@ struct HomeView: View {
         .background(alignment: .bottom) {
             Color.clear.frame(width: cardW, height: 1)
                 .cardFloorShadow(width: cardW)
-                .offset(y: -24)
+        }
+        // The card width settles after the first layout pass; keep the focused card centered through it.
+        .task {
+            ensureFocus()
+            // Lazy content and the measured card width settle over the first frames.
+            for _ in 0..<3 {
+                try? await Task.sleep(for: .milliseconds(60))
+                proxy.scrollTo(focusedID, anchor: .center)
+            }
+        }
+        .onChange(of: cardW) { proxy.scrollTo(focusedID, anchor: .center) }
         }
     }
 

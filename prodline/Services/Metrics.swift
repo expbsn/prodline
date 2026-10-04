@@ -112,6 +112,10 @@ nonisolated struct MetricsPayload: Codable, Sendable, Equatable {
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         if let d = f.date(from: s) { return d }
         f.formatOptions = [.withInternetDateTime]
+        if let d = f.date(from: s) { return d }
+        // Plain dates ("2026-10-15") as written by hand, in the user's calendar.
+        f.formatOptions = [.withFullDate]
+        f.timeZone = .current
         return f.date(from: s)
     }
 

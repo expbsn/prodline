@@ -54,6 +54,22 @@ enum GoalEngine {
                             checkpoint: checkpoint, due: due, done: issue.isClosed)
         }
         sync(incoming, prefix: "gh:", source: .github, project: project, context: context)
+
+        // prodline.json: same shape as API goals. A missing file clears its open goals; a broken one keeps them.
+        if let plan = snap.planFile {
+            syncPlanFile(plan.goals, project: project, context: context)
+        } else if snap.planFileError == nil {
+            syncPlanFile([], project: project, context: context)
+        }
+    }
+
+    static func syncPlanFile(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext) {
+        let incoming = goals.map {
+            Incoming(externalID: "file:\($0.id)", title: $0.title, detail: $0.detail ?? "", url: $0.url ?? "",
+                     checkpoint: $0.checkpoint, due: $0.due, done: $0.done ?? false,
+                     metricKey: $0.metric?.key, target: $0.metric?.target)
+        }
+        sync(incoming, prefix: "file:", source: .repoFile, project: project, context: context)
     }
 
     static func sync(_ incoming: [Incoming], prefix: String, source: GoalSource, project: Project, context: ModelContext) {

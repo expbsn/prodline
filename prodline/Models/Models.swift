@@ -178,12 +178,13 @@ final class Milestone {
 }
 
 enum GoalSource: String, CaseIterable {
-    case api, github, ai, metric, manual
+    case api, github, repoFile, ai, metric, manual
 
     var label: String {
         switch self {
         case .api: "From your API"
         case .github: "From GitHub"
+        case .repoFile: "From prodline.json"
         case .ai: "Suggested"
         case .metric: "Traction target"
         case .manual: "Added by you"
@@ -194,6 +195,7 @@ enum GoalSource: String, CaseIterable {
         switch self {
         case .api: "bolt.fill"
         case .github: "chevron.left.forwardslash.chevron.right"
+        case .repoFile: "doc.text"
         case .ai: "sparkles"
         case .metric: "chart.line.uptrend.xyaxis"
         case .manual: "pencil"
@@ -201,7 +203,7 @@ enum GoalSource: String, CaseIterable {
     }
 
     /// Remote and metric goals complete themselves; the user can't tick them.
-    var isAutomatic: Bool { self == .api || self == .github || self == .metric }
+    var isAutomatic: Bool { self == .api || self == .github || self == .repoFile || self == .metric }
 }
 
 /// A concrete deliverable inside a checkpoint. A checkpoint with goals completes once all are done.

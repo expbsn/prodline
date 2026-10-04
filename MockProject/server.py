@@ -18,7 +18,8 @@ Endpoints
                                    {"type": "close_issue" | "reopen_issue", "number": 12}   (mock GitHub)
 
     Mock GitHub API (point the app's githubAPIBase at http://host:port/github):
-    GET  /github/repos/demo/<repo>[/readme|/milestones|/issues|/commits]
+    GET  /github/repos/demo/<repo>[/readme|/milestones|/issues|/commits|/contents/prodline.json]
+    POST /projects/<slug>/events   {"type": "plan_goal", "id": "launch-post", "done": true}   (edits the mock prodline.json)
 
 All project endpoints need  Authorization: Bearer <key>.  No third-party dependencies.
 """
@@ -77,6 +78,13 @@ GITHUB = {
             {"number": 15, "title": "Order confirmation email", "state": "open", "milestone": None, "labels": ["prodline"]},
         ],
         "last_commit_days_ago": 3,
+        "plan": {
+            "version": 1,
+            "goals": [
+                {"id": "shipping-rates", "title": "Add shipping rates table", "checkpoint": 3, "done": False},
+                {"id": "launch-post", "title": "Draft launch post", "checkpoint": 4, "done": False},
+            ],
+        },
     },
 }
 
@@ -219,6 +227,15 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json(200, repo["milestones"])
         if res == "issues":
             return self.send_json(200, [github_issue(parts[3], i) for i in repo["issues"]])
+        if res == "contents" and len(parts) > 5 and parts[5] == "prodline.json":
+            if "plan" not in repo:
+                return self.send_json(404, {"message": "Not Found"})
+            data = json.dumps(repo["plan"]).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            self.end_headers()
+            return self.wfile.write(data)
         if res == "commits":
             return self.send_json(200, [{"commit": {"committer": {"date": _days_ago(repo["last_commit_days_ago"])}}}])
         return self.send_json(404, {"message": "Not Found"})
@@ -282,6 +299,10 @@ class Handler(BaseHTTPRequestHandler):
                 EVENTS[slug].append((now, "visits", 1500))
             elif kind == "goal":
                 for g in GOALS.get(slug, []):
+                    if g["id"] == body.get("id"):
+                        g["done"] = bool(body.get("done", True))
+            elif kind == "plan_goal":
+                for g in GITHUB.get(slug, {}).get("plan", {}).get("goals", []):
                     if g["id"] == body.get("id"):
                         g["done"] = bool(body.get("done", True))
             elif kind == "reopen_issue":

@@ -177,6 +177,39 @@ struct GoalTests {
         #expect(!(p.sortedMilestones.flatMap { $0.goals ?? [] }.contains { $0.title == "Unplanned" }))
     }
 
+    @Test func planFileBecomesGoals() throws {
+        let (ctx, p, _) = try setup()
+        let ms = p.sortedMilestones
+        let json = #"""
+        {"version": 1, "goals": [
+          {"id": "auth", "title": "Sign in with Apple", "checkpoint": 1, "done": true},
+          {"id": "post", "title": "Launch post drafted", "due": "2026-01-17"}
+        ]}
+        """#
+        let plan = try MetricsPayload.decoder().decode(GitHubSnapshot.PlanFile.self, from: Data(json.utf8))
+        #expect(plan.goals[1].due == day(2026, 1, 17)) // date-only, local calendar
+        GoalEngine.addGoals(["Suggested"], source: .ai, to: ms[0], context: ctx)
+        var snap = GitHubSnapshot(description: "", readme: "", milestones: [], issues: [], lastCommit: nil, planFile: plan)
+        GoalEngine.syncGitHub(snap, project: p, context: ctx)
+        try ctx.save()
+        #expect(ms[0].goals?.map(\.title) == ["Sign in with Apple"]) // file replaces the suggestion
+        #expect(ms[0].goals?.first?.isDone == true && ms[0].goals?.first?.source == .repoFile)
+        #expect(ms[3].goals?.map(\.title) == ["Launch post drafted"]) // Jan 17 → Ship it (Jan 18)
+
+        // A broken file keeps what we have…
+        snap.planFile = nil
+        snap.planFileError = "prodline.json isn't valid"
+        GoalEngine.syncGitHub(snap, project: p, context: ctx)
+        try ctx.save()
+        #expect(ms[3].goals?.count == 1)
+        // …a deleted file clears open goals but keeps done ones.
+        snap.planFileError = nil
+        GoalEngine.syncGitHub(snap, project: p, context: ctx)
+        try ctx.save()
+        #expect(ms[3].goals?.isEmpty == true)
+        #expect(ms[0].goals?.count == 1)
+    }
+
     @Test func aiPromptCarriesProjectContext() {
         let gh = GitHubSnapshot(description: "Poster shop", readme: "# Side Shop\nStripe checkout", milestones: [],
                                 issues: [.init(number: 1, title: "Cart drawer", state: "open", html_url: "", labels: [], milestone: nil, pull_request: nil)],
@@ -221,6 +254,8 @@ struct GoalIntegrationTests {
         #expect(snap.milestones.count == 2)
         #expect(!snap.issues.contains { $0.number == 14 }) // pull requests are filtered out
         #expect(snap.lastCommit != nil)
+        #expect(snap.planFile?.goals.map(\.id) == ["shipping-rates", "launch-post"])
+        #expect(snap.planFileError == nil)
         await #expect(throws: GitHubError.notFound) {
             _ = try await GitHubClient(repo: GitHubRepoRef("demo/nope")!, base: URL(string: MockServer.base! + "/github")!).fetch()
         }
@@ -264,6 +299,8 @@ struct GoalIntegrationTests {
         GoalEngine.syncGitHub(try #require(gh.snapshots[p.id]), project: p, context: ctx)
         let first = p.sortedMilestones[0]
         #expect(Set(first.goals?.map(\.title) ?? []) == ["Product grid", "Cart drawer", "Order confirmation email"])
+        #expect(p.sortedMilestones[2].goals?.map(\.title) == ["Add shipping rates table"]) // from prodline.json
+        #expect(p.sortedMilestones[2].goals?.first?.source == .repoFile)
         #expect(p.lastCommitAt != nil)
 
         for n in [12, 15] {

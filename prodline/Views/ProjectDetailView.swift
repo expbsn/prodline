@@ -27,7 +27,9 @@ struct ProjectDetailView: View {
     @State private var scrolledAway = false
 
     private var accent: Accent { project.accent }
-    private var heroWidth: CGFloat { cardFrame?.width ?? 230 }
+    /// Same size and spot as on Dash, also when opened from elsewhere.
+    private var heroFrame: CGRect? { cardFrame ?? DashLayout.lastCardFrame }
+    private var heroWidth: CGFloat { heroFrame?.width ?? 240 }
     /// The card stays fully visible only while it sits exactly on top of its carousel twin.
     private var cardOpacity: Double { revealed || (cardFrame != nil && !scrolledAway) ? 1 : 0 }
 
@@ -129,8 +131,9 @@ struct ProjectDetailView: View {
                 .opacity(cardOpacity)
                 // The carousel already draws a shadow at this spot; ours takes over as the page fades in.
                 .cardFloorShadow(width: heroWidth, strength: revealed ? 1 : 0)
-                .padding(.top, cardFrame?.minY ?? 118)
-                .padding(.bottom, heroWidth * 0.12)
+                .padding(.top, heroFrame?.minY ?? 150)
+                // Mirrors Dash: the phase pill sits where the page dots are.
+                .padding(.bottom, DashLayout.shadowGap - 18)
             Group {
             HStack(spacing: 8) {
                 Image(systemName: project.phase().symbol)
@@ -156,7 +159,7 @@ struct ProjectDetailView: View {
         .padding(.bottom, 8)
         .background(alignment: .top) {
             LinearGradient(colors: [accent.base.opacity(0.28), accent.base.opacity(0)], startPoint: .top, endPoint: .bottom)
-                .frame(height: (cardFrame?.maxY ?? 480) + 60)
+                .frame(height: (heroFrame?.maxY ?? 480) + 60)
                 .padding(.horizontal, -16)
                 .opacity(revealed ? 1 : 0)
         }

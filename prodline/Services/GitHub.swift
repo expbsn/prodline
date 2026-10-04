@@ -48,11 +48,21 @@ nonisolated struct GitHubSnapshot: Sendable, Equatable {
         var isPlanned: Bool { milestone != nil || labels.contains { $0.name.lowercased() == "prodline" } }
     }
 
+    /// `prodline.json` in the repo root: a goal plan maintained by hand or by a coding agent.
+    struct PlanFile: Codable, Sendable, Equatable {
+        var version: Int?
+        var goals: [MetricsPayload.RemoteGoal]
+    }
+
     var description: String
     var readme: String
     var milestones: [Milestone]
     var issues: [Issue]
     var lastCommit: Date?
+    /// nil when the repo has no prodline.json.
+    var planFile: PlanFile? = nil
+    /// Set when prodline.json exists but can't be read; existing file goals are kept meanwhile.
+    var planFileError: String? = nil
 }
 
 nonisolated enum GitHubError: LocalizedError, Equatable {
@@ -112,13 +122,31 @@ nonisolated struct GitHubClient: Sendable {
         async let milestonesData = get("/milestones", query: [.init(name: "state", value: "all"), .init(name: "per_page", value: "50")])
         async let issuesData = get("/issues", query: [.init(name: "state", value: "all"), .init(name: "per_page", value: "100")])
         async let commitsData = try? get("/commits", query: [.init(name: "per_page", value: "1")])
+        async let planData = try? get("/contents/prodline.json", accept: "application/vnd.github.raw+json")
 
         let milestones = try decode([GitHubSnapshot.Milestone].self, try await milestonesData)
         let issues = try decode([GitHubSnapshot.Issue].self, try await issuesData).filter { $0.pull_request == nil }
         let readme = (await readmeData).flatMap { String(data: $0, encoding: .utf8) } ?? ""
         let lastCommit = (await commitsData).flatMap { try? decode([Commit].self, $0).first?.commit.committer?.date }
+        var plan: GitHubSnapshot.PlanFile?
+        var planError: String?
+        if let data = await planData {
+            do { plan = try decode(GitHubSnapshot.PlanFile.self, data) }
+            catch { planError = "prodline.json isn't valid: \(Self.describe(error))" }
+        }
         return GitHubSnapshot(description: repoInfo.description ?? "", readme: readme,
-                              milestones: milestones, issues: issues, lastCommit: lastCommit ?? repoInfo.pushed_at)
+                              milestones: milestones, issues: issues, lastCommit: lastCommit ?? repoInfo.pushed_at,
+                              planFile: plan, planFileError: planError)
+    }
+
+    static func describe(_ error: Error) -> String {
+        switch error {
+        case DecodingError.keyNotFound(let key, _): return "missing \"\(key.stringValue)\""
+        case DecodingError.typeMismatch(_, let ctx), DecodingError.valueNotFound(_, let ctx):
+            return "wrong type at \(ctx.codingPath.map(\.stringValue).joined(separator: "."))"
+        case DecodingError.dataCorrupted(let ctx): return ctx.debugDescription
+        default: return "not valid JSON"
+        }
     }
 }
 

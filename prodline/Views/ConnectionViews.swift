@@ -207,7 +207,7 @@ struct GitHubFields: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .focused($focus, equals: .token)
                     .inputField(focused: focus == .token)
-                Text("Issues in GitHub milestones or labeled “prodline” become checkpoint goals and close themselves. Your README guides suggestions, and quiet weeks get a nudge.")
+                Text("A prodline.json in the repo and issues in GitHub milestones (or labeled “prodline”) become checkpoint goals that tick themselves. Your README guides suggestions, and quiet weeks get a nudge.")
                     .font(.ui(12)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -247,6 +247,16 @@ struct GitHubFields: View {
                     Text("\(planned.count) planned issue\(planned.count == 1 ? "" : "s") · \(snap.milestones.count) milestone\(snap.milestones.count == 1 ? "" : "s")" +
                          (snap.lastCommit.map { " · last commit \($0.formatted(.relative(presentation: .named)))" } ?? ""))
                         .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    if let plan = snap.planFile {
+                        Label("prodline.json · \(plan.goals.count) goal\(plan.goals.count == 1 ? "" : "s")", systemImage: "doc.text")
+                            .font(.ui(13, .medium)).foregroundStyle(Theme.ink)
+                    } else if let err = snap.planFileError {
+                        Label(err, systemImage: "exclamationmark.triangle.fill")
+                            .font(.ui(13, .medium)).foregroundStyle(Theme.danger)
+                    } else {
+                        Label("No prodline.json yet", systemImage: "doc")
+                            .font(.ui(13)).foregroundStyle(Theme.tertiary)
+                    }
                 }
                 .card(padding: 14, radius: 18)
             }
@@ -301,6 +311,33 @@ struct GuideDisclosure<Content: View>: View {
 
 /// Everything about where checkpoint goals come from and how they complete.
 struct GoalsGuideView: View {
+    static let planFileExample = """
+    {
+      "version": 1,
+      "goals": [
+        { "id": "auth", "title": "Sign in with Apple",
+          "checkpoint": 1, "done": true },
+        { "id": "paywall", "title": "Paywall live",
+          "checkpoint": 2 },
+        { "id": "launch-post", "title": "Launch post drafted",
+          "due": "2026-10-15" }
+      ]
+    }
+    """
+
+    /// Paste into Claude Code (or a CLAUDE.md) so the agent keeps the plan current while it works.
+    static let agentInstructions = """
+    Keep a prodline.json file in the repository root. It tells the Prodline app what has to be done by each checkpoint of this project.
+
+    Format: {"version": 1, "goals": [{"id": "...", "title": "...", "checkpoint": N, "done": false}]}
+    - "checkpoint" is the position in the deadline list: Checkpoint 1, Checkpoint 2, …, then "Ship it", then "Traction review". Use "due": "YYYY-MM-DD" instead to place a goal by date.
+    - 1–3 goals per checkpoint. Titles are short, concrete and start with a verb ("Add Stripe checkout"), never vague activities.
+    - Keep ids stable and lowercase-with-dashes. Never reuse an id for a different goal.
+    - When you finish the work for a goal, set "done": true in the same commit. Never delete goals that are done.
+    - If the plan changes, update titles or move goals to another checkpoint instead of piling up new ones.
+    - Optional: "metric": {"key": "signups", "target": 500} for goals that are reached by a number instead of by code.
+    """
+
     static let example = """
     "goals": [
       { "id": "onboarding",
@@ -343,7 +380,39 @@ struct GoalsGuideView: View {
             }
             .padding(.leading, 34)
 
-            item("chevron.left.forwardslash.chevron.right", "From GitHub",
+            item("doc.text", "From prodline.json in your repo",
+                 "Link the repo and add a `prodline.json` file at its root with the same goals list. Prodline reads it every 10 minutes. It's the easiest way to let Claude Code (or any coding agent) plan your checkpoints and tick goals off as it ships them.")
+            VStack(alignment: .leading, spacing: 8) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    Text(Self.planFileExample)
+                        .font(.system(size: 12, design: .monospaced))
+                        .foregroundStyle(Theme.ink)
+                        .padding(14)
+                }
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+                HStack(spacing: 18) {
+                    Button {
+                        UIPasteboard.general.string = Self.planFileExample
+                        Haptics.success()
+                    } label: {
+                        Label("Copy file", systemImage: "doc.on.doc").font(.ui(14, .semibold))
+                    }
+                    Button {
+                        UIPasteboard.general.string = Self.agentInstructions
+                        Haptics.success()
+                    } label: {
+                        Label("Copy Claude Code prompt", systemImage: "sparkles").font(.ui(14, .semibold))
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.ink)
+                Text("Paste the prompt into Claude Code, or into the repo's CLAUDE.md so it keeps the plan current on its own.")
+                    .font(.ui(12)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.leading, 34)
+
+            item("chevron.left.forwardslash.chevron.right", "From GitHub issues",
                  "Put issues in a GitHub milestone, or label them “prodline”. A milestone with a due date lands on the first checkpoint on or after it; without a date, your first milestone maps to checkpoint 1, the second to checkpoint 2, and so on. Closing the issue ticks the goal. Pull requests are ignored.")
 
             item("sparkles", "Suggestions",
