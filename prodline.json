@@ -23,9 +23,9 @@
     {"id": "away-summary", "title": "Sum up XP earned while the app was closed", "due": "2026-10-09", "done": true},
     {"id": "late-reminders", "title": "Remind about late checkpoints in app and by notification", "due": "2026-10-09", "done": true},
     {"id": "own-metrics-feed", "title": "Publish Prodline's own metrics feed from GitHub Actions", "due": "2026-10-09", "done": true},
-    {"id": "building-metrics", "title": "Momentum stats while building: commits, goals, active days", "due": "2026-10-09", "done": false},
-    {"id": "edit-schedule", "title": "Change a project's start date and rhythm later", "due": "2026-10-09", "done": false},
-    {"id": "goal-source-heading", "title": "Show where goals come from once per deadline list", "due": "2026-10-09", "done": false},
+    {"id": "building-metrics", "title": "Momentum stats while building: commits, goals, active days", "due": "2026-10-09", "done": true},
+    {"id": "edit-schedule", "title": "Change a project's start date and rhythm later", "due": "2026-10-09", "done": true},
+    {"id": "goal-source-heading", "title": "Show where goals come from once per deadline list", "due": "2026-10-09", "done": true},
     {"id": "ai-on-device", "title": "Verify goal suggestions on device", "due": "2026-10-09", "done": false},
 
     {"id": "app-icon", "title": "Design app icon and launch screen", "due": "2026-10-12", "done": true},
