@@ -136,6 +136,13 @@ def metrics_list(v):
     ]
 
 
+def commit(slug):
+    """A push to the mock repo: new head SHA, fresh last-commit date."""
+    if slug in GITHUB:
+        GITHUB[slug]["commits"] = GITHUB[slug].get("commits", 0) + 1
+        GITHUB[slug]["last_commit_days_ago"] = 0
+
+
 def github_issue(slug, i):
     out = {"number": i["number"], "title": i["title"], "state": i["state"],
            "html_url": f"https://github.com/demo/{slug}/issues/{i['number']}",
@@ -237,7 +244,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             return self.wfile.write(data)
         if res == "commits":
-            return self.send_json(200, [{"commit": {"committer": {"date": _days_ago(repo["last_commit_days_ago"])}}}])
+            sha = f"c0ffee{repo.get('commits', 0):04d}"
+            etag = f'W/"{sha}"'
+            if self.headers.get("If-None-Match") == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.end_headers()
+                return
+            return self.send_json(200, [{"sha": sha, "commit": {"committer": {"date": _days_ago(repo["last_commit_days_ago"])}}}],
+                                  {"ETag": etag, "X-RateLimit-Remaining": "4999"})
         return self.send_json(404, {"message": "Not Found"})
 
     def do_GET(self):
@@ -305,6 +320,7 @@ class Handler(BaseHTTPRequestHandler):
                 for g in GITHUB.get(slug, {}).get("plan", {}).get("goals", []):
                     if g["id"] == body.get("id"):
                         g["done"] = bool(body.get("done", True))
+                commit(slug)
             elif kind == "reopen_issue":
                 for i in GITHUB.get(slug, {}).get("issues", []):
                     if i["number"] == body.get("number"):
@@ -313,7 +329,7 @@ class Handler(BaseHTTPRequestHandler):
                 for i in GITHUB.get(slug, {}).get("issues", []):
                     if i["number"] == body.get("number"):
                         i["state"] = "closed"
-                GITHUB.get(slug, {})["last_commit_days_ago"] = 0
+                commit(slug)
             else:
                 return self.send_json(400, {"error": "type must be sale, visits, viral, goal or close_issue"})
         self.send_json(200, {"ok": True})

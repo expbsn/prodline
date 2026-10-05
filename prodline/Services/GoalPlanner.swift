@@ -27,7 +27,11 @@ enum GoalPlanner {
         return false
     }
 
+    /// Available on this device and switched on in Configuration.
+    static var isEnabled: Bool { isAvailable && AppSettings.suggestions }
+
     static var unavailableReason: String {
+        if isAvailable && !AppSettings.suggestions { return "Suggestions are turned off in Me → Configuration." }
         switch SystemLanguageModel.default.availability {
         case .available: return ""
         case .unavailable(.deviceNotEligible): return "This iPhone doesn't support Apple Intelligence."

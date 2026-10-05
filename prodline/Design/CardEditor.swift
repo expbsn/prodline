@@ -117,6 +117,7 @@ struct AccentSlider: View {
     var photoHex: Int?
 
     @State private var dragging = false
+    @State private var horizontal: Bool?
     private let knob: CGFloat = 38
     private let steps = 48
 
@@ -185,9 +186,12 @@ struct AccentSlider: View {
                 }
                 .frame(height: 48)
                 .contentShape(Rectangle())
-                .gesture(
-                    DragGesture(minimumDistance: 0)
+                // Horizontal drags only; vertical ones keep scrolling the page.
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8)
                         .onChanged { g in
+                            if horizontal == nil { horizontal = abs(g.translation.width) > abs(g.translation.height) }
+                            guard horizontal == true else { return }
                             if locked {
                                 // First touch while locked unlocks: the user wants their own color.
                                 withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { locked = false }
@@ -204,7 +208,10 @@ struct AccentSlider: View {
                                 Haptics.select()
                             }
                         }
-                        .onEnded { _ in withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { dragging = false } }
+                        .onEnded { _ in
+                            horizontal = nil
+                            withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { dragging = false }
+                        }
                 )
             }
             .frame(height: 48)

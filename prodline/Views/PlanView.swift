@@ -25,7 +25,7 @@ struct PlanView: View {
 
     var body: some View {
         ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 16) {
                 ScreenHeader(eyebrow: "Level \(profile.level) · \(profile.xp) XP", title: "Plan")
 
                 statsRow.padding(.horizontal, 16)

@@ -285,6 +285,31 @@ struct GoalIntegrationTests {
         try await MockServer.post("habit-hero", key: "hh_live_demo", body: #"{"type":"goal","id":"onboarding","done":false}"#)
     }
 
+    @Test func commitWatchPicksUpPushesBetweenFullSyncs() async throws {
+        UserDefaults.standard.set(MockServer.base! + "/github", forKey: "githubAPIBase")
+        let ctx = try makeContext()
+        let p = Project(name: "Side Shop", accentHex: 0xFF9600, startDate: Date.now.adding(days: -2), buildDays: 14, observeDays: 28)
+        p.githubRepo = "demo/side-shop"
+        ctx.insert(p)
+        let gh = GitHubService()
+        let t0 = Date.now
+        await gh.refresh(projects: [p], now: t0)                                   // first full sync
+        #expect(gh.snapshots[p.id]?.planFile?.goals.first { $0.id == "launch-post" }?.done == false)
+
+        // Without a token the probe runs every 2 min; nothing changed → no full sync.
+        #expect(await gh.refresh(projects: [p], now: t0.addingTimeInterval(130)).isEmpty) // baseline SHA
+        #expect(gh.headSHA[p.id] != nil)
+        #expect(await gh.refresh(projects: [p], now: t0.addingTimeInterval(260)).isEmpty) // 304
+        #expect(await gh.refresh(projects: [p], now: t0.addingTimeInterval(300)).isEmpty) // too soon to probe
+
+        // A push (goal ticked in prodline.json) is picked up on the next probe, long before the 10-min sync.
+        try await MockServer.post("side-shop", key: "ss_live_demo", body: #"{"type":"plan_goal","id":"launch-post","done":true}"#)
+        let changed = await gh.refresh(projects: [p], now: t0.addingTimeInterval(390))
+        #expect(changed.count == 1)
+        #expect(gh.snapshots[p.id]?.planFile?.goals.first { $0.id == "launch-post" }?.done == true)
+        try await MockServer.post("side-shop", key: "ss_live_demo", body: #"{"type":"plan_goal","id":"launch-post","done":false}"#)
+    }
+
     @Test func githubIssuesCloseCheckpoint() async throws {
         UserDefaults.standard.set(MockServer.base! + "/github", forKey: "githubAPIBase")
         let ctx = try makeContext()
@@ -356,5 +381,14 @@ struct RealGitHubBacktest {
         let done = GoalEngine.autoComplete(projects: [p], profile: profile, celebration: nil, now: day(2026, 10, 5))
         #expect(done.contains { $0 === ms[0] })
         #expect(!ms[1].isDone) // still has open goals
+    }
+
+    @Test func conditionalHeadCheckReportsUnchanged() async throws {
+        let slug = try #require(ProcessInfo.processInfo.environment["PRODLINE_REAL_GITHUB"])
+        let client = GitHubClient(repo: try #require(GitHubRepoRef(slug)))
+        let first = try await client.headCommit(etag: nil)
+        #expect(!first.unchanged && first.sha != nil && first.etag != nil)
+        let second = try await client.headCommit(etag: first.etag)
+        #expect(second.unchanged) // 304: no new commit
     }
 }

@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
 
 /// The user's custom building scheme (phase lengths, cadence, checkpoint weekdays).
 struct SchemeEditor: View {
@@ -81,8 +82,21 @@ struct MeView: View {
     @Environment(\.modelContext) private var context
     @Environment(DataRefresher.self) private var refresher
     @Environment(CelebrationCenter.self) private var celebration
+    @Environment(GitHubService.self) private var github
     @Query private var projects: [Project]
     @AppStorage("mockServerURL") private var mockServerURL = "http://127.0.0.1:8787"
+    @AppStorage(AppSettings.Key.refreshSeconds) private var refreshSeconds = 30
+    @AppStorage(AppSettings.Key.githubMinutes) private var githubMinutes = 10
+    @AppStorage(AppSettings.Key.commitWatch) private var commitWatch = true
+    @AppStorage(AppSettings.Key.suggestions) private var suggestions = true
+    @AppStorage(AppSettings.Key.sampleData) private var sampleData = true
+    @AppStorage(AppSettings.Key.haptics) private var haptics = true
+    @State private var confirm: Confirm?
+
+    private enum Confirm: Identifiable {
+        case deleteAll, resetProgress
+        var id: Self { self }
+    }
 
     var body: some View {
         ScrollView(showsIndicators: false) {
@@ -135,10 +149,148 @@ struct MeView: View {
                 .card()
                 .padding(.horizontal, 16)
 
+                configurationCard.padding(.horizontal, 16)
+
                 developerCard.padding(.horizontal, 16)
             }
             .padding(.bottom, 24)
         }
+        .confirmationDialog(confirm == .deleteAll ? "Delete all data?" : "Reset progress?",
+                            isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
+                            titleVisibility: .visible, presenting: confirm) { c in
+            switch c {
+            case .deleteAll: Button("Delete everything", role: .destructive, action: deleteAll)
+            case .resetProgress: Button("Reset XP and streaks", role: .destructive, action: resetProgress)
+            }
+        } message: { c in
+            Text(c == .deleteAll
+                 ? "Removes every project, its deadlines, goals, metrics and stored keys, and resets your progress. This can't be undone."
+                 : "Sets XP, level, streak and on-time stats back to zero. Projects stay.")
+        }
+    }
+
+    // MARK: Configuration
+
+    private var configurationCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            SectionTitle("Configuration")
+
+            optionRow("Live refresh", "How often numbers update while the app is open.") {
+                HStack(spacing: 6) {
+                    ForEach([(15, "15s"), (30, "30s"), (60, "1m"), (120, "2m")], id: \.0) { v, label in
+                        Chip(title: label, isOn: refreshSeconds == v) { refreshSeconds = v }
+                    }
+                }
+            }
+            optionRow("GitHub full sync", "Issues, README and prodline.json.") {
+                HStack(spacing: 6) {
+                    ForEach([(5, "5m"), (10, "10m"), (30, "30m")], id: \.0) { v, label in
+                        Chip(title: label, isOn: githubMinutes == v) { githubMinutes = v }
+                    }
+                }
+            }
+            toggleRow("Watch repos for new commits", "Syncs right after you push: ~30 s with a token, ~2 min without.", $commitWatch)
+            toggleRow("Suggested goals", GoalPlanner.isAvailable
+                      ? "Drafted on this iPhone with Apple Intelligence."
+                      : "Needs Apple Intelligence on this iPhone.", $suggestions)
+            toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
+            toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
+        }
+        .card()
+        .environment(\.accent, .neutral)
+    }
+
+    private func optionRow<C: View>(_ title: String, _ caption: String, @ViewBuilder _ control: () -> C) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+            Text(caption).font(.ui(13)).foregroundStyle(Theme.secondary)
+            control()
+        }
+    }
+
+    private func toggleRow(_ title: String, _ caption: String, _ value: Binding<Bool>) -> some View {
+        Toggle(isOn: value) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                Text(caption).font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tint(Theme.ink)
+        .onChange(of: value.wrappedValue) { Haptics.select() }
+    }
+
+    // MARK: Demo & testing actions
+
+    private func refreshAll() {
+        Task {
+            await refresher.refresh(projects: projects, context: context, force: true)
+            let changed = await github.refresh(projects: projects, force: true)
+            for p in changed {
+                if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }
+            }
+            GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
+                                    celebration: celebration, context: context)
+            celebration.fire(title: "Refreshed", subtitle: "Metrics and \(changed.count) repo\(changed.count == 1 ? "" : "s") updated", confetti: false)
+        }
+    }
+
+    private func simulateSale() {
+        guard let p = projects.first(where: { $0.hasEndpoint && $0.isActive }),
+              var comps = URLComponents(string: p.endpoint),
+              let key = Keychain.get(p.id.uuidString) else {
+            celebration.nudge(title: "No connected project", subtitle: "Load the demo projects first.")
+            return
+        }
+        // …/projects/<slug>/metrics → …/projects/<slug>/events
+        comps.path = comps.path.replacingOccurrences(of: "/metrics", with: "/events")
+        comps.query = nil
+        guard let url = comps.url else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
+        req.httpBody = Data(#"{"type":"sale","amount":49}"#.utf8)
+        Task {
+            _ = try? await URLSession.shared.data(for: req)
+            await refresher.refresh(projects: [p], context: context, force: true)
+            celebration.fire(title: "+$49 sale", subtitle: "Simulated on \(p.name)", accent: p.accent)
+        }
+    }
+
+    private func resetProgress() {
+        profile.xp = 0; profile.streak = 0; profile.bestStreak = 0
+        profile.completedOnTime = 0; profile.completedLate = 0
+        try? context.save()
+        Haptics.warning()
+    }
+
+    private func deleteAll() {
+        for p in projects {
+            Keychain.delete(p.id.uuidString)
+            Keychain.delete("gh-" + p.id.uuidString)
+            context.delete(p)
+        }
+        resetProgress()
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+        refresher.reset()
+        github.reset()
+        DashLayout.lastCardFrame = nil
+        try? context.save()
+    }
+
+    private func devButton(_ title: String, _ symbol: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
+        Button(role: role, action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).frame(width: 22)
+                Text(title).font(.ui(15, .semibold))
+                Spacer()
+            }
+            .foregroundStyle(role == .destructive ? Theme.danger : Theme.ink)
+            .padding(.horizontal, 14)
+            .frame(height: 48)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
+        }
+        .buttonStyle(PressableStyle(scale: 0.97))
     }
 
     private var developerCard: some View {
@@ -155,6 +307,30 @@ struct MeView: View {
                 Task { await refresher.refresh(projects: projects, context: context, force: true) }
             }
             .buttonStyle(.chunky(.neutral, height: 50))
+
+            VStack(spacing: 8) {
+                devButton("Refresh everything now", "arrow.clockwise", action: refreshAll)
+                devButton("Simulate a $49 sale", "dollarsign.circle", action: simulateSale)
+                devButton("Send a test notification (5 s)", "bell.badge") {
+                    Task {
+                        _ = await Notifier.requestAuth()
+                        Notifier.sendTest(projects: projects)
+                        celebration.fire(title: "Notification queued", subtitle: "Lock the phone or leave the app to see it", confetti: false)
+                    }
+                }
+                devButton("Play a celebration", "party.popper") {
+                    celebration.fire(title: "+10 XP", subtitle: "\(ScheduleEngine.praise()) · just a test", accent: projects.first?.accent ?? .neutral)
+                }
+                devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
+                    celebration.nudge(title: "A deadline slipped", subtitle: "Streak reset. The next checkpoint starts a new one.")
+                }
+                devButton("Replay onboarding", "sparkles.rectangle.stack") {
+                    profile.onboarded = false
+                    try? context.save()
+                }
+                devButton("Reset XP and streaks", "arrow.uturn.backward", role: .destructive) { confirm = .resetProgress }
+                devButton("Delete all data", "trash", role: .destructive) { confirm = .deleteAll }
+            }
         }
         .card()
     }
@@ -220,7 +396,10 @@ struct OnboardingView: View {
             }
 
             Text("Welcome to").eyebrow()
-            Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
+            HStack(spacing: 14) {
+                Image("Mark").resizable().scaledToFit().frame(width: 58, height: 58).foregroundStyle(Theme.ink)
+                Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
+            }
             Text("Ship a project every cycle, watch its numbers come in, and keep the streak going.")
                 .font(.ui(19)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)

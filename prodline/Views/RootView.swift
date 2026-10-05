@@ -64,7 +64,7 @@ struct RootView: View {
                     GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
                                             celebration: celebration, context: context)
                 }
-                try? await Task.sleep(for: DataRefresher.foregroundInterval)
+                try? await Task.sleep(for: .seconds(AppSettings.refreshSeconds))
             }
         }
     }
@@ -96,6 +96,14 @@ struct MainShell: View {
     @State private var opened: Opened?
     @Namespace private var zoom
 
+    private func tabPage<Content: View>(_ t: AppTab, @ViewBuilder _ content: () -> Content) -> some View {
+        let active = tab == t
+        return content()
+            .opacity(active ? 1 : 0)
+            .allowsHitTesting(active)
+            .accessibilityHidden(!active)
+    }
+
     struct Opened: Equatable {
         let project: Project
         let cardFrame: CGRect?
@@ -103,22 +111,20 @@ struct MainShell: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Group {
-                switch tab {
-                case .projects:
+            // All tabs stay alive so each keeps its scroll position (Dash's carousel never has to re-center).
+            ZStack {
+                tabPage(.projects) {
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
                              onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { showCreate = true },
                              onStreak: { tab = .me })
-                case .plan:
-                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { showCreate = true })
-                case .insights:
-                    InsightsView()
-                case .me:
-                    MeView(profile: profile)
                 }
+                tabPage(.plan) {
+                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { showCreate = true })
+                }
+                tabPage(.insights) { InsightsView() }
+                tabPage(.me) { MeView(profile: profile) }
             }
             .safeAreaPadding(.bottom, 92)
-            .transition(.opacity)
 
             // Fade content out behind the tab bar, all the way to the screen edge.
             VStack(spacing: 0) {

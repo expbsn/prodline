@@ -318,7 +318,7 @@ struct ProjectDetailView: View {
     private var milestonesCard: some View {
         let ms = project.sortedMilestones
         let done = ms.filter(\.isDone).count
-        let canSuggest = GoalPlanner.isAvailable && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
+        let canSuggest = GoalPlanner.isEnabled && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
         return VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Deadlines", trailing: "\(done)/\(ms.count) done")
             ChunkyProgressBar(value: ms.isEmpty ? 0 : Double(done) / Double(ms.count), height: 12)

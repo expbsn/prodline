@@ -279,7 +279,7 @@ struct CreateProjectFlow: View {
         return VStack(alignment: .leading, spacing: 18) {
             stepTitle("Step 5 of 5", "Plan the checkpoints")
 
-            if !GoalPlanner.isAvailable {
+            if !GoalPlanner.isEnabled {
                 infoCard(symbol: "sparkles", title: "Suggestions aren't available",
                          text: GoalPlanner.unavailableReason + " Checkpoints stay simple: tick them off when you're done." +
                                (repo.isEmpty && endpoint.isEmpty ? "" : " Goals from your API or GitHub still sync in automatically."))
@@ -369,7 +369,7 @@ struct CreateProjectFlow: View {
         let ms = deadlines
         if !force && draftGoals.count == ms.count { return }
         draftGoals = Array(repeating: [], count: ms.count)
-        guard GoalPlanner.isAvailable else { return }
+        guard GoalPlanner.isEnabled else { return }
         drafting = true
         defer { drafting = false }
         // Read the repo for context if it was linked but not checked yet.

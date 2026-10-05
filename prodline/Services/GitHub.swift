@@ -113,6 +113,43 @@ nonisolated struct GitHubClient: Sendable {
         try MetricsPayload.decoder().decode(type, from: data)
     }
 
+    /// Result of the cheap "did anything change?" probe.
+    struct HeadCheck: Sendable, Equatable {
+        var sha: String?        // nil when unchanged (304)
+        var etag: String?
+        var unchanged: Bool
+        var rateRemaining: Int?
+    }
+
+    /// Conditional request for the latest commit. A 304 means nothing changed and, per GitHub,
+    /// doesn't count against the rate limit, so this can run every refresh tick.
+    func headCommit(etag: String?) async throws -> HeadCheck {
+        var comps = URLComponents(url: base.appendingPathComponent("repos/\(repo.owner)/\(repo.name)/commits"),
+                                  resolvingAgainstBaseURL: false)!
+        comps.queryItems = [URLQueryItem(name: "per_page", value: "1")]
+        var req = URLRequest(url: comps.url!, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 10)
+        req.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
+        req.setValue("Prodline/1.0", forHTTPHeaderField: "User-Agent")
+        if let etag { req.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+        if let token, !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let data: Data, response: URLResponse
+        do { (data, response) = try await session.data(for: req) } catch { throw GitHubError.offline }
+        guard let http = response as? HTTPURLResponse else { throw GitHubError.offline }
+        let remaining = http.value(forHTTPHeaderField: "x-ratelimit-remaining").flatMap(Int.init)
+        switch http.statusCode {
+        case 304:
+            return HeadCheck(sha: nil, etag: etag, unchanged: true, rateRemaining: remaining)
+        case 200..<300:
+            struct C: Decodable { var sha: String }
+            let sha = (try? JSONDecoder().decode([C].self, from: data))?.first?.sha
+            return HeadCheck(sha: sha, etag: http.value(forHTTPHeaderField: "ETag"), unchanged: false, rateRemaining: remaining)
+        case 401: throw GitHubError.unauthorized
+        case 403, 429: throw GitHubError.rateLimited
+        case 404: throw GitHubError.notFound
+        default: throw GitHubError.http(http.statusCode)
+        }
+    }
+
     func fetch() async throws -> GitHubSnapshot {
         struct Repo: Decodable { var description: String?; var pushed_at: Date? }
         struct Commit: Decodable { struct Inner: Decodable { struct Author: Decodable { var date: Date? }; var committer: Author? }; var commit: Inner }
@@ -151,13 +188,24 @@ nonisolated struct GitHubClient: Sendable {
 }
 
 /// Polls linked repos (much less often than metrics: GitHub's unauthenticated limit is 60 req/h).
+/// Keeps linked repos in sync.
+/// - Full sync (issues, README, prodline.json) every `AppSettings.githubMinutes` (default 10).
+/// - Between those, a conditional "latest commit" probe: a new commit triggers a full sync right away.
+///   With a token (5,000 req/h) it runs every 25 s; without one (60 req/h, and unauthenticated 304s
+///   still count) every 2 min, and it pauses when the remaining quota runs low.
 @Observable
 final class GitHubService {
-    static let interval: TimeInterval = 10 * 60
+    static var interval: TimeInterval { TimeInterval(AppSettings.githubMinutes * 60) }
+    static func headCheckGap(authenticated: Bool) -> TimeInterval { authenticated ? 25 : 120 }
 
     var snapshots: [UUID: GitHubSnapshot] = [:]
     var errors: [UUID: String] = [:]
     private var lastFetch: [UUID: Date] = [:]
+    private var lastHeadCheck: [UUID: Date] = [:]
+    private var etags: [UUID: String] = [:]
+    private(set) var headSHA: [UUID: String] = [:]
+    /// GitHub's remaining quota from the last response; the probe pauses when it runs low.
+    private(set) var rateRemaining: Int?
 
     /// The API base; DEBUG builds can point it at the mock server.
     static var base: URL {
@@ -169,13 +217,37 @@ final class GitHubService {
         return GitHubClient(repo: ref, token: Keychain.get("gh-" + project.id.uuidString), base: base)
     }
 
+    func reset() {
+        snapshots = [:]; errors = [:]; lastFetch = [:]; lastHeadCheck = [:]; etags = [:]; headSHA = [:]
+    }
+
+    /// True when the repo has a commit we haven't synced yet.
+    private func hasNewCommit(_ p: Project, client: GitHubClient, now: Date) async -> Bool {
+        guard AppSettings.commitWatch, (rateRemaining ?? 60) > 10 else { return false }
+        let gap = Self.headCheckGap(authenticated: !(client.token ?? "").isEmpty)
+        if let last = lastHeadCheck[p.id], now.timeIntervalSince(last) < gap { return false }
+        lastHeadCheck[p.id] = now
+        guard let head = try? await client.headCommit(etag: etags[p.id]) else { return false }
+        rateRemaining = head.rateRemaining ?? rateRemaining
+        if head.unchanged { return false }
+        etags[p.id] = head.etag
+        defer { if let sha = head.sha { headSHA[p.id] = sha } }
+        // First probe only records the baseline; the full sync already has this state.
+        guard let known = headSHA[p.id] else { return false }
+        return head.sha != nil && head.sha != known
+    }
+
     /// Returns the projects whose snapshot changed.
     @discardableResult
     func refresh(projects: [Project], force: Bool = false, now: Date = .now) async -> [Project] {
         var changed: [Project] = []
         for p in projects where p.isActive || p.phase() == .upcoming {
             guard let client = Self.client(for: p) else { continue }
-            if !force, let last = lastFetch[p.id], now.timeIntervalSince(last) < Self.interval { continue }
+            let due = force || (lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true)
+            if !due {
+                let pushed = await hasNewCommit(p, client: client, now: now)
+                if !pushed { continue }
+            }
             lastFetch[p.id] = now
             do {
                 let snap = try await client.fetch()

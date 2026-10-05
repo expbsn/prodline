@@ -4,12 +4,11 @@ import SwiftUI
 import BackgroundTasks
 
 /// Pulls metrics from every active project.
-/// - Foreground: every `foregroundInterval` while the app is active, plus immediately on activation.
+/// - Foreground: every `AppSettings.refreshSeconds` (default 30 s) while active, plus immediately on activation.
 /// - Background: opportunistic BGAppRefresh (iOS decides when; typically 15+ min).
 /// - Failing endpoints back off exponentially (30 s … 15 min) or honor `Retry-After`.
 @Observable
 final class DataRefresher {
-    static let foregroundInterval: Duration = .seconds(30)
     static let minGap: TimeInterval = 10
     static let historyStoreGap: TimeInterval = 15 * 60
     static let maxBackoff: TimeInterval = 15 * 60
@@ -61,8 +60,14 @@ final class DataRefresher {
             guard p.phase(on: now) == .building || p.phase(on: now) == .observing else { return false }
             return force || (nextAttempt[p.id].map { $0 <= now } ?? true)
         }
-        let jobs = due.map { p in
+        let jobs = due.compactMap { p -> Job? in
             let c = clientProvider(p)
+            // Sample numbers can be switched off in Configuration.
+            if c.isSample && !AppSettings.sampleData {
+                latest[p.id] = nil
+                status[p.id] = nil
+                return nil
+            }
             return Job(id: p.id, client: c.client, isSample: c.isSample, since: p.latestSnapshot?.date)
         }
 
@@ -100,6 +105,11 @@ final class DataRefresher {
         }
         lastRefresh = now
         try? context.save()
+    }
+
+    /// Forget everything in memory (used by "Delete all data").
+    func reset() {
+        latest = [:]; status = [:]; failures = [:]; nextAttempt = [:]; lastRefresh = nil
     }
 
     func store(_ payload: MetricsPayload, in project: Project, context: ModelContext) {

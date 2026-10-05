@@ -152,6 +152,19 @@ enum Notifier {
                                          trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
     }
 
+    /// Demo: a realistic deadline reminder in 5 seconds.
+    static func sendTest(projects: [Project]) {
+        let m = projects.flatMap { $0.sortedMilestones }.first { !$0.isDone }
+        let content = UNMutableNotificationContent()
+        content.title = m.flatMap { $0.project.map { "\($0.name): deadline day" } } ?? "Prodline: deadline day"
+        let open = m?.openGoals.map(\.title) ?? []
+        content.body = (m?.title ?? "Checkpoint 1") + " is due today." + (open.isEmpty ? " You've got this." : " Left: " + open.prefix(2).joined(separator: ", ") + ".")
+        content.sound = .default
+        UNUserNotificationCenter.current().add(UNNotificationRequest(
+            identifier: "test-" + UUID().uuidString, content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false)))
+    }
+
     static func cancel(_ m: Milestone) {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: [m.id.uuidString, m.id.uuidString + "-pm"])

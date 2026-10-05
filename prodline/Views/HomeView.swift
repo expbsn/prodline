@@ -36,6 +36,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var context
     /// On-screen frames of the cards, so the project page can put its card exactly there.
     @State private var cardFrames: [UUID: CGRect] = [:]
+    /// Once the user touches the carousel, startup centering stands down so it can't fight the swipe.
+    @State private var userScrolled = false
 
     static let createID = UUID(uuidString: "00000000-0000-0000-0000-00000000C0DE")!
     private let spacing: CGFloat = 16
@@ -166,21 +168,26 @@ struct HomeView: View {
                 .cardFloorShadow(width: cardW)
         }
         // The card width settles after the first layout pass; keep the focused card centered through it.
+        .onScrollPhaseChange { _, phase in
+            if phase == .interacting { userScrolled = true }
+        }
         .task {
             ensureFocus()
             // Lazy content and the measured card width settle over the first frames.
             for _ in 0..<3 {
                 try? await Task.sleep(for: .milliseconds(60))
+                guard !userScrolled else { return }
                 proxy.scrollTo(focusedID, anchor: .center)
             }
             // Safety net: whatever ends up centered is what the panel, colors and button describe.
             try? await Task.sleep(for: .milliseconds(150))
+            guard !userScrolled else { return }
             if let centered = cardFrames.min(by: { abs($0.value.midX - screenW / 2) < abs($1.value.midX - screenW / 2) })?.key,
                centered != focusedID {
                 focusedID = centered
             }
         }
-        .onChange(of: cardW) { proxy.scrollTo(focusedID, anchor: .center) }
+        .onChange(of: cardW) { if !userScrolled { proxy.scrollTo(focusedID, anchor: .center) } }
         }
     }
 

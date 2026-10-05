@@ -76,7 +76,7 @@ struct ConnectionFields: View {
 
             Button {
                 Haptics.soft()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { showSpec.toggle() }
+                showSpec.toggle()
             } label: {
                 HStack {
                     Text("What should my endpoint return?").font(.ui(15, .semibold))
@@ -88,7 +88,7 @@ struct ConnectionFields: View {
             .buttonStyle(.plain)
             .padding(.top, 4)
 
-            if showSpec { APISpecView() .transition(.opacity.combined(with: .move(edge: .top))) }
+            if showSpec { APISpecView() }
 
             GuideDisclosure(title: "How do I send goals?") { GoalsGuideView() }
         }
@@ -203,11 +203,11 @@ struct GitHubFields: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .focused($focus, equals: .repo)
                     .inputField(focused: focus == .repo)
-                SecureField("", text: $token, prompt: Text("Token, only for private repos").foregroundStyle(Theme.tertiary))
+                SecureField("", text: $token, prompt: Text("Token (private repos, faster updates)").foregroundStyle(Theme.tertiary))
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .focused($focus, equals: .token)
                     .inputField(focused: focus == .token)
-                Text("A prodline.json in the repo and issues in GitHub milestones (or labeled “prodline”) become checkpoint goals that tick themselves. Your README guides suggestions, and quiet weeks get a nudge.")
+                Text("A prodline.json in the repo and issues in GitHub milestones (or labeled “prodline”) become checkpoint goals that tick themselves. New commits show up within ~30 s with a token, ~2 min without. Your README guides suggestions, and quiet weeks get a nudge.")
                     .font(.ui(12)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -293,7 +293,7 @@ struct GuideDisclosure<Content: View>: View {
         VStack(alignment: .leading, spacing: 12) {
             Button {
                 Haptics.soft()
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { open.toggle() }
+                open.toggle()
             } label: {
                 HStack {
                     Text(title).font(.ui(15, .semibold))
@@ -304,7 +304,7 @@ struct GuideDisclosure<Content: View>: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            if open { content.transition(.opacity.combined(with: .move(edge: .top))) }
+            if open { content }
         }
     }
 }

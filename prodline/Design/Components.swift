@@ -221,8 +221,19 @@ struct ChunkySlider: View {
     var color: Color? = nil
     @Environment(\.accent) private var accent
     @State private var dragging = false
+    /// Decided on the first movement: nil = undecided, true = horizontal (slider), false = vertical (page scroll).
+    @State private var horizontal: Bool?
 
     private let knob: CGFloat = 34
+
+    private func set(at x: CGFloat, width w: CGFloat, span: CGFloat) {
+        let f = min(max((x - knob / 2) / (w - knob), 0), 1)
+        let new = range.lowerBound + Int((f * span).rounded())
+        if new != value {
+            withAnimation(.spring(response: 0.18, dampingFraction: 0.85)) { value = new }
+            Haptics.select()
+        }
+    }
 
     var body: some View {
         let tint = color ?? accent.base
@@ -245,22 +256,26 @@ struct ChunkySlider: View {
             }
             .frame(height: 44)
             .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
+            // Simultaneous + axis lock: vertical drags keep scrolling the page and never move the slider.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
                     .onChanged { g in
+                        if horizontal == nil {
+                            horizontal = abs(g.translation.width) > abs(g.translation.height)
+                        }
+                        guard horizontal == true else { return }
                         if !dragging {
                             withAnimation(.spring(response: 0.2, dampingFraction: 0.6)) { dragging = true }
                             Haptics.soft()
                         }
-                        let f = min(max((g.location.x - knob / 2) / (w - knob), 0), 1)
-                        let new = range.lowerBound + Int((f * span).rounded())
-                        if new != value {
-                            withAnimation(.spring(response: 0.18, dampingFraction: 0.85)) { value = new }
-                            Haptics.select()
-                        }
+                        set(at: g.location.x, width: w, span: span)
                     }
-                    .onEnded { _ in withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { dragging = false } }
+                    .onEnded { _ in
+                        horizontal = nil
+                        withAnimation(.spring(response: 0.25, dampingFraction: 0.6)) { dragging = false }
+                    }
             )
+            .onTapGesture(coordinateSpace: .local) { p in set(at: p.x, width: w, span: span) }
         }
         .frame(height: 44)
     }
