@@ -200,3 +200,43 @@ struct BacktestTests {
         #expect(maxOverlap == 5) // ceil(31 / 7)
     }
 }
+
+@MainActor
+@Suite("Away and late")
+struct AwayAndLateTests {
+    @Test func collectedXPBecomesOneSummary() {
+        let c = CelebrationCenter()
+        c.beginCollecting()
+        c.fire(title: "+10 XP", subtitle: "Nailed it", xp: 10, kind: .checkpoint)
+        c.fire(title: "+9 XP", subtitle: "3 goals", xp: 9, kind: .goals(3))
+        #expect(c.banner == nil) // held while collecting
+        c.endCollecting(awayTitle: true)
+        #expect(c.banner?.title == "+19 XP while you were away")
+        #expect(c.banner?.subtitle == "1 checkpoint · 3 goals done")
+    }
+
+    @Test func singleCollectedEventShowsAsIs() {
+        let c = CelebrationCenter()
+        c.beginCollecting()
+        c.fire(title: "+3 XP", subtitle: "Ship pricing page", xp: 3, kind: .goals(1))
+        c.endCollecting(awayTitle: true)
+        #expect(c.banner?.title == "+3 XP")
+    }
+
+    @Test func lateReminderNamesTheLateCheckpoint() throws {
+        let ctx = try makeContext()
+        let profile = Profile()
+        profile.milestoneWeekdayMask = (1 << 1) | (1 << 5)
+        profile.remindersEnabled = false
+        ctx.insert(profile)
+        let p = Project(name: "Late Co", accentHex: 0x58CC02, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
+        ScheduleEngine.createProject(p, profile: profile, context: ctx)
+        let first = p.sortedMilestones[0] // Fri Jan 9
+        GoalEngine.addGoals(["Pricing page", "Onboarding"], source: .manual, to: first, context: ctx)
+        let r = try #require(ScheduleEngine.lateReminder(projects: [p], now: day(2026, 1, 11)))
+        #expect(r.title == "\(first.title) is 2 days late")
+        #expect(r.subtitle.hasPrefix("Late Co · 2 goals still open"))
+        first.completedAt = day(2026, 1, 11)
+        #expect(ScheduleEngine.lateReminder(projects: [p], now: day(2026, 1, 11)) == nil)
+    }
+}

@@ -201,6 +201,8 @@ final class Goal {
     var isDone: Bool = false
     var doneAt: Date? = nil
     var order: Int = 0
+    /// XP for finishing this goal was handed out (or it arrived already done, which earns none).
+    var xpAwarded: Bool = false
     var milestone: Milestone? = nil
 
     init(title: String, source: GoalSource, externalID: String = "", order: Int = 0) {

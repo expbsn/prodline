@@ -19,6 +19,10 @@
     {"id": "plan-file", "title": "Read prodline.json from the repo", "due": "2026-10-09", "done": true},
     {"id": "device-test", "title": "Test on a physical iPhone", "due": "2026-10-09", "done": true},
     {"id": "demo-discovery", "title": "Find the mock server automatically on a phone", "due": "2026-10-09", "done": true},
+    {"id": "goal-xp", "title": "Earn XP for every finished goal", "due": "2026-10-09", "done": true},
+    {"id": "away-summary", "title": "Sum up XP earned while the app was closed", "due": "2026-10-09", "done": true},
+    {"id": "late-reminders", "title": "Remind about late checkpoints in app and by notification", "due": "2026-10-09", "done": true},
+    {"id": "own-metrics-feed", "title": "Publish Prodline's own metrics feed from GitHub Actions", "due": "2026-10-09", "done": true},
     {"id": "ai-on-device", "title": "Verify goal suggestions on device", "due": "2026-10-09", "done": false},
 
     {"id": "app-icon", "title": "Design app icon and launch screen", "due": "2026-10-12", "done": true},

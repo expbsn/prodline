@@ -392,3 +392,54 @@ struct RealGitHubBacktest {
         #expect(second.unchanged) // 304: no new commit
     }
 }
+
+@MainActor
+@Suite("Goal XP")
+struct GoalXPTests {
+    private func setup() throws -> (ModelContext, Project, Profile, UserDefaults) {
+        let ctx = try makeContext()
+        let profile = Profile()
+        profile.milestoneWeekdayMask = (1 << 1) | (1 << 5)
+        profile.remindersEnabled = false
+        ctx.insert(profile)
+        let p = Project(name: "P", accentHex: 0x58CC02, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
+        ScheduleEngine.createProject(p, profile: profile, context: ctx)
+        let defaults = UserDefaults(suiteName: "goalxp-\(UUID().uuidString)")!
+        defaults.set(day(2026, 1, 1), forKey: GoalEngine.goalXPSinceKey)
+        return (ctx, p, profile, defaults)
+    }
+
+    private func planGoal(_ id: String, done: Bool) -> MetricsPayload.RemoteGoal {
+        .init(id: id, title: "Goal \(id)", detail: nil, checkpoint: 2, due: nil, done: done, url: nil, metric: nil)
+    }
+
+    @Test func tickingGoalsInPlanFilePaysOncePerGoal() throws {
+        let (ctx, p, profile, defaults) = try setup()
+        let now = day(2026, 1, 8)
+        // First sync: "a" already done (earns nothing), "b" and "c" open.
+        GoalEngine.syncPlanFile([planGoal("a", done: true), planGoal("b", done: false), planGoal("c", done: false)], project: p, context: ctx)
+        #expect(GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, now: now, defaults: defaults) == 0)
+
+        // A commit ticks "b".
+        GoalEngine.syncPlanFile([planGoal("a", done: true), planGoal("b", done: true), planGoal("c", done: false)], project: p, context: ctx)
+        let earned = GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, now: now, defaults: defaults)
+        #expect(earned == GoalEngine.xpPerGoal)
+        #expect(profile.xp == GoalEngine.xpPerGoal)
+
+        // Syncing the same file again pays nothing more.
+        GoalEngine.syncPlanFile([planGoal("a", done: true), planGoal("b", done: true), planGoal("c", done: false)], project: p, context: ctx)
+        #expect(GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, now: now, defaults: defaults) == 0)
+        try ctx.save()
+    }
+
+    @Test func goalsDoneBeforeTheFeatureDontPayOut() throws {
+        let (ctx, p, profile, _) = try setup()
+        let fresh = UserDefaults(suiteName: "goalxp-fresh-\(UUID().uuidString)")!
+        GoalEngine.addGoals(["Old"], source: .manual, to: p.sortedMilestones[0], context: ctx)
+        p.sortedMilestones[0].sortedGoals[0].setDone(true, at: day(2026, 1, 6))
+        // First run of the new version starts the clock now: the old tick is marked, not paid.
+        #expect(GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, now: day(2026, 1, 9), defaults: fresh) == 0)
+        #expect(p.sortedMilestones[0].sortedGoals[0].xpAwarded)
+        #expect(profile.xp == 0)
+    }
+}

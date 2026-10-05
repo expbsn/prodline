@@ -126,12 +126,15 @@ enum ScheduleEngine {
 
         let accent = m.project?.accent ?? .neutral
         if profile.level > oldLevel {
-            celebration?.fire(title: "Level \(profile.level)", subtitle: "+\(gained) XP · you're on a roll", accent: accent)
+            celebration?.fire(title: "Level \(profile.level)", subtitle: "+\(gained) XP · you're on a roll", accent: accent,
+                              xp: gained, kind: .checkpoint)
         } else if onTime {
             celebration?.fire(title: m.isLaunch ? "Shipped! +\(gained) XP" : "+\(gained) XP",
-                              subtitle: "\(praise()) · \(profile.streak) on time in a row", accent: accent)
+                              subtitle: "\(praise()) · \(profile.streak) on time in a row", accent: accent,
+                              xp: gained, kind: .checkpoint)
         } else {
-            celebration?.fire(title: "+\(gained) XP", subtitle: "Late beats never. Keep going.", accent: accent, confetti: false)
+            celebration?.fire(title: "+\(gained) XP", subtitle: "Late beats never. Keep going.", accent: accent, confetti: false,
+                              xp: gained, kind: .checkpoint)
         }
         return gained
     }
@@ -146,6 +149,22 @@ enum ScheduleEngine {
         }
         if count > 0 { profile.streak = 0 }
         return count
+    }
+
+    /// The most urgent late checkpoint that still has work open, as an in-app reminder.
+    static func lateReminder(projects: [Project], now: Date = .now) -> (title: String, subtitle: String)? {
+        let late = projects.flatMap { $0.sortedMilestones }
+            .filter { m in
+                guard !m.isDone, m.isOverdue(on: now), let phase = m.project?.phase(on: now) else { return false }
+                return phase == .building || phase == .observing
+            }
+            .sorted { $0.dueDate > $1.dueDate }
+        guard let m = late.first, let p = m.project else { return nil }
+        let days = Date.days(from: m.dueDate, to: now)
+        let open = m.openGoals.count
+        let more = late.count > 1 ? " · \(late.count - 1) more late" : ""
+        return ("\(m.title) is \(days) day\(days == 1 ? "" : "s") late",
+                "\(p.name) · " + (open > 0 ? "\(open) goal\(open == 1 ? "" : "s") still open" : "tick it off when it's done") + more)
     }
 
     static func praise() -> String {
@@ -178,7 +197,24 @@ enum Notifier {
             body: "\(m.title) is due today.\(goalsText.isEmpty ? " You've got this." : goalsText)")
         add(m.id.uuidString + "-pm", hour: 18, title: "Still time today",
             body: "\(m.title) · \(project.name).\(goalsText.isEmpty ? " Finish it and keep your streak alive." : goalsText)")
+        // If it slips, keep nudging for a few days; completing the checkpoint cancels these.
+        for day in 1...lateDays {
+            var comps = Calendar.current.dateComponents([.year, .month, .day], from: m.dueDate.adding(days: day))
+            comps.hour = hour
+            guard let fire = Calendar.current.date(from: comps), fire > .now else { continue }
+            let content = UNMutableNotificationContent()
+            content.title = "\(project.name): \(m.title) is \(day) day\(day == 1 ? "" : "s") late"
+            content.body = open.isEmpty
+                ? "Tick it off when it's done. Late still earns XP."
+                : "Still open: " + open.prefix(2).joined(separator: ", ") + (open.count > 2 ? " +\(open.count - 2)" : "") + ". Late still earns XP."
+            content.sound = .default
+            center.add(UNNotificationRequest(identifier: m.id.uuidString + "-late-\(day)", content: content,
+                                             trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+        }
     }
+
+    /// How many days after a missed deadline the late reminders keep coming.
+    static let lateDays = 3
 
     /// A GitHub-aware nudge: the repo has gone quiet while a checkpoint is coming up.
     static func staleRepoNudge(project: Project, hour: Int, now: Date = .now) {
@@ -218,7 +254,8 @@ enum Notifier {
 
     static func cancel(_ m: Milestone) {
         UNUserNotificationCenter.current()
-            .removePendingNotificationRequests(withIdentifiers: [m.id.uuidString, m.id.uuidString + "-pm"])
+            .removePendingNotificationRequests(withIdentifiers: [m.id.uuidString, m.id.uuidString + "-pm"]
+                                               + (1...lateDays).map { m.id.uuidString + "-late-\($0)" })
     }
 
     static func rescheduleAll(projects: [Project], profile: Profile) {

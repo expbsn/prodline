@@ -400,6 +400,7 @@ struct ProjectDetailView: View {
         Haptics.select()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { g.setDone(!g.isDone) }
         if g.isDone, let profile = profiles.first {
+            GoalEngine.awardGoalXP(projects: [project], profile: profile, celebration: celebration)
             GoalEngine.autoComplete(projects: [project], profile: profile, celebration: celebration)
         }
         try? context.save()

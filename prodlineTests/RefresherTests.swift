@@ -128,14 +128,16 @@ struct RefresherTests {
         #expect((p.snapshots?.count ?? 0) >= 3) // sample history backfills daily points
     }
 
-    @Test func defaultClientNeedsEndpointAndKey() throws {
+    @Test func defaultClientNeedsOnlyAnEndpoint() throws {
         let (_, p) = try setup()
         #expect(DataRefresher.defaultClient(for: p).isSample)
         p.endpoint = "https://example.com/m"
-        #expect(DataRefresher.defaultClient(for: p).isSample) // no key yet
+        // Public endpoints work without a key; the header is only sent when one is set.
+        let client = try #require(DataRefresher.defaultClient(for: p).client as? RESTMetricsClient)
+        #expect(client.apiKey.isEmpty)
         Keychain.set("k", for: p.id.uuidString)
         defer { Keychain.delete(p.id.uuidString) }
-        #expect(!DataRefresher.defaultClient(for: p).isSample)
+        #expect((DataRefresher.defaultClient(for: p).client as? RESTMetricsClient)?.apiKey == "k")
         p.endpoint = "not a url"
         #expect(DataRefresher.defaultClient(for: p).isSample)
     }

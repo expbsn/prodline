@@ -286,28 +286,76 @@ struct ChunkySlider: View {
 @Observable
 final class CelebrationCenter {
     struct Banner: Equatable { var title: String; var subtitle: String; var accent: Accent }
+    /// What a celebration was for, so several can be summed up in one banner.
+    enum Kind { case checkpoint, goals(Int), other }
+
     var banner: Banner?
     var confetti: (id: UUID, accent: Accent)?
     private var dismissTask: Task<Void, Never>?
+    /// Banners waiting for the current one to leave (nothing gets overwritten mid-read).
+    private var queue: [(banner: Banner, seconds: Double, confetti: Bool, haptic: () -> Void)] = []
 
-    func fire(title: String, subtitle: String, accent: Accent = .neutral, confetti showConfetti: Bool = true) {
-        Haptics.success()
-        show(Banner(title: title, subtitle: subtitle, accent: accent), seconds: 2.6)
-        if showConfetti { confetti = (UUID(), accent) }
+    private struct Collected { var title: String; var subtitle: String; var accent: Accent; var confetti: Bool; var xp: Int; var kind: Kind }
+    private var collecting: [Collected]?
+
+    func fire(title: String, subtitle: String, accent: Accent = .neutral, confetti showConfetti: Bool = true,
+              xp: Int = 0, kind: Kind = .other) {
+        if collecting != nil {
+            collecting?.append(Collected(title: title, subtitle: subtitle, accent: accent, confetti: showConfetti, xp: xp, kind: kind))
+            return
+        }
+        enqueue(Banner(title: title, subtitle: subtitle, accent: accent), seconds: 2.6, confetti: showConfetti, haptic: Haptics.success)
     }
 
     func nudge(title: String, subtitle: String) {
-        Haptics.warning()
-        show(Banner(title: title, subtitle: subtitle, accent: Accent(hex: 0xFF9600)), seconds: 3.4)
+        enqueue(Banner(title: title, subtitle: subtitle, accent: Accent(hex: 0xFF9600)), seconds: 3.4, confetti: false, haptic: Haptics.warning)
     }
 
-    private func show(_ b: Banner, seconds: Double) {
+    /// Hold XP celebrations (e.g. the first sync after coming back) and show them as one banner.
+    func beginCollecting() { if collecting == nil { collecting = [] } }
+
+    func endCollecting(awayTitle: Bool) {
+        guard let events = collecting else { return }
+        collecting = nil
+        guard !events.isEmpty else { return }
+        if events.count == 1, let e = events.first {
+            fire(title: e.title, subtitle: e.subtitle, accent: e.accent, confetti: e.confetti)
+            return
+        }
+        let xp = events.reduce(0) { $0 + $1.xp }
+        let checkpoints = events.filter { if case .checkpoint = $0.kind { true } else { false } }.count
+        let goals = events.reduce(0) { if case .goals(let n) = $1.kind { $0 + n } else { $0 } }
+        var parts: [String] = []
+        if checkpoints > 0 { parts.append("\(checkpoints) checkpoint\(checkpoints == 1 ? "" : "s")") }
+        if goals > 0 { parts.append("\(goals) goal\(goals == 1 ? "" : "s")") }
+        let accents = Set(events.map(\.accent.hex))
+        fire(title: awayTitle ? "+\(xp) XP while you were away" : "+\(xp) XP",
+             subtitle: parts.isEmpty ? "Nice work" : parts.joined(separator: " · ") + " done",
+             accent: accents.count == 1 ? events[0].accent : .neutral,
+             confetti: checkpoints > 0)
+    }
+
+    private func enqueue(_ b: Banner, seconds: Double, confetti: Bool, haptic: @escaping () -> Void) {
+        if banner == nil {
+            present(b, seconds: seconds, confetti: confetti, haptic: haptic)
+        } else {
+            queue.append((b, seconds, confetti, haptic))
+        }
+    }
+
+    private func present(_ b: Banner, seconds: Double, confetti showConfetti: Bool, haptic: () -> Void) {
+        haptic()
         withAnimation(.spring(response: 0.42, dampingFraction: 0.68)) { banner = b }
+        if showConfetti { confetti = (UUID(), b.accent) }
         dismissTask?.cancel()
         dismissTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(seconds))
-            guard !Task.isCancelled else { return }
-            withAnimation(.easeIn(duration: 0.25)) { self?.banner = nil }
+            guard !Task.isCancelled, let self else { return }
+            withAnimation(.easeIn(duration: 0.25)) { self.banner = nil }
+            try? await Task.sleep(for: .milliseconds(400))
+            guard !Task.isCancelled, !self.queue.isEmpty else { return }
+            let next = self.queue.removeFirst()
+            self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
         }
     }
 }

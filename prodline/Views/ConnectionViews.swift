@@ -13,7 +13,6 @@ enum ConnectionProbe {
               url.scheme?.hasPrefix("http") == true, url.host() != nil else {
             return .failed(MetricsError.invalidURL.localizedDescription)
         }
-        guard !apiKey.trimmingCharacters(in: .whitespaces).isEmpty else { return .failed("Add the API key first.") }
         let client = RESTMetricsClient(url: url, apiKey: apiKey.trimmingCharacters(in: .whitespaces))
         let start = Date()
         do {
@@ -47,7 +46,7 @@ struct ConnectionFields: View {
             }
             VStack(alignment: .leading, spacing: 8) {
                 Text("API key").eyebrow()
-                SecureField("", text: $apiKey, prompt: Text("Paste the project's key").foregroundStyle(Theme.tertiary))
+                SecureField("", text: $apiKey, prompt: Text("Paste the key (optional for public endpoints)").foregroundStyle(Theme.tertiary))
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .focused($focus, equals: .key)
                     .inputField(focused: focus == .key)

@@ -17,6 +17,10 @@ SwiftUI iOS app (iOS 26, SwiftData + CloudKit) that tracks side projects: metric
 
 Format details: `docs/API.md`, section "prodline.json in the repo".
 
+## Metrics feed
+
+`.github/workflows/metrics.yml` runs `tools/prodline_metrics.py` and force-pushes `metrics.json` to the `metrics` branch. In the app, the Prodline project's endpoint is `https://raw.githubusercontent.com/expbsn/prodline/metrics/metrics.json` (no key). Keep the script's output in the metrics API format (`docs/API.md`).
+
 ## Build and test
 
 ```bash

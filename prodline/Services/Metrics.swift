@@ -3,7 +3,7 @@ import Security
 
 // MARK: - Wire format (see docs/API.md)
 //
-// GET <endpoint>[?since=<ISO8601>]     Authorization: Bearer <api key>
+// GET <endpoint>[?since=<ISO8601>]     Authorization: Bearer <api key>   (header omitted when no key is set)
 // {
 //   "schemaVersion": 1,
 //   "project": "My App",
@@ -187,7 +187,7 @@ nonisolated struct RESTMetricsClient: MetricsClient {
         guard let finalURL = comps.url else { throw MetricsError.invalidURL }
 
         var req = URLRequest(url: finalURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
-        req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        if !apiKey.isEmpty { req.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
         req.setValue("application/json", forHTTPHeaderField: "Accept")
         req.setValue("Prodline/1.0", forHTTPHeaderField: "User-Agent")
 

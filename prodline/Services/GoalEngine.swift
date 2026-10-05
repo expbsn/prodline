@@ -150,6 +150,8 @@ enum GoalEngine {
                 goal = Goal(title: item.title, source: source, externalID: item.externalID, order: i)
                 context.insert(goal)
                 goal.milestone = target
+                // Goals that were already done before we ever saw them don't pay out.
+                goal.xpAwarded = item.done
             }
             goal.title = item.title
             goal.detail = item.detail
@@ -257,6 +259,47 @@ enum GoalEngine {
         return done
     }
 
+    // MARK: Goal XP
+
+    static let xpPerGoal = 3
+    static let goalXPSinceKey = "xp.goalXPSince"
+
+    /// Pays XP for every goal finished since we last looked, from any source (prodline.json, GitHub,
+    /// your API, metric targets or ticked by hand). Each goal pays once; goals finished before this
+    /// feature existed are marked without paying, so updating the app doesn't dump a pile of XP.
+    @discardableResult
+    static func awardGoalXP(projects: [Project], profile: Profile, celebration: CelebrationCenter?,
+                            now: Date = .now, defaults: UserDefaults = .standard) -> Int {
+        let since: Date
+        if let d = defaults.object(forKey: goalXPSinceKey) as? Date { since = d } else {
+            since = now
+            defaults.set(now, forKey: goalXPSinceKey)
+        }
+        var paid: [(goal: Goal, project: Project)] = []
+        for p in projects {
+            for g in p.sortedMilestones.flatMap({ $0.goals ?? [] }) where g.isDone && !g.xpAwarded {
+                g.xpAwarded = true
+                if (g.doneAt ?? .distantPast) >= since { paid.append((g, p)) }
+            }
+        }
+        guard !paid.isEmpty else { return 0 }
+        let xp = paid.count * xpPerGoal
+        profile.xp += xp
+        let projectsHit = Set(paid.map { $0.project.id })
+        let subtitle: String
+        if paid.count == 1 {
+            subtitle = paid[0].goal.title
+        } else if projectsHit.count == 1 {
+            subtitle = "\(paid.count) goals done in \(paid[0].project.name)"
+        } else {
+            subtitle = "\(paid.count) goals done across \(projectsHit.count) projects"
+        }
+        celebration?.fire(title: "+\(xp) XP", subtitle: subtitle,
+                          accent: projectsHit.count == 1 ? paid[0].project.accent : .neutral, confetti: false,
+                          xp: xp, kind: .goals(paid.count))
+        return xp
+    }
+
     /// Everything that should happen after new data arrived.
     static func afterRefresh(projects: [Project], profile: Profile, refresher: DataRefresher,
                              celebration: CelebrationCenter?, context: ModelContext, now: Date = .now) {
@@ -264,6 +307,8 @@ enum GoalEngine {
             ensureTractionTargets(project: p, refresher: refresher, context: context, now: now)
             evaluateMetricGoals(project: p, refresher: refresher, now: now)
         }
+        // Goal XP first; a checkpoint that completes in the same pass then shows its own (bigger) banner.
+        awardGoalXP(projects: projects, profile: profile, celebration: celebration, now: now)
         autoComplete(projects: projects, profile: profile, celebration: celebration, now: now)
         try? context.save()
     }

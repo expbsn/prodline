@@ -66,6 +66,7 @@ struct RootView: View {
         .task(id: phase) {
             guard phase == .active else {
                 if phase == .background {
+                    UserDefaults.standard.set(Date.now, forKey: Self.lastBackgroundKey)
                     DataRefresher.scheduleBackgroundRefresh()
                     WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
                 }
@@ -73,12 +74,11 @@ struct RootView: View {
             }
             // Let the splash play on an idle main thread and keep banners for after it.
             while showLaunch, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(150)) }
-            if let profile = profiles.first, profile.onboarded {
-                if ScheduleEngine.evaluateMissed(projects: projects, profile: profile) > 0 {
-                    celebration.nudge(title: "A deadline slipped",
-                                      subtitle: "Streak reset. The next checkpoint starts a new one.")
-                }
-            }
+            // XP earned while the app was closed (goals ticked in prodline.json, issues closed, targets hit)
+            // arrives in the first sync; sum it up in one banner instead of a burst.
+            let away = Date.now.timeIntervalSince(UserDefaults.standard.object(forKey: Self.lastBackgroundKey) as? Date ?? .distantPast)
+            celebration.beginCollecting()
+            var firstPass = true
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()
@@ -87,14 +87,43 @@ struct RootView: View {
                                             celebration: celebration, context: context)
                 }
                 WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
+                if firstPass {
+                    firstPass = false
+                    celebration.endCollecting(awayTitle: away > 15 * 60)
+                    remindAboutLateDeadlines()
+                }
                 try? await Task.sleep(for: .seconds(AppSettings.refreshSeconds))
             }
+            // Backgrounded mid-sync: release whatever was held rather than swallowing later banners.
+            if firstPass { celebration.endCollecting(awayTitle: false) }
         }
     }
 }
 
 /// Tabs + floating tab bar + global sheets.
 extension RootView {
+    static let lastBackgroundKey = "app.lastBackgroundAt"
+    static let lateReminderKey = "app.lateReminderAt"
+
+    /// On coming back: a slipped deadline resets the streak; any late checkpoint with work left gets a
+    /// reminder banner (at most every 6 hours, so reopening the app doesn't nag).
+    func remindAboutLateDeadlines(now: Date = .now) {
+        guard let profile = profiles.first, profile.onboarded else { return }
+        let slipped = ScheduleEngine.evaluateMissed(projects: projects, profile: profile, now: now)
+        let late = ScheduleEngine.lateReminder(projects: projects, now: now)
+        if slipped > 0 {
+            celebration.nudge(title: late?.title ?? "A deadline slipped",
+                              subtitle: (late.map { $0.subtitle + " · " } ?? "") + "streak reset")
+            UserDefaults.standard.set(now, forKey: Self.lateReminderKey)
+            return
+        }
+        guard let late else { return }
+        let last = UserDefaults.standard.object(forKey: Self.lateReminderKey) as? Date ?? .distantPast
+        guard now.timeIntervalSince(last) > 6 * 3600 else { return }
+        UserDefaults.standard.set(now, forKey: Self.lateReminderKey)
+        celebration.nudge(title: late.title, subtitle: late.subtitle)
+    }
+
     /// GitHub issues → goals, plus the "repo has gone quiet" nudge.
     func syncGitHub() async {
         let changed = await github.refresh(projects: projects)

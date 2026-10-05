@@ -1,0 +1,49 @@
+# Publishes Prodline's own metrics feed for the Prodline app:
+#   https://raw.githubusercontent.com/expbsn/prodline/metrics/metrics.json
+# Stars, commits, goals from prodline.json and (with the METRICS_TOKEN secret) repo page views.
+name: Metrics
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: metrics
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Load the last feed (keeps page views older than GitHub's 14 days)
+        run: |
+          git fetch origin metrics || true
+          git show origin/metrics:metrics.json > /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
+
+      - name: Build metrics.json
+        env:
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRAFFIC_TOKEN: ${{ secrets.METRICS_TOKEN }}
+        run: python3 tools/prodline_metrics.py --previous /tmp/previous.json --out /tmp/metrics.json
+
+      - name: Publish to the metrics branch
+        run: |
+          git config user.name "prodline-metrics"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan metrics-publish
+          git rm -rf --quiet .
+          cp /tmp/metrics.json metrics.json
+          git add metrics.json
+          git commit --quiet -m "Metrics $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force origin HEAD:metrics

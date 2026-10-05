@@ -110,3 +110,18 @@ app.get("/api/prodline", (req, res) => {
 ## Local testing
 
 See [`MockProject/`](../MockProject/README.md) for a dependency-free mock server that implements this contract, including failure modes.
+
+
+## Without a key
+
+The API key is optional. Leave it empty for public endpoints and the app sends no `Authorization` header.
+
+## Prodline's own feed
+
+Prodline tracks itself with a public feed built by `.github/workflows/metrics.yml` (script: `tools/prodline_metrics.py`) on every push to `main` and every 6 hours:
+
+```
+https://raw.githubusercontent.com/expbsn/prodline/metrics/metrics.json
+```
+
+It reports `revenue` (0 until launch) plus extras `github_stars`, `commits`, `forks`, `open_issues`, `goals_done` and `goals_open`, with 30 days of daily history. `visits` (GitHub page views) appear once a repository secret `METRICS_TOKEN` holds a fine-grained token with read access to the repo's administration (traffic) data; GitHub only keeps 14 days of views, so the feed carries older days forward itself.
