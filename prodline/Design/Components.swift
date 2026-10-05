@@ -321,7 +321,16 @@ struct CelebrationOverlay: View {
                 ConfettiView(accent: c.accent).id(c.id)
             }
             if let b = center.banner {
-                // Wash of the banner's color from the top edge, eased like the tab bar fade.
+                // Blur that fades out downward, then a wash of the banner's color on top of it.
+                Rectangle().fill(.ultraThinMaterial)
+                    .mask(LinearGradient(stops: [.init(color: .black, location: 0),
+                                                 .init(color: .black.opacity(0.85), location: 0.35),
+                                                 .init(color: .black.opacity(0.35), location: 0.68),
+                                                 .init(color: .clear, location: 1)],
+                                         startPoint: .top, endPoint: .bottom))
+                    .frame(height: 260)
+                    .ignoresSafeArea(edges: .top)
+                    .transition(.opacity)
                 LinearGradient(stops: [.init(color: b.accent.base.opacity(0.55), location: 0),
                                        .init(color: b.accent.base.opacity(0.42), location: 0.3),
                                        .init(color: b.accent.base.opacity(0.2), location: 0.6),
@@ -452,28 +461,30 @@ struct AccentGlow: View {
     }
 
     private func points(_ t: Double) -> [SIMD2<Float>] {
-        func w(_ speed: Double, _ phase: Double, _ amp: Double) -> Float { Float(sin(t * speed + phase) * amp) }
+        func w(_ speed: Double, _ phase: Double, _ amp: Double) -> Float { Float(sin(t * speed * 2.6 + phase) * amp) }
         return [
-            [0, 0], [0.5 + w(0.31, 0, 0.18), 0], [1, 0],
-            [0, 0.45 + w(0.27, 1, 0.12)], [0.5 + w(0.23, 2, 0.16), 0.5 + w(0.29, 3, 0.1)], [1, 0.5 + w(0.21, 4, 0.12)],
-            [0, 1], [0.5 + w(0.19, 5, 0.2), 1], [1, 1],
+            [0, 0], [0.5 + w(0.31, 0, 0.24), 0], [1, 0],
+            [0, 0.45 + w(0.27, 1, 0.16)], [0.5 + w(0.23, 2, 0.22), 0.5 + w(0.29, 3, 0.14)], [1, 0.5 + w(0.21, 4, 0.16)],
+            [0, 1], [0.5 + w(0.19, 5, 0.24), 1], [1, 1],
         ]
     }
 
     private func colors(_ t: Double, h: CGFloat, s: CGFloat, b: CGFloat) -> [Color] {
-        // Neighbouring hues drift in and out; saturation is pushed past the accent itself.
+        // Neighbouring hues swing in and out; saturation is pushed well past the accent itself.
+        let gray = s < 0.1
         func shade(_ i: Double, alpha: Double) -> Color {
-            let dh = sin(t * 0.22 + i * 1.7) * 0.045
-            let sat = s < 0.1 ? s : min(1, max(s * 1.2, 0.7) + 0.1 * sin(t * 0.3 + i))
-            let bri = min(1, b * (1.02 + 0.06 * cos(t * 0.25 + i * 2)))
+            let dh = sin(t * 0.6 + i * 1.7) * 0.08
+            let sat = gray ? s : min(1, max(s * 1.3, 0.8) + 0.12 * sin(t * 0.8 + i))
+            let bri = gray ? b * (0.85 + 0.15 * sin(t * 0.7 + i * 2)) : min(1, max(b, 0.85) + 0.08 * cos(t * 0.65 + i * 2))
             var hue = Double(h) + dh
             hue -= floor(hue)
-            return Color(hue: hue, saturation: Double(sat), brightness: Double(bri)).opacity(alpha)
+            // Gray accents (black and white covers) get a soft smoke instead of a dark slab.
+            return Color(hue: hue, saturation: Double(sat), brightness: Double(bri)).opacity(gray ? alpha * 0.4 : alpha)
         }
         return [
-            shade(0, alpha: 0.7), shade(1, alpha: 0.6), shade(2, alpha: 0.72),
-            shade(3, alpha: 0.42), shade(4, alpha: 0.3), shade(5, alpha: 0.45),
-            shade(6, alpha: 0.1), shade(7, alpha: 0.05), shade(8, alpha: 0.1),
+            shade(0, alpha: 0.9), shade(1, alpha: 0.8), shade(2, alpha: 0.9),
+            shade(3, alpha: 0.6), shade(4, alpha: 0.45), shade(5, alpha: 0.6),
+            shade(6, alpha: 0.15), shade(7, alpha: 0.08), shade(8, alpha: 0.15),
         ]
     }
 }

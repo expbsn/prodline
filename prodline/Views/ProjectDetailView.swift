@@ -25,6 +25,8 @@ struct ProjectDetailView: View {
     @Environment(GitHubService.self) private var github
     @State private var revealed = false
     @State private var scrolledAway = false
+    /// How far the page is pulled down past the top; the glow stretches to fill it.
+    @State private var overscroll: CGFloat = 0
 
     private var accent: Accent { project.accent }
     /// Same size and spot as on Dash, also when opened from elsewhere.
@@ -65,6 +67,9 @@ struct ProjectDetailView: View {
         }
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 2 } action: { _, away in
             scrolledAway = away
+        }
+        .onScrollGeometryChange(for: CGFloat.self) { max(0, -($0.contentOffset.y + $0.contentInsets.top)) } action: { _, v in
+            overscroll = v
         }
         .ignoresSafeArea(.container, edges: .top)
         .background(Theme.background.opacity(revealed ? 1 : 0).ignoresSafeArea())
@@ -159,7 +164,8 @@ struct ProjectDetailView: View {
         .padding(.bottom, 8)
         .background(alignment: .top) {
             AccentGlow(accent: accent)
-                .frame(height: (heroFrame?.maxY ?? 480) + 60)
+                .frame(height: (heroFrame?.maxY ?? 480) + 60 + overscroll)
+                .offset(y: -overscroll)
                 .padding(.horizontal, -16)
                 .opacity(revealed ? 1 : 0)
         }

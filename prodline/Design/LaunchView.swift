@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import CoreHaptics
 
 /// The Prodline mark in 1024-unit icon space (y down). Mirrors design/make_logo.swift; keep both in sync.
@@ -12,8 +13,8 @@ enum LogoGeometry {
     static let spacing: CGFloat = 160
 
     /// Stem up from the bottom, around the bowl, out along the crossbar: one continuous stroke.
-    static let main: Path = {
-        var p = Path()
+    static let main: CGPath = {
+        let p = CGMutablePath()
         p.move(to: CGPoint(x: stemX, y: 630))
         p.addLine(to: CGPoint(x: stemX, y: 390))
         p.addCurve(to: CGPoint(x: 672, y: 190), control1: CGPoint(x: stemX, y: 250), control2: CGPoint(x: 552, y: 190))
@@ -29,66 +30,197 @@ enum LogoGeometry {
 }
 
 /// Cold-start splash: a dotted line rises from the bottom, carves the "p" and leaves to the left.
-struct LaunchView: View {
+/// Built from Core Animation layers so the render server plays it even while the main thread
+/// is busy starting up (SwiftData, CloudKit, first refresh).
+struct LaunchView: UIViewRepresentable {
     var onFinish: () -> Void
-    @State private var script: LaunchScript?
-    @State private var start = Date()
 
-    var body: some View {
-        GeometryReader { geo in
-            TimelineView(.animation) { tl in
-                Canvas { gc, _ in
-                    script?.draw(in: &gc, t: tl.date.timeIntervalSince(start))
-                }
-            }
-            .onAppear {
-                let s = LaunchScript(size: geo.size)
-                script = s
-                start = .now
-                LaunchHaptics.play(s.haptics)
-                Task {
-                    try? await Task.sleep(for: .seconds(s.total))
-                    onFinish()
-                }
-            }
-        }
-        .background(Theme.background)
-        .ignoresSafeArea()
-        .accessibilityLabel("Prodline")
+    func makeUIView(context: Context) -> LaunchAnimationView {
+        let v = LaunchAnimationView()
+        v.onFinish = onFinish
+        return v
     }
+    func updateUIView(_ uiView: LaunchAnimationView, context: Context) {}
 }
 
+final class LaunchAnimationView: UIView {
+    var onFinish: (() -> Void)?
+    private var started = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = UIColor(Theme.background)
+        isAccessibilityElement = true
+        accessibilityLabel = "Prodline"
+    }
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard !started, bounds.width > 0, bounds.height > 0 else { return }
+        started = true
+        let script = LaunchScript(size: bounds.size)
+        // A short lead so layers are committed before the first beat; haptics share the same clock.
+        let lead = 0.08
+        build(script, base: CACurrentMediaTime() + lead)
+        LaunchHaptics.play(script.haptics, delay: lead)
+        DispatchQueue.main.asyncAfter(deadline: .now() + lead + script.total) { [weak self] in self?.onFinish?() }
+    }
+
+    private func build(_ s: LaunchScript, base: CFTimeInterval) {
+        let ink = UIColor(Theme.ink).cgColor
+        let width = LogoGeometry.stroke * s.scale
+        var transform = s.transform
+
+        func shape(_ path: CGPath) -> CAShapeLayer {
+            let l = CAShapeLayer()
+            l.path = path
+            l.fillColor = nil
+            l.strokeColor = ink
+            l.lineWidth = width
+            l.lineCap = .round
+            l.lineJoin = .round
+            layer.addSublayer(l)
+            return l
+        }
+        func animate(_ l: CALayer, _ a: CAAnimation, at t: Double, key: String) {
+            a.beginTime = base + t
+            a.fillMode = .backwards
+            l.add(a, forKey: key)
+        }
+
+        for piece in s.pieces {
+            switch piece.kind {
+            case .dot(let p):
+                let r = width / 2
+                let l = CAShapeLayer()
+                l.path = CGPath(ellipseIn: CGRect(x: -r, y: -r, width: 2 * r, height: 2 * r), transform: nil)
+                l.fillColor = ink
+                l.position = s.screen(p)
+                layer.addSublayer(l)
+                let pop = CAKeyframeAnimation(keyPath: "transform.scale")
+                pop.values = [0, 1.25, 1]
+                pop.keyTimes = [0, 0.6, 1]
+                pop.duration = piece.duration
+                pop.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut)]
+                animate(l, pop, at: piece.start, key: "pop")
+                if let fade = piece.fadeAt { fadeOut(l, at: base + fade) }
+            case .line(let a, let b):
+                let path = CGMutablePath()
+                path.move(to: s.screen(a)); path.addLine(to: s.screen(b))
+                let l = shape(path)
+                let grow = CABasicAnimation(keyPath: "strokeEnd")
+                grow.fromValue = 0; grow.toValue = 1
+                grow.duration = piece.duration
+                animate(l, grow, at: piece.start, key: "grow")
+                // strokeEnd 0 still paints a round cap, so stay hidden until the line starts.
+                let show = CABasicAnimation(keyPath: "opacity")
+                show.fromValue = 0; show.toValue = 0; show.duration = 0.001
+                animate(l, show, at: piece.start, key: "show")
+            case .carve:
+                guard let path = LogoGeometry.main.copy(using: &transform) else { continue }
+                let l = shape(path)
+                let carve = CABasicAnimation(keyPath: "strokeEnd")
+                carve.fromValue = 0; carve.toValue = 1
+                carve.duration = piece.duration
+                carve.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                animate(l, carve, at: piece.start, key: "carve")
+                let show = CABasicAnimation(keyPath: "opacity")
+                show.fromValue = 0; show.toValue = 0; show.duration = 0.001
+                animate(l, show, at: piece.start, key: "show")
+                addSparks(following: path, start: base + piece.start, duration: piece.duration)
+            }
+        }
+    }
+
+    private func fadeOut(_ l: CALayer, at time: CFTimeInterval) {
+        let a = CABasicAnimation(keyPath: "opacity")
+        a.fromValue = 1; a.toValue = 0
+        a.duration = 0.18
+        a.beginTime = time
+        a.fillMode = .forwards
+        a.isRemovedOnCompletion = false
+        l.add(a, forKey: "fade")
+    }
+
+    /// Fine specks thrown off the carving tip: an emitter riding the path at the stroke's pace.
+    private func addSparks(following path: CGPath, start: CFTimeInterval, duration: Double) {
+        let emitter = CAEmitterLayer()
+        emitter.frame = bounds
+        emitter.emitterShape = .circle
+        emitter.emitterSize = CGSize(width: 10, height: 10)
+        emitter.birthRate = 0
+        let cell = CAEmitterCell()
+        cell.contents = Self.speck
+        cell.color = UIColor(Theme.ink).withAlphaComponent(0.6).cgColor
+        cell.birthRate = 120
+        cell.lifetime = 0.6
+        cell.lifetimeRange = 0.2
+        cell.velocity = 40
+        cell.velocityRange = 25
+        cell.emissionRange = .pi * 2
+        cell.yAcceleration = 70
+        cell.alphaSpeed = -1.6
+        cell.scale = 0.5
+        cell.scaleRange = 0.25
+        emitter.emitterCells = [cell]
+        layer.addSublayer(emitter)
+
+        let move = CAKeyframeAnimation(keyPath: "emitterPosition")
+        move.path = path
+        move.calculationMode = .paced
+        move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+        move.duration = duration
+        move.beginTime = start
+        move.fillMode = .both
+        move.isRemovedOnCompletion = false
+        emitter.add(move, forKey: "move")
+
+        let rate = CAKeyframeAnimation(keyPath: "birthRate")
+        rate.values = [1, 1, 0]
+        rate.keyTimes = [0, 0.92, 1]
+        rate.duration = duration
+        rate.beginTime = start
+        emitter.add(rate, forKey: "rate")
+    }
+
+    private static let speck: CGImage? = {
+        UIGraphicsImageRenderer(size: CGSize(width: 6, height: 6)).image { _ in
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 6, height: 6)).fill()
+        }.cgImage
+    }()
+}
+
+/// Timing and placement of every beat of the splash, shared by the layers and the haptics.
 struct LaunchScript {
     enum Kind { case dot(CGPoint), line(CGPoint, CGPoint), carve }
     struct Piece { let kind: Kind; let start: Double; let duration: Double; var fadeAt: Double? = nil }
-    struct Particle { let at: Double; let tip: CGPoint; let velocity: CGVector; let size: CGFloat }
     enum Haptic { case dot(Double, strong: Bool), carve(Double, duration: Double) }
 
     private(set) var pieces: [Piece] = []
-    private(set) var particles: [Particle] = []
     private(set) var haptics: [Haptic] = []
     private(set) var total: Double = 0
-    private let scale: CGFloat
-    private let origin: CGPoint
-    private let carveStart: Double
+    let scale: CGFloat
+    let origin: CGPoint
     static let carveDuration = 0.85
 
     private static let step = 0.06        // between dots
     private static let trainLife = 0.3    // how long a passing dot stays before fading
-    private static let particleLife = 0.7
+
+    var transform: CGAffineTransform { CGAffineTransform(translationX: origin.x, y: origin.y).scaledBy(x: scale, y: scale) }
+    func screen(_ p: CGPoint) -> CGPoint { CGPoint(x: origin.x + p.x * scale, y: origin.y + p.y * scale) }
 
     init(size: CGSize, markWidth: CGFloat = 150) {
         let g = LogoGeometry.self
         scale = markWidth / g.bounds.width
         origin = CGPoint(x: size.width / 2 - g.bounds.midX * scale, y: size.height / 2 - g.bounds.midY * scale)
-        let s = scale, o = origin
-        func screen(_ p: CGPoint) -> CGPoint { CGPoint(x: o.x + p.x * s, y: o.y + p.y * s) }
 
-        var t = 0.15
+        var t = 0.1
         // Incoming: a train of dots rising from below the screen edge to the mark's own dot.
         var below: [CGPoint] = []
         var y = g.downDot.y + g.spacing
-        while screen(CGPoint(x: 0, y: y)).y < size.height + g.stroke * s { below.append(CGPoint(x: g.stemX, y: y)); y += g.spacing }
+        while origin.y + y * scale < size.height + g.stroke * scale { below.append(CGPoint(x: g.stemX, y: y)); y += g.spacing }
         for p in below.reversed() {
             pieces.append(Piece(kind: .dot(p), start: t, duration: 0.16, fadeAt: t + Self.trainLife))
             haptics.append(.dot(t, strong: false))
@@ -100,21 +232,8 @@ struct LaunchScript {
         haptics.append(.dot(t, strong: true)); t += Self.step + 0.02
 
         // Carve the letter.
-        carveStart = t
         pieces.append(Piece(kind: .carve, start: t, duration: Self.carveDuration))
         haptics.append(.carve(t, duration: Self.carveDuration))
-        let samples = Self.sample(g.main, count: 200)
-        var rng = SplitMix(seed: 7)
-        let count = 90
-        for j in 0..<count {
-            let f = Double(j) / Double(count - 1)
-            let tip = samples[min(samples.count - 1, Int(Self.ease(f) * Double(samples.count - 1)))]
-            let jitter = CGPoint(x: tip.x + rng.next(-38, 38), y: tip.y + rng.next(-38, 38))
-            let angle = rng.next(0, 2 * .pi), speed = rng.next(18, 64)
-            particles.append(Particle(at: t + Self.carveDuration * f, tip: screen(jitter),
-                                      velocity: CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed),
-                                      size: rng.next(1.2, 2.8)))
-        }
         t += Self.carveDuration + 0.02
 
         // Leaving: dash, the mark's dot, then a train running off the left edge.
@@ -123,79 +242,12 @@ struct LaunchScript {
         pieces.append(Piece(kind: .dot(g.leftDot), start: t, duration: 0.16))
         haptics.append(.dot(t, strong: true)); t += Self.step
         var x = g.leftDot.x - g.spacing
-        while screen(CGPoint(x: x, y: 0)).x > -g.stroke * s {
+        while origin.x + x * scale > -g.stroke * scale {
             pieces.append(Piece(kind: .dot(CGPoint(x: x, y: g.barY)), start: t, duration: 0.16, fadeAt: t + Self.trainLife))
             haptics.append(.dot(t, strong: false))
             t += Self.step; x -= g.spacing
         }
         total = t + Self.trainLife + 0.55
-    }
-
-    func draw(in gc: inout GraphicsContext, t: Double) {
-        let s = scale
-        let ink = GraphicsContext.Shading.color(Theme.ink)
-        let style = StrokeStyle(lineWidth: LogoGeometry.stroke * s, lineCap: .round, lineJoin: .round)
-        let toScreen = CGAffineTransform(translationX: origin.x, y: origin.y).scaledBy(x: s, y: s)
-        func screen(_ p: CGPoint) -> CGPoint { p.applying(toScreen) }
-
-        for piece in pieces where t >= piece.start {
-            let f = min(1, (t - piece.start) / piece.duration)
-            var c = gc
-            if let fade = piece.fadeAt {
-                let a = 1 - (t - fade) / 0.18
-                if a <= 0 { continue }
-                c.opacity = min(1, a)
-            }
-            switch piece.kind {
-            case .dot(let p):
-                let r = LogoGeometry.stroke / 2 * s * Self.backOut(f)
-                let q = screen(p)
-                c.fill(Path(ellipseIn: CGRect(x: q.x - r, y: q.y - r, width: 2 * r, height: 2 * r)), with: ink)
-            case .line(let a, let b):
-                let end = CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
-                var path = Path(); path.move(to: screen(a)); path.addLine(to: screen(end))
-                c.stroke(path, with: ink, style: style)
-            case .carve:
-                let path = LogoGeometry.main.trimmedPath(from: 0, to: Self.ease(f)).applying(toScreen)
-                c.stroke(path, with: ink, style: style)
-            }
-        }
-
-        // Specks thrown off the carving tip.
-        for p in particles {
-            let age = t - p.at
-            guard age > 0, age < Self.particleLife else { continue }
-            let a = CGFloat(age)
-            let pos = CGPoint(x: p.tip.x + p.velocity.dx * a, y: p.tip.y + p.velocity.dy * a + 70 * a * a)
-            var c = gc
-            c.opacity = 0.55 * (1 - age / Self.particleLife)
-            c.fill(Path(ellipseIn: CGRect(x: pos.x - p.size / 2, y: pos.y - p.size / 2, width: p.size, height: p.size)), with: ink)
-        }
-    }
-
-    // MARK: Helpers
-
-    static func ease(_ x: Double) -> Double { x < 0.5 ? 2 * x * x : 1 - pow(-2 * x + 2, 2) / 2 }
-    static func backOut(_ x: Double) -> Double {
-        let c1 = 1.9, c3 = c1 + 1
-        return 1 + c3 * pow(x - 1, 3) + c1 * pow(x - 1, 2)
-    }
-
-    static func sample(_ path: Path, count: Int) -> [CGPoint] {
-        (0..<count).map { i in path.trimmedPath(from: 0, to: Double(i) / Double(count - 1)).currentPoint ?? .zero }
-    }
-
-    struct SplitMix {
-        var state: UInt64
-        init(seed: UInt64) { state = seed }
-        mutating func next(_ lo: CGFloat, _ hi: CGFloat) -> CGFloat {
-            state &+= 0x9E3779B97F4A7C15
-            var z = state
-            z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
-            z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
-            z ^= z >> 31
-            return lo + (hi - lo) * CGFloat(Double(z >> 11) / Double(1 << 53))
-        }
     }
 }
 
@@ -203,7 +255,7 @@ struct LaunchScript {
 enum LaunchHaptics {
     private static var engine: CHHapticEngine?
 
-    static func play(_ events: [LaunchScript.Haptic]) {
+    static func play(_ events: [LaunchScript.Haptic], delay: Double) {
         guard AppSettings.haptics, CHHapticEngine.capabilitiesForHardware().supportsHaptics else { return }
         var list: [CHHapticEvent] = []
         var curves: [CHHapticParameterCurve] = []
@@ -238,7 +290,7 @@ enum LaunchHaptics {
             engine.isAutoShutdownEnabled = true
             try engine.start()
             let player = try engine.makePlayer(with: CHHapticPattern(events: list, parameterCurves: curves))
-            try player.start(atTime: CHHapticTimeImmediate)
+            try player.start(atTime: engine.currentTime + delay)
             self.engine = engine
         } catch {
             // Haptics are a garnish; the splash plays without them.

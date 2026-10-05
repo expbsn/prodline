@@ -73,6 +73,8 @@ struct RootView: View {
                                       subtitle: "Streak reset. The next checkpoint starts a new one.")
                 }
             }
+            // Let the splash play on an idle main thread; the first refresh can wait two seconds.
+            if showLaunch { try? await Task.sleep(for: .seconds(2.2)) }
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()

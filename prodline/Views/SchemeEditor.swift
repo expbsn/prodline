@@ -253,7 +253,7 @@ struct MeView: View {
         Task {
             _ = try? await URLSession.shared.data(for: req)
             await refresher.refresh(projects: [p], context: context, force: true)
-            celebration.fire(title: "+$49 sale", subtitle: "Simulated on \(p.name)", accent: p.accent)
+            celebration.fire(title: "+$49 sale", subtitle: "Simulated on \(p.name)", accent: .sale)
         }
     }
 

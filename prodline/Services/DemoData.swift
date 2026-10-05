@@ -10,7 +10,8 @@ enum DemoData {
         var details: String = ""
         let key: String, startedDaysAgo: Int, accent: Int
         var githubRepo: String = ""
-        /// Bundled CC0 photo (Assets: Cover-<slug>, credits in design/IMAGE_CREDITS.md).
+        /// Bundled photo (Assets: Cover-<slug>, credits in design/IMAGE_CREDITS.md).
+        /// `accent` is the fallback when the photo has no usable color (Side Shop is black and white).
         var cover: UIImage? { UIImage(named: "Cover-\(slug)") }
     }
 
@@ -18,7 +19,7 @@ enum DemoData {
     static let projects: [Spec] = [
         Spec(slug: "habit-hero", name: "Habit Hero", details: "A tiny habit tracker that rewards streaks with plant growth.", key: "hh_live_demo", startedDaysAgo: 9, accent: 0x58CC02),
         Spec(slug: "pixel-quest", name: "Pixel Quest", details: "Daily five-minute pixel art puzzles.", key: "pq_live_demo", startedDaysAgo: 23, accent: 0xA35CFF),
-        Spec(slug: "side-shop", name: "Side Shop", details: "A one-page shop for limited print runs.", key: "ss_live_demo", startedDaysAgo: 2, accent: 0xFF9600, githubRepo: "demo/side-shop"),
+        Spec(slug: "side-shop", name: "Side Shop", details: "A one-page shop for limited print runs.", key: "ss_live_demo", startedDaysAgo: 2, accent: 0x3A3A3C, githubRepo: "demo/side-shop"),
         Spec(slug: "flaky-app", name: "Flaky App", key: "fa_live_demo", startedDaysAgo: 5, accent: 0xD9902F),
     ]
 

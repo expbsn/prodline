@@ -46,6 +46,8 @@ struct Accent: Equatable, Hashable {
     let hex: Int
 
     static let neutral = Accent(hex: 0x1C1C1E)
+    /// Money moments (sales, revenue) are always gold, whatever the project color.
+    static let sale = Accent(hex: 0xFFC800)
 
     var base: Color { Color(hex: hex) }
 
