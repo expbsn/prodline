@@ -143,16 +143,15 @@ final class LaunchAnimationView: UIView {
         l.add(a, forKey: "fade")
     }
 
-    /// Grinder sparks thrown off the carving tip: short glowing streaks flung up and sideways that arc down
+    /// Grinder sparks thrown off the carving tip: short ink streaks flung up and sideways that arc down
     /// under gravity, turning to follow their path and shrinking as they cool. Each is its own tiny layer
     /// with a precomputed trajectory, so the render server plays them like the rest of the splash.
     private func addSparks(following path: CGPath, start: CFTimeInterval, duration: Double) {
         let samples = LaunchScript.sample(path, count: 120)
         guard samples.count > 1 else { return }
         var rng = LaunchScript.SplitMix(seed: 11)
-        let colors = [UIColor(red: 1, green: 0.55, blue: 0.05, alpha: 1),
-                      UIColor(red: 1, green: 0.76, blue: 0.18, alpha: 1),
-                      UIColor(red: 1, green: 0.38, blue: 0.08, alpha: 1)]
+        // Ink, like the mark itself: chips of the stroke flying off as it's carved.
+        let colors = [UIColor(Theme.ink), UIColor(Theme.inkSoft), UIColor(Theme.ink).withAlphaComponent(0.7)]
         let count = 110
         let gravity: CGFloat = 900
         for j in 0..<count {
@@ -212,7 +211,7 @@ struct LaunchScript {
     private(set) var total: Double = 0
     let scale: CGFloat
     let origin: CGPoint
-    static let carveDuration = 0.85
+    static let carveDuration = 1.35
 
     private static let step = 0.06        // between dots
     private static let trainLife = 0.3    // how long a passing dot stays before fading
