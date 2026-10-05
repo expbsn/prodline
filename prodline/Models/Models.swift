@@ -37,28 +37,6 @@ final class Profile {
     func toggleWeekday(_ weekday: Int) { milestoneWeekdayMask ^= (1 << (weekday - 1)) }
 }
 
-enum Phase: String {
-    case upcoming, building, observing, finished
-
-    var title: String {
-        switch self {
-        case .upcoming: "Upcoming"
-        case .building: "Building"
-        case .observing: "Observing"
-        case .finished: "Finished"
-        }
-    }
-
-    var symbol: String {
-        switch self {
-        case .upcoming: "hourglass"
-        case .building: "hammer.fill"
-        case .observing: "chart.line.uptrend.xyaxis"
-        case .finished: "flag.checkered"
-        }
-    }
-}
-
 @Model
 final class Project {
     var id: UUID = UUID()

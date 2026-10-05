@@ -88,6 +88,13 @@ struct MeView: View {
     @State private var finder = MockServerFinder()
     @State private var demoVisible = false
     @Environment(\.isActiveTab) private var isActiveTab
+    /// Widget previews use your projects; without any, the sample ones.
+    private var widgetData: WidgetData {
+        for p in projects { WidgetCovers.overrides[p.id.uuidString] = p.cover }
+        return projects.isEmpty ? .sample()
+            : WidgetData(generatedAt: .now, streak: profile.streak,
+                         projects: projects.map { WidgetPublisher.make($0, refresher: refresher, now: .now) })
+    }
     private var isSimulator: Bool {
         #if targetEnvironment(simulator)
         true
@@ -158,6 +165,8 @@ struct MeView: View {
                 }
                 .card()
                 .padding(.horizontal, 16)
+
+                WidgetsCard(data: widgetData).padding(.horizontal, 16)
 
                 configurationCard.padding(.horizontal, 16)
 

@@ -6,6 +6,17 @@
 	<array>
 		<string>expbsn.app.prodline.refresh</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>expbsn.app.prodline</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>prodline</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>

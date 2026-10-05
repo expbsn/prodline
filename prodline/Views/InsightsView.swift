@@ -8,6 +8,8 @@ struct InsightsView: View {
     @State private var metric: MetricKey = .visits
     @State private var range: TrendRange = .week
     @State private var scrub: Date?
+    /// 0…1 left-to-right wipe; a new range or metric starts from an empty chart instead of morphing.
+    @State private var reveal: CGFloat = 1
 
     enum TrendRange: String, CaseIterable, Identifiable {
         case day = "24H", week = "7D", month = "30D"
@@ -73,6 +75,7 @@ struct InsightsView: View {
                     guard !on else { return }
                     Haptics.select()
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) { metric = k; scrub = nil }
+                    replayChart()
                 } label: {
                     VStack(alignment: .leading, spacing: 6) {
                         Image(systemName: k.symbol).font(.system(size: 16, weight: .semibold))
@@ -148,7 +151,9 @@ struct InsightsView: View {
             HStack(spacing: 8) {
                 ForEach(TrendRange.allCases) { r in
                     Chip(title: r.rawValue, isOn: range == r) {
+                        guard range != r else { return }
                         withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { range = r; scrub = nil }
+                        replayChart()
                     }
                 }
             }
@@ -181,6 +186,14 @@ struct InsightsView: View {
                     AxisValueLabel(format: range == .day ? .dateTime.hour() : .dateTime.month(.abbreviated).day())
                 } }
                 .frame(height: 220)
+                // Never interpolate between two different data sets: swap instantly, then wipe in.
+                .transaction { $0.animation = nil }
+                .id("\(range.rawValue)-\(metric.rawValue)")
+                .mask(alignment: .leading) {
+                    GeometryReader { geo in
+                        Rectangle().frame(width: geo.size.width * reveal)
+                    }
+                }
                 .onChange(of: shownDate) { _, d in if d != nil { Haptics.select() } }
             }
         }
@@ -226,5 +239,14 @@ struct InsightsView: View {
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: metric)
         }
         .card()
+    }
+
+    private func replayChart() {
+        var t = Transaction(); t.disablesAnimations = true
+        withTransaction(t) { reveal = 0 }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(30))
+            withAnimation(.easeOut(duration: 0.7)) { reveal = 1 }
+        }
     }
 }

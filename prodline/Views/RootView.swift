@@ -64,7 +64,10 @@ struct RootView: View {
         // Foreground polling: runs only while the app is active, restarts on every activation.
         .task(id: phase) {
             guard phase == .active else {
-                if phase == .background { DataRefresher.scheduleBackgroundRefresh() }
+                if phase == .background {
+                    DataRefresher.scheduleBackgroundRefresh()
+                    WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
+                }
                 return
             }
             if let profile = profiles.first, profile.onboarded {
@@ -82,6 +85,7 @@ struct RootView: View {
                     GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
                                             celebration: celebration, context: context)
                 }
+                WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
                 try? await Task.sleep(for: .seconds(AppSettings.refreshSeconds))
             }
         }
@@ -171,6 +175,23 @@ struct MainShell: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        // Widget taps: prodline://project/<id> opens that project, prodline://data/<metric> the Data tab.
+        .onOpenURL { url in
+            guard url.scheme == "prodline" else { return }
+            switch url.host() {
+            case "project":
+                let id = url.lastPathComponent
+                if let p = projects.first(where: { $0.id.uuidString == id }) {
+                    tab = .projects
+                    focusedID = p.id
+                    opened = Opened(project: p, cardFrame: nil)
+                }
+            case "data":
+                opened = nil
+                tab = .insights
+            default: break
+            }
+        }
         #if DEBUG
         .onAppear {
             let d = UserDefaults.standard

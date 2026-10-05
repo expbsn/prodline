@@ -46,6 +46,9 @@ struct ProjectCardFace: View {
                                 .foregroundStyle(cover == nil ? Theme.ink : .white)
                                 .contentTransition(.numericText())
                         }
+                        // On photos: a tight shadow for the letter edges plus a wide one that darkens busy backgrounds.
+                        .shadow(color: .black.opacity(cover == nil ? 0 : 0.45), radius: 1.5 * s, y: 0.5 * s)
+                        .shadow(color: .black.opacity(cover == nil ? 0 : 0.35), radius: 12 * s)
                     }
                 }
                 .padding(20 * s)

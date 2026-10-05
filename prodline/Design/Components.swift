@@ -470,16 +470,18 @@ struct AccentGlow: View {
     }
 
     private func colors(_ t: Double, h: CGFloat, s: CGFloat, b: CGFloat) -> [Color] {
-        // Neighbouring hues swing in and out; saturation is pushed well past the accent itself.
+        // Stays on the accent's own hue: shades breathe in brightness and saturation, the hue barely drifts.
         let gray = s < 0.2  // neutral photo accents carry a faint tint (≤ 0.18)
         func shade(_ i: Double, alpha: Double) -> Color {
-            let dh = sin(t * 1.2 + i * 1.7) * 0.08
-            let sat = gray ? s : min(1, max(s * 1.3, 0.8) + 0.12 * sin(t * 1.5 + i))
-            let bri = gray ? b * (0.85 + 0.15 * sin(t * 1.4 + i * 2)) : min(1, max(b, 0.85) + 0.08 * cos(t * 1.3 + i * 2))
-            var hue = Double(h) + dh
-            hue -= floor(hue)
-            // Gray accents (black and white covers) get a soft smoke instead of a dark slab.
-            return Color(hue: hue, saturation: Double(sat), brightness: Double(bri)).opacity(gray ? alpha * 0.4 : alpha)
+            let hue = (Double(h) + sin(t * 1.2 + i * 1.7) * 0.018).truncatingRemainder(dividingBy: 1) + 1
+            if gray {
+                // Charcoal and grays need real contrast to read as a glow at all.
+                let bri = min(0.75, max(0.18, Double(b) * (1.15 + 0.45 * sin(t * 1.4 + i * 2))))
+                return Color(hue: hue.truncatingRemainder(dividingBy: 1), saturation: Double(s), brightness: bri).opacity(alpha * 0.85)
+            }
+            let sat = min(1, Double(s) * (1.0 + 0.12 * sin(t * 1.5 + i)))
+            let bri = min(1, Double(b) * (1.0 + 0.1 * cos(t * 1.3 + i * 2)))
+            return Color(hue: hue.truncatingRemainder(dividingBy: 1), saturation: sat, brightness: bri).opacity(alpha * 0.8)
         }
         return [
             shade(0, alpha: 0.9), shade(1, alpha: 0.8), shade(2, alpha: 0.9),

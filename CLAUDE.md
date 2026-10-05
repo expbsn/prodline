@@ -27,7 +27,7 @@ TEST_RUNNER_PRODLINE_MOCK_SERVER=http://127.0.0.1:8787 xcodebuild test -project 
 
 Add `TEST_RUNNER_PRODLINE_REAL_GITHUB=expbsn/prodline` to also run the backtest against this repo on GitHub (it reads this prodline.json).
 
-DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `-PRODLINE_TAB plan|insights|me`, `-PRODLINE_OPEN "Project name"`, `-PRODLINE_CREATE YES`, `-PRODLINE_NOLAUNCH YES` (skip the splash), `-PRODLINE_BANNER YES`.
+DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `-PRODLINE_TAB plan|insights|me`, `-PRODLINE_OPEN "Project name"`, `-PRODLINE_CREATE YES`, `-PRODLINE_NOLAUNCH YES` (skip the splash), `-PRODLINE_BANNER YES`, `-PRODLINE_SHEET widgets|connection`.
 
 ## Conventions
 
@@ -35,4 +35,5 @@ DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `
 - The tab bar and other chrome stay neutral; project color comes from `\.accent`.
 - Dash card geometry is shared through `DashLayout`. When the card's size or position changes on Dash, the project detail screen must match.
 - Secrets (API keys, GitHub tokens) go in the Keychain, never in SwiftData or the repo.
+- `Shared/` is compiled into both the app and the `ProdlineWidgets` extension (design primitives, widget data and widget views). The app writes `WidgetData` to the App Group `group.expbsn.app.prodline` via `WidgetPublisher` after each refresh; widgets only read it. Me → Widgets previews the same views (`-PRODLINE_SHEET widgets` opens the gallery).
 - The logo is drawn in `design/make_logo.swift` and `prodline/Design/LaunchView.swift` (`LogoGeometry`); keep the two in sync.
