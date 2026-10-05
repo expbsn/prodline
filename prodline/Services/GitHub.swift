@@ -270,6 +270,11 @@ final class GitHubService {
     }
 
     static let log = Logger(subsystem: "expbsn.app.prodline", category: "github")
+    /// Sync diagnostics: unified log, plus stdout so `devicectl … --console` shows it.
+    static func trace(_ message: String) {
+        log.notice("\(message, privacy: .public)")
+        print("[github] \(message)")
+    }
 
     /// Returns the projects whose snapshot changed.
     @discardableResult
@@ -277,7 +282,7 @@ final class GitHubService {
         var changed: [Project] = []
         for p in projects where p.isActive || p.phase() == .upcoming {
             guard let client = Self.client(for: p) else { continue }
-            Self.log.notice("refresh \(p.name, privacy: .public) repo=\(p.githubRepo, privacy: .public) due=\(force || (self.lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true))")
+            Self.trace("refresh \(p.name) repo=\(p.githubRepo) phase=\(p.phase()) due=\(force || (self.lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true))")
             let due = force || (lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true)
             if !due {
                 let pushed = await hasNewCommit(p, client: client, now: now)
@@ -292,10 +297,10 @@ final class GitHubService {
                 p.lastCommitAt = snap.lastCommit
                 let days = Momentum.dailyCounts(snap.commitDates)
                 if days != p.commitDays { p.commitDays = days }
-                Self.log.notice("fetched \(p.name, privacy: .public): plan=\(snap.planFile?.goals.count ?? -1) planError=\(snap.planFileError ?? "-", privacy: .public)")
+                Self.trace("fetched \(p.name): plan=\(snap.planFile?.goals.count ?? -1) planError=\(snap.planFileError ?? "-")")
             } catch {
                 errors[p.id] = error.localizedDescription
-                Self.log.error("fetch failed \(p.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
+                Self.trace("fetch failed \(p.name): \(error.localizedDescription)")
             }
         }
         return changed

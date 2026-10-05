@@ -80,6 +80,7 @@ struct RootView: View {
             let away = Date.now.timeIntervalSince(UserDefaults.standard.object(forKey: Self.lastBackgroundKey) as? Date ?? .distantPast)
             celebration.beginCollecting()
             var firstPass = true
+            GitHubService.trace("loop start, \(projects.count) projects")
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()
@@ -128,7 +129,7 @@ extension RootView {
     /// GitHub issues → goals, plus the "repo has gone quiet" nudge.
     func syncGitHub() async {
         let changed = await github.refresh(projects: projects)
-        GitHubService.log.notice("sync: \(projects.count) projects, \(changed.count) changed")
+        GitHubService.trace("sync: \(projects.count) projects, \(changed.count) changed")
         guard let profile = profiles.first else { return }
         for p in changed {
             if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }
