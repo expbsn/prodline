@@ -65,6 +65,18 @@ struct CheckpointTests {
         #expect(p.sortedMilestones.count == before + 1)
     }
 
+    @Test func staleRepoNamedCopiesAreRemoved() throws {
+        let (ctx, p) = try setup()
+        // An older version put "Widgets" on the next checkpoint (Fri 16) instead of adding Wed 14.
+        p.sortedMilestones[2].title = "Widgets"
+        let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Widgets", due: day(2026, 1, 14))], goals: [])
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        let widgets = p.sortedMilestones.filter { $0.title == "Widgets" }
+        #expect(widgets.count == 1)
+        #expect(widgets.first?.dueDate == day(2026, 1, 14))
+    }
+
     @Test func planFileReplacesSuggestionsEverywhere() throws {
         let (ctx, p) = try setup()
         let ms = p.sortedMilestones

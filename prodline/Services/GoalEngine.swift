@@ -120,6 +120,16 @@ enum GoalEngine {
                 m.title = title
             }
         }
+        // Older versions named the next checkpoint after a dated entry instead of adding one on that day.
+        // Those leftovers carry the entry's name on another date and nothing else: remove them.
+        let dated = Dictionary(entries.compactMap { c in c.checkpoint == nil ? c.due.map { (c.title.trimmingCharacters(in: .whitespacesAndNewlines), $0.startOfDay) } : nil },
+                               uniquingKeysWith: { a, _ in a })
+        for m in project.sortedMilestones where !m.isDone && !m.isLaunch && !m.titleIsCustom && !m.hasGoals {
+            if let due = dated[m.title], due != m.dueDate {
+                m.project = nil
+                context.delete(m)
+            }
+        }
         ScheduleEngine.renumber(project)
     }
 
