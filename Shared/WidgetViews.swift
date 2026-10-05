@@ -155,8 +155,12 @@ struct WMiniCard: View {
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
                         .offset(x: w * 0.12, y: -w * 0.12)
                 }
-                LinearGradient(stops: [.init(color: project.accent.base.opacity(0), location: 0.35),
-                                       .init(color: project.accent.base, location: 0.78)],
+                // The photo is square (ends at 5/7 ≈ 0.71 of the height); be fully opaque before that edge
+                // so it never shows as a seam, and ease in so the fade reads as one smooth wash.
+                LinearGradient(stops: [.init(color: project.accent.base.opacity(0), location: 0.3),
+                                       .init(color: project.accent.base.opacity(0.45), location: 0.48),
+                                       .init(color: project.accent.base.opacity(0.85), location: 0.6),
+                                       .init(color: project.accent.base, location: 0.68)],
                                startPoint: .top, endPoint: .bottom)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(project.phase(on: date).title).eyebrow(project.accent.on.opacity(0.8), size: max(7, w * 0.075))

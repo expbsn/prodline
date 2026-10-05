@@ -186,6 +186,8 @@ struct InsightsView: View {
                     AxisValueLabel(format: range == .day ? .dateTime.hour() : .dateTime.month(.abbreviated).day())
                 } }
                 .frame(height: 220)
+                // Room above the plot for the top axis label (the wipe mask clips to this frame).
+                .padding(.top, 10)
                 // Never interpolate between two different data sets: swap instantly, then wipe in.
                 .transaction { $0.animation = nil }
                 .id("\(range.rawValue)-\(metric.rawValue)")
@@ -201,7 +203,7 @@ struct InsightsView: View {
     }
 
     private var rhythm: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 24) {
             SectionTitle("Rhythm", trailing: "build · observe")
             Chart {
                 ForEach(bars) { b in
