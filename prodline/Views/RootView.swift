@@ -10,6 +10,8 @@ struct RootView: View {
     @State private var refresher = DataRefresher()
     @State private var github = GitHubService()
     @State private var celebration = CelebrationCenter()
+    /// Only on a fresh launch: @State survives backgrounding, so foregrounding never replays it.
+    @State private var showLaunch = LaunchGate.shouldShow
 
     var body: some View {
         ZStack {
@@ -26,6 +28,13 @@ struct RootView: View {
         }
         .animation(.easeInOut(duration: 0.35), value: profiles.first?.onboarded)
         .overlay { CelebrationOverlay() }
+        .overlay {
+            if showLaunch {
+                LaunchView { withAnimation(.easeOut(duration: 0.4)) { showLaunch = false } }
+                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: LaunchGate.replay)) { _ in showLaunch = true }
         .environment(refresher)
         .environment(github)
         .environment(celebration)
@@ -42,6 +51,13 @@ struct RootView: View {
                 profile.remindersEnabled = false
                 DemoData.load(baseURL: UserDefaults.standard.string(forKey: "mockServerURL") ?? "http://127.0.0.1:8787",
                               profile: profile, context: context)
+            }
+            if UserDefaults.standard.bool(forKey: "PRODLINE_BANNER") {
+                Task {
+                    try? await Task.sleep(for: .seconds(1))
+                    celebration.fire(title: "+10 XP", subtitle: "Nailed it · just a test",
+                                     accent: projects.first?.accent ?? Accent(hex: 0x58CC02))
+                }
             }
             #endif
         }
@@ -171,5 +187,17 @@ struct MainShell: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { focusedID = newID }
             }
         }
+    }
+}
+
+enum LaunchGate {
+    static let replay = Notification.Name("prodline.replayLaunch")
+    static var shouldShow: Bool {
+        let env = ProcessInfo.processInfo.environment
+        if env["XCTestConfigurationFilePath"] != nil { return false }
+        #if DEBUG
+        if UserDefaults.standard.bool(forKey: "PRODLINE_NOLAUNCH") { return false }
+        #endif
+        return !UIAccessibility.isReduceMotionEnabled
     }
 }

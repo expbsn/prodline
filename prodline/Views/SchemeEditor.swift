@@ -324,6 +324,9 @@ struct MeView: View {
                 devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
                     celebration.nudge(title: "A deadline slipped", subtitle: "Streak reset. The next checkpoint starts a new one.")
                 }
+                devButton("Replay launch animation", "play.circle") {
+                    NotificationCenter.default.post(name: LaunchGate.replay, object: nil)
+                }
                 devButton("Replay onboarding", "sparkles.rectangle.stack") {
                     profile.onboarded = false
                     try? context.save()
@@ -379,12 +382,12 @@ struct OnboardingView: View {
     private var welcome: some View {
         VStack(alignment: .leading, spacing: 18) {
             ZStack {
-                ForEach(Array(sampleCards.enumerated()), id: \.offset) { i, c in
-                    ProjectCardFace(name: c.0, initial: String(c.0.prefix(1)), accent: Accent(hex: c.1), cover: nil,
-                                    cornerLabel: "Day", cornerValue: "\(c.2)", footnote: c.3)
+                ForEach(Array(Self.sampleCards.enumerated()), id: \.offset) { i, c in
+                    ProjectCardFace(name: c.name, initial: String(c.name.prefix(1)), accent: c.accent, cover: c.cover,
+                                    cornerLabel: "Day", cornerValue: "\(c.day)", footnote: c.phase)
                         .frame(width: 200)
-                        .rotationEffect(.degrees(fanned ? Double(i - 1) * 9 : 0), anchor: .bottom)
-                        .offset(x: fanned ? CGFloat(i - 1) * 44 : 0, y: fanned ? abs(CGFloat(i - 1)) * 14 : 0)
+                        .rotationEffect(.degrees(fanned ? Double(i - 1) * 7 : 0), anchor: .bottom)
+                        .offset(x: fanned ? CGFloat(i - 1) * 30 : 0, y: fanned ? abs(CGFloat(i - 1)) * 10 : 0)
                         .shadow(color: .black.opacity(0.12), radius: 16, y: 10)
                 }
             }
@@ -396,21 +399,22 @@ struct OnboardingView: View {
             }
 
             Text("Welcome to").eyebrow()
-            HStack(spacing: 14) {
-                Image("Mark").resizable().scaledToFit().frame(width: 58, height: 58).foregroundStyle(Theme.ink)
-                Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
-            }
+            Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
             Text("Ship a project every cycle, watch its numbers come in, and keep the streak going.")
                 .font(.ui(19)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private let sampleCards: [(String, Int, Int, String)] = [
-        ("Habit Hero", 0x58CC02, 12, "Building"),
-        ("Pixel Quest", 0xA35CFF, 5, "Building"),
-        ("Side Shop", 0xFF9600, 9, "Observing"),
-    ]
+    private struct SampleCard { let name: String; let cover: UIImage?; let accent: Accent; let day: Int; let phase: String }
+    /// The demo projects' photos, colored the same way a real cover would be.
+    private static let sampleCards: [SampleCard] = [("Habit Hero", 12, "Building"), ("Pixel Quest", 5, "Building"), ("Side Shop", 9, "Observing")]
+        .map { name, day, phase in
+            let spec = DemoData.projects.first { $0.name == name }
+            let cover = spec?.cover
+            let hex = cover.flatMap(ImageTools.dominantAccentHex) ?? spec?.accent ?? 0x1C1C1E
+            return SampleCard(name: name, cover: cover, accent: Accent(hex: hex), day: day, phase: phase)
+        }
 
     private var scheme: some View {
         VStack(alignment: .leading, spacing: 18) {

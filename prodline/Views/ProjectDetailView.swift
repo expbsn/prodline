@@ -158,7 +158,7 @@ struct ProjectDetailView: View {
         .frame(maxWidth: .infinity)
         .padding(.bottom, 8)
         .background(alignment: .top) {
-            LinearGradient(colors: [accent.base.opacity(0.28), accent.base.opacity(0)], startPoint: .top, endPoint: .bottom)
+            AccentGlow(accent: accent)
                 .frame(height: (heroFrame?.maxY ?? 480) + 60)
                 .padding(.horizontal, -16)
                 .opacity(revealed ? 1 : 0)

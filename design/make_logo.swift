@@ -4,34 +4,34 @@ import AppKit
 import CoreGraphics
 
 let S: CGFloat = 1024
-let stroke: CGFloat = 72
+let stroke: CGFloat = 100
 
 struct Seg { let from: CGPoint; let to: CGPoint }
 
-// Geometry on a 1024 canvas (y down).
-let stemX: CGFloat = 418
-let barY: CGFloat = 548
-// Bowl: from the stem's top, round over to the right and back down to the crossbar.
+// Geometry on a 1024 canvas (y down). Mirrored in prodline/Design/LogoMark.swift; keep both in sync.
+let stemX: CGFloat = 490
+let stemTop: CGFloat = 390
+let barY: CGFloat = 490
+// Stem up from the bottom, round over to the right and back down to the crossbar.
 func bowl() -> CGMutablePath {
     let p = CGMutablePath()
-    p.move(to: CGPoint(x: stemX, y: 470))
-    p.addCurve(to: CGPoint(x: 600, y: 268), control1: CGPoint(x: stemX, y: 330), control2: CGPoint(x: 480, y: 268))
-    p.addCurve(to: CGPoint(x: 776, y: 400), control1: CGPoint(x: 700, y: 268), control2: CGPoint(x: 776, y: 318))
-    p.addCurve(to: CGPoint(x: 640, y: barY), control1: CGPoint(x: 776, y: 488), control2: CGPoint(x: 720, y: barY))
-    p.addLine(to: CGPoint(x: stemX, y: barY))
+    p.move(to: CGPoint(x: stemX, y: 630))
+    p.addLine(to: CGPoint(x: stemX, y: stemTop))
+    p.addCurve(to: CGPoint(x: 672, y: 190), control1: CGPoint(x: stemX, y: 250), control2: CGPoint(x: 552, y: 190))
+    p.addCurve(to: CGPoint(x: 856, y: 342), control1: CGPoint(x: 792, y: 190), control2: CGPoint(x: 856, y: 262))
+    p.addCurve(to: CGPoint(x: 700, y: barY), control1: CGPoint(x: 856, y: 430), control2: CGPoint(x: 792, y: barY))
+    p.addLine(to: CGPoint(x: 402, y: barY))
     return p
 }
-// Crossbar continues left, then breaks into a dash and a dot toward the edge.
+// Crossbar breaks into a dash and a dot toward the left edge.
 let left: [Seg] = [
-    Seg(from: CGPoint(x: stemX, y: barY), to: CGPoint(x: 328, y: barY)),
-    Seg(from: CGPoint(x: 228, y: barY), to: CGPoint(x: 196, y: barY)),
-    Seg(from: CGPoint(x: 100, y: barY), to: CGPoint(x: 99, y: barY)),
+    Seg(from: CGPoint(x: 266, y: barY), to: CGPoint(x: 242, y: barY)),
+    Seg(from: CGPoint(x: 106, y: barY), to: CGPoint(x: 106, y: barY)),
 ]
-// Stem runs down, then dash and dot toward the bottom edge.
+// Stem breaks into a dash and a dot toward the bottom edge.
 let down: [Seg] = [
-    Seg(from: CGPoint(x: stemX, y: 470), to: CGPoint(x: stemX, y: 728)),
-    Seg(from: CGPoint(x: stemX, y: 828), to: CGPoint(x: stemX, y: 860)),
-    Seg(from: CGPoint(x: stemX, y: 956), to: CGPoint(x: stemX, y: 957)),
+    Seg(from: CGPoint(x: stemX, y: 766), to: CGPoint(x: stemX, y: 790)),
+    Seg(from: CGPoint(x: stemX, y: 926), to: CGPoint(x: stemX, y: 926)),
 ]
 
 func draw(in ctx: CGContext, bg: NSColor?, ink: NSColor) {

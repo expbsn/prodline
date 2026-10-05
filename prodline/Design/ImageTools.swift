@@ -80,8 +80,9 @@ enum ImageTools {
         let ui = UIColor(red: r, green: g, blue: b, alpha: 1)
         var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
         ui.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        let ns = min(max(s, 0.5), 0.95)
-        let nv = min(max(v, 0.55), 0.92)
+        // Photos average out muddy; lift toward the punchy range the hand-picked accents live in.
+        let ns = min(max(s * 1.1, 0.7), 0.95)
+        let nv = min(max(v, 0.74), 0.92)
         let out = UIColor(hue: h, saturation: ns, brightness: nv, alpha: 1)
         var rr: CGFloat = 0, gg: CGFloat = 0, bb: CGFloat = 0
         out.getRed(&rr, green: &gg, blue: &bb, alpha: &a)
