@@ -50,7 +50,14 @@ nonisolated struct GitHubSnapshot: Sendable, Equatable {
 
     /// `prodline.json` in the repo root: a goal plan maintained by hand or by a coding agent.
     struct PlanFile: Codable, Sendable, Equatable {
+        /// Names a checkpoint, placed the same way as goals (by position or by date).
+        struct Checkpoint: Codable, Sendable, Equatable {
+            var title: String
+            var checkpoint: Int?
+            var due: Date?
+        }
         var version: Int?
+        var checkpoints: [Checkpoint]? = nil
         var goals: [MetricsPayload.RemoteGoal]
     }
 

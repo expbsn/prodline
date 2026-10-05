@@ -26,6 +26,57 @@ enum ScheduleEngine {
         return out
     }
 
+    // MARK: Editing checkpoints
+
+    /// An empty name goes back to the automatic "Checkpoint n".
+    static func rename(_ m: Milestone, to raw: String) {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        m.titleIsCustom = !name.isEmpty
+        m.title = name.isEmpty ? "Checkpoint" : name
+        if let p = m.project { renumber(p) }
+    }
+
+    static func reschedule(_ m: Milestone, to date: Date, profile: Profile?) {
+        m.dueDate = date.startOfDay
+        m.missed = false
+        if let p = m.project { renumber(p) }
+        Notifier.cancel(m)
+        if let profile, profile.remindersEnabled, !m.isDone { Notifier.schedule(m, hour: profile.reminderHour) }
+    }
+
+    @discardableResult
+    static func addCheckpoint(to p: Project, title raw: String, due: Date, profile: Profile?, context: ModelContext) -> Milestone {
+        let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let m = Milestone(title: name.isEmpty ? "Checkpoint" : name, dueDate: due)
+        m.titleIsCustom = !name.isEmpty
+        context.insert(m)
+        m.project = p
+        renumber(p)
+        if let profile, profile.remindersEnabled { Notifier.schedule(m, hour: profile.reminderHour) }
+        return m
+    }
+
+    static func delete(_ m: Milestone, context: ModelContext) {
+        let p = m.project
+        Notifier.cancel(m)
+        m.project = nil
+        context.delete(m)
+        if let p { renumber(p) }
+    }
+
+    /// Keeps automatic names in date order ("Checkpoint 1, 2, 3") after adds, moves and deletes.
+    static func renumber(_ p: Project) {
+        var n = 1
+        for m in p.sortedMilestones where !m.isLaunch && !m.titleIsCustom && isAutoName(m.title) {
+            m.title = "Checkpoint \(n)"
+            n += 1
+        }
+    }
+
+    static func isAutoName(_ title: String) -> Bool {
+        title == "Checkpoint" || title.wholeMatch(of: /Checkpoint \d+/) != nil
+    }
+
     static func createProject(_ p: Project, profile: Profile, context: ModelContext) {
         context.insert(p)
         for m in makeMilestones(for: p, weekdayMask: profile.milestoneWeekdayMask) {

@@ -117,6 +117,7 @@ struct MainShell: View {
     private func tabPage<Content: View>(_ t: AppTab, @ViewBuilder _ content: () -> Content) -> some View {
         let active = tab == t
         return content()
+            .environment(\.isActiveTab, active)
             .opacity(active ? 1 : 0)
             .allowsHitTesting(active)
             .accessibilityHidden(!active)
@@ -202,4 +203,9 @@ enum LaunchGate {
         #endif
         return !UIAccessibility.isReduceMotionEnabled
     }
+}
+
+extension EnvironmentValues {
+    /// False for tabs kept alive in the background.
+    @Entry var isActiveTab: Bool = true
 }

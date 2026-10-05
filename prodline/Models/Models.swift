@@ -156,6 +156,8 @@ final class Milestone {
     var completedAt: Date? = nil
     var missed: Bool = false
     var isLaunch: Bool = false
+    /// Renamed by the user; repo-provided names (prodline.json) no longer overwrite it.
+    var titleIsCustom: Bool = false
     var project: Project? = nil
     @Relationship(deleteRule: .cascade, inverse: \Goal.milestone)
     var goals: [Goal]? = []

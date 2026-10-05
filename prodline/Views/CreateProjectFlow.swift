@@ -27,7 +27,11 @@ struct CreateProjectFlow: View {
     @State private var token = ""
     @State private var repoCheck: RepoCheck = .idle
     /// Draft goals per deadline (index = position in the deadline list).
-    @State private var draftGoals: [[String]] = []
+    @State private var draftGoals: [[DraftGoal]] = []
+    /// Names typed for each deadline; empty keeps the automatic or repo-provided name.
+    @State private var checkpointNames: [String] = []
+    @State private var repoPreview: GoalEngine.RepoPreview?
+    @State private var loadingRepo = false
     @State private var drafting = false
     @State private var draftNote: String?
     @FocusState private var focus: Field?
@@ -263,6 +267,8 @@ struct CreateProjectFlow: View {
 
     // MARK: Goals
 
+    struct DraftGoal: Equatable { var title: String; var source: GoalSource }
+
     private var deadlines: [Milestone] {
         let draft = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
                             buildDays: buildDays, observeDays: profile.observeDays)
@@ -274,43 +280,40 @@ struct CreateProjectFlow: View {
         return nil
     }
 
+    /// prodline.json in the linked repo is the plan; suggestions only fill gaps when there's no file.
+    private var repoHasPlan: Bool { repoPreview?.hasPlanFile ?? false }
+
     private var goalsStep: some View {
         let ms = deadlines
         return VStack(alignment: .leading, spacing: 18) {
             stepTitle("Step 5 of 5", "Plan the checkpoints")
 
-            if !GoalPlanner.isEnabled {
-                infoCard(symbol: "sparkles", title: "Suggestions aren't available",
-                         text: GoalPlanner.unavailableReason + " Checkpoints stay simple: tick them off when you're done." +
-                               (repo.isEmpty && endpoint.isEmpty ? "" : " Goals from your API or GitHub still sync in automatically."))
-            } else if drafting {
+            if loadingRepo || drafting {
                 HStack(spacing: 12) {
                     ProgressView().tint(accent.text)
-                    Text(githubSnapshot == nil ? "Planning goals from your description…" : "Planning goals from your description and repo…")
+                    Text(loadingRepo ? "Reading \(GitHubRepoRef(repo)?.slug ?? "your repo")…" : "Suggesting goals on your iPhone…")
                         .font(.ui(15, .medium)).foregroundStyle(Theme.inkSoft)
                 }
                 .card()
             } else {
-                Text("Suggested on your iPhone. Edit freely: each checkpoint completes once its goals are done.")
-                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                Text(planIntro).font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 ForEach(Array(ms.enumerated()).dropLast(), id: \.offset) { i, m in
                     goalEditor(index: i, milestone: m)
                 }
-                Button {
-                    Task { await draft(force: true) }
-                } label: {
-                    Label("Suggest again", systemImage: "arrow.clockwise")
-                        .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+                if GoalPlanner.isEnabled && !repoHasPlan {
+                    Button {
+                        Task { await draft(force: true) }
+                    } label: {
+                        Label("Suggest again", systemImage: "arrow.clockwise")
+                            .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
 
             if let note = draftNote {
                 Text(note).font(.ui(13)).foregroundStyle(Theme.secondary)
-            }
-            if !repo.isEmpty {
-                infoCard(symbol: "chevron.left.forwardslash.chevron.right", title: "GitHub goals take priority",
-                         text: "Issues in GitHub milestones or labeled “prodline” replace suggestions on their checkpoint and close themselves.")
             }
             GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
                 .padding(.top, 4)
@@ -318,20 +321,45 @@ struct CreateProjectFlow: View {
         .task { await draft(force: false) }
     }
 
+    private var planIntro: String {
+        if repoHasPlan { return "Goals come from prodline.json in your repo and stay in sync with it. Rename checkpoints or add your own goals on top." }
+        if repoPreview.map({ !$0.isEmpty }) ?? false {
+            return GoalPlanner.isEnabled ? "GitHub issues fill their checkpoints; suggestions fill the rest. Edit freely." : "GitHub issues fill their checkpoints. Add your own goals to the rest."
+        }
+        if GoalPlanner.isEnabled { return "Suggested on your iPhone. Rename checkpoints and edit goals freely: each checkpoint completes once its goals are done." }
+        return GoalPlanner.unavailableReason + " Name your checkpoints and add goals yourself, or leave them simple and tick them off."
+    }
+
     private func goalEditor(index i: Int, milestone m: Milestone) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(m.title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                Spacer()
+        let repoGoals = repoPreview?.goals[safe: i] ?? []
+        let placeholder = (repoPreview?.names[safe: i] ?? nil) ?? m.title
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                TextField(placeholder, text: Binding(
+                    get: { checkpointNames[safe: i] ?? "" },
+                    set: { if checkpointNames.indices.contains(i) { checkpointNames[i] = $0 } }))
+                    .font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                    .submitLabel(.done)
+                Image(systemName: "pencil").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.tertiary)
+                Spacer(minLength: 8)
                 Text(m.dueDate.shortDay).font(.ui(13)).foregroundStyle(Theme.secondary)
+            }
+            ForEach(repoGoals.indices, id: \.self) { j in
+                HStack(spacing: 10) {
+                    Image(systemName: repoGoals[j].source.symbol).font(.system(size: 12)).foregroundStyle(accent.text)
+                    Text(repoGoals[j].title).font(.ui(15)).foregroundStyle(Theme.ink)
+                    Spacer(minLength: 0)
+                }
+                .accessibilityHint(repoGoals[j].source.label)
             }
             if draftGoals.indices.contains(i) {
                 ForEach(draftGoals[i].indices, id: \.self) { j in
                     HStack(spacing: 10) {
-                        Image(systemName: "sparkles").font(.system(size: 12)).foregroundStyle(accent.text)
+                        Image(systemName: draftGoals[i][j].source == .ai ? "sparkles" : "circle")
+                            .font(.system(size: 12)).foregroundStyle(accent.text)
                         TextField("Goal", text: Binding(
-                            get: { draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) ? draftGoals[i][j] : "" },
-                            set: { if draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) { draftGoals[i][j] = $0 } }))
+                            get: { draftGoals[safe: i]?[safe: j]?.title ?? "" },
+                            set: { if draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) { draftGoals[i][j].title = $0 } }))
                             .font(.ui(15))
                         Button {
                             Haptics.soft()
@@ -343,7 +371,7 @@ struct CreateProjectFlow: View {
                     }
                 }
                 Button {
-                    withAnimation(.snappy) { draftGoals[i].append("") }
+                    withAnimation(.snappy) { draftGoals[i].append(DraftGoal(title: "", source: .manual)) }
                 } label: {
                     Label("Add goal", systemImage: "plus").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
                 }
@@ -365,31 +393,56 @@ struct CreateProjectFlow: View {
         .card(padding: 16, radius: 22)
     }
 
+    /// Repo first (prodline.json, then issues), suggestions only where the repo leaves a checkpoint empty.
     private func draft(force: Bool) async {
         let ms = deadlines
         if !force && draftGoals.count == ms.count { return }
-        draftGoals = Array(repeating: [], count: ms.count)
-        guard GoalPlanner.isEnabled else { return }
+        if checkpointNames.count != ms.count { checkpointNames = Array(repeating: "", count: ms.count) }
+        // Keep what the user typed; only replace earlier suggestions.
+        draftGoals = (0..<ms.count).map { i in (draftGoals[safe: i] ?? []).filter { $0.source != .ai } }
+
+        if let ref = GitHubRepoRef(repo) {
+            var snap = githubSnapshot
+            if snap == nil {
+                loadingRepo = true
+                snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
+                loadingRepo = false
+                if let snap { repoCheck = .ok(snap) }
+            }
+            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.dueDate)) }
+            else { draftNote = "Couldn't read the repo right now. Its goals will sync in once the project is created." }
+        } else {
+            repoPreview = nil
+        }
+
+        guard GoalPlanner.isEnabled, !repoHasPlan else { return }
+        let empty = Set(ms.indices.filter { (repoPreview?.goals[safe: $0] ?? []).isEmpty })
+        guard !empty.isEmpty else { return }
         drafting = true
         defer { drafting = false }
-        // Read the repo for context if it was linked but not checked yet.
-        var snap = githubSnapshot
-        if snap == nil, let ref = GitHubRepoRef(repo) {
-            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
-            if let snap { repoCheck = .ok(snap) }
-        }
         do {
             let plan = try await GoalPlanner.draft(name: trimmedName, details: details, buildDays: buildDays,
-                                                   deadlines: ms.map { .init(title: $0.title, date: $0.dueDate) },
-                                                   github: snap)
+                                                   deadlines: ms.enumerated().map { i, m in
+                                                       .init(title: name(at: i, default: m.title), date: m.dueDate)
+                                                   },
+                                                   github: githubSnapshot)
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                for (n, titles) in plan where (1...ms.count).contains(n) { draftGoals[n - 1] = titles }
+                for (n, titles) in plan where empty.contains(n - 1) {
+                    draftGoals[n - 1] += titles.map { DraftGoal(title: $0, source: .ai) }
+                }
             }
             draftNote = nil
             Haptics.success()
         } catch {
             draftNote = "Couldn't suggest goals right now. You can add them later from the project."
         }
+    }
+
+    /// Typed name, else the repo's name, else the automatic one.
+    private func name(at i: Int, default fallback: String) -> String {
+        let typed = (checkpointNames[safe: i] ?? "").trimmingCharacters(in: .whitespaces)
+        if !typed.isEmpty { return typed }
+        return (repoPreview?.names[safe: i] ?? nil) ?? fallback
     }
 
     // MARK: Actions
@@ -414,10 +467,15 @@ struct CreateProjectFlow: View {
         p.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
         Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + p.id.uuidString)
         ScheduleEngine.createProject(p, profile: profile, context: context)
-        // Suggested goals first, then GitHub issues (which replace suggestions on their checkpoint).
         let ms = p.sortedMilestones
-        for (i, titles) in draftGoals.enumerated() where ms.indices.contains(i) {
-            GoalEngine.addGoals(titles, source: .ai, to: ms[i], context: context)
+        for (i, name) in checkpointNames.enumerated() where ms.indices.contains(i) && !name.trimmingCharacters(in: .whitespaces).isEmpty {
+            ScheduleEngine.rename(ms[i], to: name)
+        }
+        // Your goals and suggestions first, then the repo (whose plan replaces suggestions).
+        for (i, goals) in draftGoals.enumerated() where ms.indices.contains(i) {
+            for source in [GoalSource.ai, .manual] {
+                GoalEngine.addGoals(goals.filter { $0.source == source }.map(\.title), source: source, to: ms[i], context: context)
+            }
         }
         if let snap = githubSnapshot { GoalEngine.syncGitHub(snap, project: p, context: context) }
         try? context.save()

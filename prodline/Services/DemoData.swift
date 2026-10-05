@@ -27,6 +27,13 @@ enum DemoData {
         let base = baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         // The mock server also plays GitHub for repos named demo/<project>.
         UserDefaults.standard.set("\(base)/github", forKey: "githubAPIBase")
+        // Reloading replaces earlier demo projects (e.g. ones pointing at an old address).
+        let existing = (try? context.fetch(FetchDescriptor<Project>())) ?? []
+        for p in existing where projects.contains(where: { p.name == $0.name && p.endpoint.hasSuffix("/projects/\($0.slug)/metrics") }) {
+            for m in p.milestones ?? [] { Notifier.cancel(m) }
+            Keychain.delete(p.id.uuidString)
+            context.delete(p)
+        }
         for spec in projects {
             let p = Project(name: spec.name, accentHex: spec.accent,
                             startDate: Date.now.startOfDay.adding(days: -spec.startedDaysAgo),

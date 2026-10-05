@@ -22,6 +22,8 @@ struct ProjectDetailView: View {
     @State private var draftError: String?
     @State private var addingGoalTo: Milestone?
     @State private var newGoalTitle = ""
+    /// Checkpoint being edited; `.some(nil)` adds a new one.
+    @State private var checkpointSheet: Milestone?? = nil
     @Environment(GitHubService.self) private var github
     @State private var revealed = false
     @State private var scrolledAway = false
@@ -84,6 +86,9 @@ struct ProjectDetailView: View {
         #endif
         .sheet(isPresented: $showEdit) { EditProjectSheet(project: project) }
         .sheet(isPresented: $showConnection) { ConnectionSheet(project: project) }
+        .sheet(isPresented: Binding(get: { checkpointSheet != nil }, set: { if !$0 { checkpointSheet = nil } })) {
+            if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m) }
+        }
         .confirmationDialog("Delete \(project.name)?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 let p = project
@@ -352,9 +357,16 @@ struct ProjectDetailView: View {
                               onDone: { complete(m) },
                               onToggleGoal: { toggle($0) },
                               onDeleteGoal: { g in context.delete(g); try? context.save() },
-                              onAddGoal: { newGoalTitle = ""; addingGoalTo = m })
+                              onAddGoal: { newGoalTitle = ""; addingGoalTo = m },
+                              onEdit: { checkpointSheet = .some(m) })
                 if m.id != ms.last?.id { Divider().padding(.leading, 44) }
             }
+            Button { checkpointSheet = .some(nil) } label: {
+                Label("Add checkpoint", systemImage: "plus.circle")
+                    .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+            }
+            .buttonStyle(.plain)
+            .padding(.vertical, 4)
             Divider()
             GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
         }
@@ -455,6 +467,7 @@ struct MilestoneLine: View {
     var onToggleGoal: (Goal) -> Void = { _ in }
     var onDeleteGoal: (Goal) -> Void = { _ in }
     var onAddGoal: () -> Void = {}
+    var onEdit: (() -> Void)? = nil
     @Environment(\.accent) private var accent
     @Environment(DataRefresher.self) private var refresher
 
@@ -488,15 +501,25 @@ struct MilestoneLine: View {
                 .disabled(milestone.isDone)
                 .accessibilityLabel(milestone.isDone ? "Done" : "Mark \(milestone.title) done")
 
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 6) {
-                        Text(milestone.title).font(.ui(16, .semibold))
-                            .foregroundStyle(milestone.isDone ? Theme.secondary : Theme.ink)
-                        if milestone.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 12)).foregroundStyle(accent.text) }
+                Button { onEdit?() } label: {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
+                                Text(milestone.title).font(.ui(16, .semibold))
+                                    .foregroundStyle(milestone.isDone ? Theme.secondary : Theme.ink)
+                                if milestone.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 12)).foregroundStyle(accent.text) }
+                            }
+                            Text(subtitle).font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
+                        }
+                        Spacer()
+                        if onEdit != nil, !milestone.isDone {
+                            Image(systemName: "pencil").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.tertiary)
+                        }
                     }
-                    Text(subtitle).font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
+                    .contentShape(Rectangle())
                 }
-                Spacer()
+                .buttonStyle(.plain)
+                .disabled(onEdit == nil || milestone.isDone)
             }
 
             if milestone.hasGoals || !milestone.isDone {
@@ -721,5 +744,102 @@ struct ConnectionSheet: View {
             repo = project.githubRepo
             token = Keychain.get("gh-" + project.id.uuidString) ?? ""
         }
+    }
+}
+
+/// Rename, move or delete a checkpoint, or add a new one.
+struct CheckpointSheet: View {
+    let project: Project
+    /// nil adds a new checkpoint.
+    let milestone: Milestone?
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Query(sort: \Profile.createdAt) private var profiles: [Profile]
+    @State private var name = ""
+    @State private var due = Date.now.startOfDay
+    @State private var confirmDelete = false
+
+    private var range: ClosedRange<Date> {
+        let lo = min(project.startDate, .now.startOfDay)
+        return lo...max(project.observeEnd, due, lo)
+    }
+    private var autoName: String {
+        guard let m = milestone else { return "Checkpoint" }
+        return m.titleIsCustom ? "Checkpoint" : m.title
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text(milestone == nil ? "New checkpoint" : "Edit checkpoint").display(26, 750).foregroundStyle(Theme.ink)
+                Spacer()
+                CircleIconButton(systemName: "xmark") { dismiss() }
+            }
+            .padding(20)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Name").eyebrow()
+                        TextField("", text: $name, prompt: Text(autoName).foregroundStyle(Theme.tertiary))
+                            .inputField()
+                        Text("Leave empty for the automatic name. A name you set here wins over one from prodline.json.")
+                            .font(.ui(13)).foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Due").eyebrow()
+                        DatePicker("Due", selection: $due, in: range, displayedComponents: .date)
+                            .datePickerStyle(.graphical)
+                            .labelsHidden()
+                            .tint(project.accent.text)
+                            .padding(8)
+                            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
+                    }
+                    if let m = milestone, !m.isLaunch {
+                        Button("Delete checkpoint") { confirmDelete = true }
+                            .buttonStyle(.chunky(.danger, height: 50))
+                    }
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 20)
+            }
+            .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar {
+                Button(milestone == nil ? "Add checkpoint" : "Save", action: save).buttonStyle(.chunky)
+            }
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .environment(\.accent, project.accent)
+        .onAppear {
+            if let m = milestone {
+                name = m.titleIsCustom || !ScheduleEngine.isAutoName(m.title) ? m.title : ""
+                due = m.dueDate
+            } else {
+                // Default: halfway between today and the next open deadline.
+                let next = project.nextMilestone?.dueDate ?? project.launchDay
+                due = max(Date.now.startOfDay, project.startDate).adding(days: max(1, Date.days(from: .now, to: next) / 2))
+            }
+        }
+        .confirmationDialog("Delete this checkpoint?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("Delete", role: .destructive) {
+                if let m = milestone { ScheduleEngine.delete(m, context: context) }
+                try? context.save()
+                dismiss()
+            }
+        } message: { Text("Its goals are removed too.") }
+    }
+
+    private func save() {
+        if let m = milestone {
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            // Keep a repo-given name unless the user typed something different.
+            if trimmed != m.title || m.titleIsCustom { ScheduleEngine.rename(m, to: trimmed) }
+            if m.dueDate != due.startOfDay { ScheduleEngine.reschedule(m, to: due, profile: profiles.first) }
+        } else {
+            ScheduleEngine.addCheckpoint(to: project, title: name, due: due, profile: profiles.first, context: context)
+        }
+        try? context.save()
+        Haptics.success()
+        dismiss()
     }
 }

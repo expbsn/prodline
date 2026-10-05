@@ -168,3 +168,7 @@ extension Date {
         Calendar.current.dateComponents([.day], from: a.startOfDay, to: b.startOfDay).day ?? 0
     }
 }
+
+extension Collection {
+    subscript(safe i: Index) -> Element? { indices.contains(i) ? self[i] : nil }
+}

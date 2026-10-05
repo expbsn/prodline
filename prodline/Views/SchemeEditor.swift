@@ -85,6 +85,16 @@ struct MeView: View {
     @Environment(GitHubService.self) private var github
     @Query private var projects: [Project]
     @AppStorage("mockServerURL") private var mockServerURL = "http://127.0.0.1:8787"
+    @State private var finder = MockServerFinder()
+    @State private var demoVisible = false
+    @Environment(\.isActiveTab) private var isActiveTab
+    private var isSimulator: Bool {
+        #if targetEnvironment(simulator)
+        true
+        #else
+        false
+        #endif
+    }
     @AppStorage(AppSettings.Key.refreshSeconds) private var refreshSeconds = 30
     @AppStorage(AppSettings.Key.githubMinutes) private var githubMinutes = 10
     @AppStorage(AppSettings.Key.commitWatch) private var commitWatch = true
@@ -297,15 +307,35 @@ struct MeView: View {
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Demo & testing")
-            Text("Run `python3 MockProject/server.py --host 0.0.0.0` on your Mac and enter the address it prints (your Mac's Wi-Fi IP, same network as the phone). 127.0.0.1 only works in the Simulator.")
+            Text("Run `python3 MockProject/server.py --host 0.0.0.0` on your Mac, on the same Wi-Fi as this phone. The address fills in by itself once the server is found.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             TextField("Mock server URL", text: $mockServerURL)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                 .inputField()
+            HStack(spacing: 8) {
+                if let found = finder.url {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(Theme.success)
+                    Text(found == mockServerURL ? "Found the server on your Mac" : "Found \(found)")
+                    if found != mockServerURL { Button("Use") { mockServerURL = found }.fontWeight(.semibold) }
+                } else if !isSimulator && mockServerURL.contains("127.0.0.1") {
+                    ProgressView().controlSize(.small)
+                    Text("Looking for the server on your network… 127.0.0.1 is this phone, not your Mac.")
+                } else {
+                    ProgressView().controlSize(.small)
+                    Text("Looking for the server on your network…")
+                }
+                Spacer(minLength: 0)
+            }
+            .font(.ui(13)).foregroundStyle(Theme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
             Button("Load demo projects") {
                 DemoData.load(baseURL: mockServerURL, profile: profile, context: context)
-                celebration.fire(title: "Demo loaded", subtitle: "\(DemoData.projects.count) projects connected to the mock server")
-                Task { await refresher.refresh(projects: projects, context: context, force: true) }
+                celebration.fire(title: "Demo loaded", subtitle: "\(DemoData.projects.count) projects connected to \(URL(string: mockServerURL)?.host ?? "the mock server")")
+                Task {
+                    let fresh = (try? context.fetch(FetchDescriptor<Project>())) ?? []
+                    await refresher.refresh(projects: fresh, context: context, force: true)
+                }
             }
             .buttonStyle(.chunky(.neutral, height: 50))
 
@@ -337,6 +367,13 @@ struct MeView: View {
             }
         }
         .card()
+        // Only search while this card is actually on screen, so the local network prompt shows up in context.
+        .onScrollVisibilityChange(threshold: 0.1) { demoVisible = $0 }
+        .onChange(of: isActiveTab && demoVisible, initial: true) { _, on in on ? finder.start() : finder.stop() }
+        .onChange(of: finder.url) { _, found in
+            // On a phone, 127.0.0.1 can never work: take the discovered address.
+            if let found, !isSimulator, mockServerURL.contains("127.0.0.1") { mockServerURL = found }
+        }
     }
 }
 

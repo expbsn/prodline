@@ -314,6 +314,10 @@ struct GoalsGuideView: View {
     static let planFileExample = """
     {
       "version": 1,
+      "checkpoints": [
+        { "checkpoint": 1, "title": "Accounts" },
+        { "checkpoint": 2, "title": "Payments" }
+      ],
       "goals": [
         { "id": "auth", "title": "Sign in with Apple",
           "checkpoint": 1, "done": true },
@@ -336,6 +340,8 @@ struct GoalsGuideView: View {
     - When you finish the work for a goal, set "done": true in the same commit. Never delete goals that are done.
     - If the plan changes, update titles or move goals to another checkpoint instead of piling up new ones.
     - Optional: "metric": {"key": "signups", "target": 500} for goals that are reached by a number instead of by code.
+    - Optional: name the checkpoints with "checkpoints": [{"checkpoint": 1, "title": "Accounts"}] (or "due" instead of "checkpoint"). Names the user set in the app are kept.
+    - This file is the plan: when it exists, the app shows these goals instead of its own suggestions.
     """
 
     static let example = """

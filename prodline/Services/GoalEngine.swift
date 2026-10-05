@@ -24,10 +24,40 @@ enum GoalEngine {
     /// Where a goal lands: explicit position, else first deadline on/after its due date, else the next open one.
     static func milestone(checkpoint: Int?, due: Date?, in project: Project) -> Milestone? {
         let ms = project.sortedMilestones
-        guard !ms.isEmpty else { return nil }
-        if let n = checkpoint, (1...ms.count).contains(n) { return ms[n - 1] }
-        if let due { return ms.first { $0.dueDate >= due.startOfDay } ?? ms.last }
-        return ms.first { !$0.isDone } ?? ms.last
+        return slot(checkpoint: checkpoint, due: due, dues: ms.map(\.dueDate), done: ms.map(\.isDone)).map { ms[$0] }
+    }
+
+    /// Placement rule shared by real checkpoints and the create-flow preview:
+    /// explicit position, else the first deadline on or after the due date, else the next open one.
+    static func slot(checkpoint: Int?, due: Date?, dues: [Date], done: [Bool]? = nil) -> Int? {
+        guard !dues.isEmpty else { return nil }
+        if let n = checkpoint, (1...dues.count).contains(n) { return n - 1 }
+        if let due { return dues.firstIndex { $0 >= due.startOfDay } ?? dues.count - 1 }
+        return done.flatMap { $0.firstIndex(of: false) } ?? 0
+    }
+
+    /// What a linked repo will put on each deadline, for showing before the project exists.
+    struct RepoPreview {
+        var goals: [[(title: String, source: GoalSource)]]
+        var names: [String?]
+        /// prodline.json is the plan: no AI suggestions on top of it.
+        var hasPlanFile: Bool
+        var isEmpty: Bool { goals.allSatisfy(\.isEmpty) && names.allSatisfy { $0 == nil } }
+    }
+
+    static func repoPreview(_ snap: GitHubSnapshot, dues: [Date]) -> RepoPreview {
+        var goals = Array(repeating: [(title: String, source: GoalSource)](), count: dues.count)
+        var names = Array(repeating: String?.none, count: dues.count)
+        for item in githubIncoming(snap) {
+            if let i = slot(checkpoint: item.checkpoint, due: item.due, dues: dues), !item.done { goals[i].append((item.title, .github)) }
+        }
+        for g in snap.planFile?.goals ?? [] where !(g.done ?? false) {
+            if let i = slot(checkpoint: g.checkpoint, due: g.due, dues: dues) { goals[i].append((g.title, .repoFile)) }
+        }
+        for c in snap.planFile?.checkpoints ?? [] {
+            if let i = slot(checkpoint: c.checkpoint, due: c.due, dues: dues) { names[i] = c.title }
+        }
+        return RepoPreview(goals: goals, names: names, hasPlanFile: snap.planFile != nil)
     }
 
     // MARK: Remote sync
@@ -44,8 +74,24 @@ enum GoalEngine {
     /// GitHub issues become goals when they belong to a GitHub milestone or carry the `prodline` label.
     /// A milestone's due date picks the checkpoint; without one, the Nth milestone maps to the Nth checkpoint.
     static func syncGitHub(_ snap: GitHubSnapshot, project: Project, context: ModelContext) {
+        sync(githubIncoming(snap), prefix: "gh:", source: .github, project: project, context: context)
+
+        // prodline.json: same shape as API goals. A missing file clears its open goals; a broken one keeps them.
+        if let plan = snap.planFile {
+            syncPlanFile(plan.goals, project: project, context: context)
+            nameCheckpoints(plan.checkpoints ?? [], project: project)
+            // The repo's plan is the source of truth: drop open suggestions everywhere, not just where it placed goals.
+            for m in project.sortedMilestones {
+                for g in m.goals ?? [] where g.source == .ai && !g.isDone { context.delete(g) }
+            }
+        } else if snap.planFileError == nil {
+            syncPlanFile([], project: project, context: context)
+        }
+    }
+
+    private static func githubIncoming(_ snap: GitHubSnapshot) -> [Incoming] {
         let ordered = snap.milestones.sorted { $0.number < $1.number }
-        let incoming: [Incoming] = snap.issues.filter(\.isPlanned).map { issue in
+        return snap.issues.filter(\.isPlanned).map { issue in
             var checkpoint: Int?, due: Date?
             if let ref = issue.milestone, let m = ordered.first(where: { $0.number == ref.number }) {
                 if let d = m.due_on { due = d } else { checkpoint = (ordered.firstIndex(of: m) ?? 0) + 1 }
@@ -53,13 +99,15 @@ enum GoalEngine {
             return Incoming(externalID: "gh:\(issue.number)", title: issue.title, url: issue.html_url,
                             checkpoint: checkpoint, due: due, done: issue.isClosed)
         }
-        sync(incoming, prefix: "gh:", source: .github, project: project, context: context)
+    }
 
-        // prodline.json: same shape as API goals. A missing file clears its open goals; a broken one keeps them.
-        if let plan = snap.planFile {
-            syncPlanFile(plan.goals, project: project, context: context)
-        } else if snap.planFileError == nil {
-            syncPlanFile([], project: project, context: context)
+    /// Checkpoint names from prodline.json, unless the user renamed that checkpoint themselves.
+    static func nameCheckpoints(_ names: [GitHubSnapshot.PlanFile.Checkpoint], project: Project) {
+        for c in names {
+            let title = c.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty, let m = milestone(checkpoint: c.checkpoint, due: c.due, in: project),
+                  !m.titleIsCustom else { continue }
+            m.title = title
         }
     }
 
