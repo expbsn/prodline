@@ -123,7 +123,7 @@ final class LaunchAnimationView: UIView {
                 let carve = CABasicAnimation(keyPath: "strokeEnd")
                 carve.fromValue = 0; carve.toValue = 1
                 carve.duration = piece.duration
-                carve.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                carve.timingFunction = CAMediaTimingFunction(name: .linear)
                 animate(l, carve, at: piece.start, key: "carve")
                 let show = CABasicAnimation(keyPath: "opacity")
                 show.fromValue = 0; show.toValue = 0; show.duration = 0.001
@@ -143,53 +143,62 @@ final class LaunchAnimationView: UIView {
         l.add(a, forKey: "fade")
     }
 
-    /// Fine specks thrown off the carving tip: an emitter riding the path at the stroke's pace.
+    /// Grinder sparks thrown off the carving tip: short glowing streaks flung up and sideways that arc down
+    /// under gravity, turning to follow their path and shrinking as they cool. Each is its own tiny layer
+    /// with a precomputed trajectory, so the render server plays them like the rest of the splash.
     private func addSparks(following path: CGPath, start: CFTimeInterval, duration: Double) {
-        let emitter = CAEmitterLayer()
-        emitter.frame = bounds
-        emitter.emitterShape = .circle
-        emitter.emitterSize = CGSize(width: 10, height: 10)
-        emitter.birthRate = 0
-        let cell = CAEmitterCell()
-        cell.contents = Self.speck
-        cell.color = UIColor(Theme.ink).withAlphaComponent(0.6).cgColor
-        cell.birthRate = 120
-        cell.lifetime = 0.6
-        cell.lifetimeRange = 0.2
-        cell.velocity = 40
-        cell.velocityRange = 25
-        cell.emissionRange = .pi * 2
-        cell.yAcceleration = 70
-        cell.alphaSpeed = -1.6
-        cell.scale = 0.5
-        cell.scaleRange = 0.25
-        emitter.emitterCells = [cell]
-        layer.addSublayer(emitter)
+        let samples = LaunchScript.sample(path, count: 120)
+        guard samples.count > 1 else { return }
+        var rng = LaunchScript.SplitMix(seed: 11)
+        let colors = [UIColor(red: 1, green: 0.55, blue: 0.05, alpha: 1),
+                      UIColor(red: 1, green: 0.76, blue: 0.18, alpha: 1),
+                      UIColor(red: 1, green: 0.38, blue: 0.08, alpha: 1)]
+        let count = 110
+        let gravity: CGFloat = 900
+        for j in 0..<count {
+            let f = Double(j) / Double(count - 1)
+            let origin = samples[min(samples.count - 1, Int(f * Double(samples.count - 1)))]
+            let angle = -CGFloat.pi / 2 + rng.next(-1.35, 1.35)
+            let speed = rng.next(140, 330)
+            let v = CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed)
+            let life = Double(rng.next(0.28, 0.55))
 
-        let move = CAKeyframeAnimation(keyPath: "emitterPosition")
-        move.path = path
-        move.calculationMode = .paced
-        move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
-        move.duration = duration
-        move.beginTime = start
-        move.fillMode = .both
-        move.isRemovedOnCompletion = false
-        emitter.add(move, forKey: "move")
+            let arc = CGMutablePath()
+            arc.move(to: origin)
+            for k in 1...10 {
+                let t = CGFloat(life) * CGFloat(k) / 10
+                arc.addLine(to: CGPoint(x: origin.x + v.dx * t, y: origin.y + v.dy * t + 0.5 * gravity * t * t))
+            }
 
-        let rate = CAKeyframeAnimation(keyPath: "birthRate")
-        rate.values = [1, 1, 0]
-        rate.keyTimes = [0, 0.92, 1]
-        rate.duration = duration
-        rate.beginTime = start
-        emitter.add(rate, forKey: "rate")
+            let spark = CALayer()
+            let length = rng.next(5, 10)
+            spark.bounds = CGRect(x: 0, y: 0, width: length, height: 2)
+            spark.cornerRadius = 1
+            spark.backgroundColor = colors[j % colors.count].cgColor
+            spark.opacity = 0
+            spark.position = origin
+            layer.addSublayer(spark)
+
+            let begin = start + duration * f
+            let fly = CAKeyframeAnimation(keyPath: "position")
+            fly.path = arc
+            fly.rotationMode = .rotateAuto
+            fly.calculationMode = .linear
+            let shine = CAKeyframeAnimation(keyPath: "opacity")
+            shine.values = [1, 1, 0]
+            shine.keyTimes = [0, 0.55, 1]
+            let cool = CABasicAnimation(keyPath: "transform.scale.x")
+            cool.fromValue = 1.2
+            cool.toValue = 0.3
+            let group = CAAnimationGroup()
+            group.animations = [fly, shine, cool]
+            group.duration = life
+            group.beginTime = begin
+            group.isRemovedOnCompletion = true
+            spark.add(group, forKey: "spark")
+        }
     }
 
-    private static let speck: CGImage? = {
-        UIGraphicsImageRenderer(size: CGSize(width: 6, height: 6)).image { _ in
-            UIColor.white.setFill()
-            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: 6, height: 6)).fill()
-        }.cgImage
-    }()
 }
 
 /// Timing and placement of every beat of the splash, shared by the layers and the haptics.
@@ -211,25 +220,69 @@ struct LaunchScript {
     var transform: CGAffineTransform { CGAffineTransform(translationX: origin.x, y: origin.y).scaledBy(x: scale, y: scale) }
     func screen(_ p: CGPoint) -> CGPoint { CGPoint(x: origin.x + p.x * scale, y: origin.y + p.y * scale) }
 
+    /// One beat: dots pop in, dashes draw; passing dots (`extra`) fade again like a moving train.
+    private mutating func add(_ kind: Kind, at time: Double, extra: Bool, fadeAt: Double) {
+        switch kind {
+        case .line: pieces.append(Piece(kind: kind, start: time, duration: 0.07))
+        default: pieces.append(Piece(kind: kind, start: time, duration: 0.16, fadeAt: extra ? fadeAt : nil))
+        }
+        haptics.append(.dot(time, strong: !extra))
+    }
+
+    /// Start times for `count` beats spread with an ease-in-out curve: slow off the line, quick in the middle,
+    /// settling at the end. Same average pace as a fixed step, just distributed.
+    /// Evenly spaced points along a path (by length), for placing sparks along the carve.
+    static func sample(_ path: CGPath, count: Int) -> [CGPoint] {
+        let p = Path(path)
+        return (0..<count).compactMap { i in p.trimmedPath(from: 0, to: Double(i) / Double(count - 1)).currentPoint }
+    }
+
+    /// Small deterministic generator so the splash looks the same every launch.
+    struct SplitMix {
+        var state: UInt64
+        init(seed: UInt64) { state = seed }
+        mutating func next(_ lo: CGFloat, _ hi: CGFloat) -> CGFloat {
+            state &+= 0x9E3779B97F4A7C15
+            var z = state
+            z = (z ^ (z >> 30)) &* 0xBF58476D1CE4E5B9
+            z = (z ^ (z >> 27)) &* 0x94D049BB133111EB
+            z ^= z >> 31
+            return lo + (hi - lo) * CGFloat(Double(z >> 11) / Double(UInt64(1) << 53))
+        }
+    }
+
+    /// A passing dot fades once four more have appeared, so the train keeps its length at any speed.
+    static func trainFade(_ times: [Double], _ i: Int) -> Double {
+        i + 4 < times.count ? times[i + 4] : (times.last ?? 0) + trainLife
+    }
+
+    static func eased(count: Int, from t0: Double) -> [Double] {
+        guard count > 1 else { return [t0] }
+        let span = Double(count - 1) * step * 1.25
+        return (0..<count).map { i in
+            let x = Double(i) / Double(count - 1)
+            let e = x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2
+            return t0 + span * e
+        }
+    }
+
     init(size: CGSize, markWidth: CGFloat = 150) {
         let g = LogoGeometry.self
         scale = markWidth / g.bounds.width
         origin = CGPoint(x: size.width / 2 - g.bounds.midX * scale, y: size.height / 2 - g.bounds.midY * scale)
 
         var t = 0.1
-        // Incoming: a train of dots rising from below the screen edge to the mark's own dot.
+        // Incoming: a train of dots rising from below the screen edge into the mark's own dot and dash.
+        // Dotted phases ease in and out; the carve in between runs at a constant speed.
         var below: [CGPoint] = []
         var y = g.downDot.y + g.spacing
         while origin.y + y * scale < size.height + g.stroke * scale { below.append(CGPoint(x: g.stemX, y: y)); y += g.spacing }
-        for p in below.reversed() {
-            pieces.append(Piece(kind: .dot(p), start: t, duration: 0.16, fadeAt: t + Self.trainLife))
-            haptics.append(.dot(t, strong: false))
-            t += Self.step
+        let incoming: [Kind] = below.reversed().map { .dot($0) } + [.dot(g.downDot), .line(g.downDash.from, g.downDash.to)]
+        let inTimes = Self.eased(count: incoming.count, from: t)
+        for (i, kind) in incoming.enumerated() {
+            add(kind, at: inTimes[i], extra: i < below.count, fadeAt: Self.trainFade(inTimes, i))
         }
-        pieces.append(Piece(kind: .dot(g.downDot), start: t, duration: 0.16))
-        haptics.append(.dot(t, strong: true)); t += Self.step
-        pieces.append(Piece(kind: .line(g.downDash.from, g.downDash.to), start: t, duration: 0.07))
-        haptics.append(.dot(t, strong: true)); t += Self.step + 0.02
+        t = (inTimes.last ?? t) + Self.step + 0.02
 
         // Carve the letter.
         pieces.append(Piece(kind: .carve, start: t, duration: Self.carveDuration))
@@ -237,16 +290,15 @@ struct LaunchScript {
         t += Self.carveDuration + 0.02
 
         // Leaving: dash, the mark's dot, then a train running off the left edge.
-        pieces.append(Piece(kind: .line(g.leftDash.from, g.leftDash.to), start: t, duration: 0.07))
-        haptics.append(.dot(t, strong: true)); t += Self.step
-        pieces.append(Piece(kind: .dot(g.leftDot), start: t, duration: 0.16))
-        haptics.append(.dot(t, strong: true)); t += Self.step
+        var left: [CGPoint] = []
         var x = g.leftDot.x - g.spacing
-        while origin.x + x * scale > -g.stroke * scale {
-            pieces.append(Piece(kind: .dot(CGPoint(x: x, y: g.barY)), start: t, duration: 0.16, fadeAt: t + Self.trainLife))
-            haptics.append(.dot(t, strong: false))
-            t += Self.step; x -= g.spacing
+        while origin.x + x * scale > -g.stroke * scale { left.append(CGPoint(x: x, y: g.barY)); x -= g.spacing }
+        let outgoing: [Kind] = [.line(g.leftDash.from, g.leftDash.to), .dot(g.leftDot)] + left.map { .dot($0) }
+        let outTimes = Self.eased(count: outgoing.count, from: t)
+        for (i, kind) in outgoing.enumerated() {
+            add(kind, at: outTimes[i], extra: i >= 2, fadeAt: Self.trainFade(outTimes, i))
         }
+        t = outTimes.last ?? t
         total = t + Self.trainLife + 0.55
     }
 }

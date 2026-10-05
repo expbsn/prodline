@@ -31,6 +31,7 @@ struct RootView: View {
         .overlay {
             if showLaunch {
                 LaunchView { withAnimation(.easeOut(duration: 0.4)) { showLaunch = false } }
+                    .ignoresSafeArea()
                     .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
@@ -70,14 +71,14 @@ struct RootView: View {
                 }
                 return
             }
+            // Let the splash play on an idle main thread and keep banners for after it.
+            while showLaunch, !Task.isCancelled { try? await Task.sleep(for: .milliseconds(150)) }
             if let profile = profiles.first, profile.onboarded {
                 if ScheduleEngine.evaluateMissed(projects: projects, profile: profile) > 0 {
                     celebration.nudge(title: "A deadline slipped",
                                       subtitle: "Streak reset. The next checkpoint starts a new one.")
                 }
             }
-            // Let the splash play on an idle main thread; the first refresh can wait two seconds.
-            if showLaunch { try? await Task.sleep(for: .seconds(2.2)) }
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()
