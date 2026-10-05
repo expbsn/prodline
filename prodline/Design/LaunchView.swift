@@ -228,8 +228,6 @@ struct LaunchScript {
         haptics.append(.dot(time, strong: !extra))
     }
 
-    /// Start times for `count` beats spread with an ease-in-out curve: slow off the line, quick in the middle,
-    /// settling at the end. Same average pace as a fixed step, just distributed.
     /// Evenly spaced points along a path (by length), for placing sparks along the carve.
     static func sample(_ path: CGPath, count: Int) -> [CGPoint] {
         let p = Path(path)
@@ -255,13 +253,27 @@ struct LaunchScript {
         i + 4 < times.count ? times[i + 4] : (times.last ?? 0) + trainLife
     }
 
+    /// Start times for `count` beats: the dots ease in over the first quarter, keep an even pace,
+    /// and settle over the last quarter (trapezoid speed profile, peak only ~1.33× the average).
     static func eased(count: Int, from t0: Double) -> [Double] {
         guard count > 1 else { return [t0] }
-        let span = Double(count - 1) * step * 1.25
+        let span = Double(count - 1) * step * 1.15
+        let ramp = 0.25
+        let vmax = 1 / (1 - ramp)
+        func progress(_ x: Double) -> Double {
+            if x < ramp { return vmax * x * x / (2 * ramp) }
+            if x > 1 - ramp { return 1 - vmax * (1 - x) * (1 - x) / (2 * ramp) }
+            return vmax * (ramp / 2 + (x - ramp))
+        }
+        // Beats are evenly spaced in distance; find the time each one is reached.
         return (0..<count).map { i in
-            let x = Double(i) / Double(count - 1)
-            let e = x < 0.5 ? 4 * x * x * x : 1 - pow(-2 * x + 2, 3) / 2
-            return t0 + span * e
+            let target = Double(i) / Double(count - 1)
+            var lo = 0.0, hi = 1.0
+            for _ in 0..<30 {
+                let mid = (lo + hi) / 2
+                if progress(mid) < target { lo = mid } else { hi = mid }
+            }
+            return t0 + span * (lo + hi) / 2
         }
     }
 
