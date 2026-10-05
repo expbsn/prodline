@@ -270,6 +270,7 @@ struct MeView: View {
             Keychain.delete("gh-" + p.id.uuidString)
             context.delete(p)
         }
+        UserDefaults.standard.removeObject(forKey: "githubAPIBase")
         resetProgress()
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
         refresher.reset()
@@ -296,7 +297,7 @@ struct MeView: View {
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Demo & testing")
-            Text("Run `python3 MockProject/server.py` on your Mac, then load demo projects that stream data from it.")
+            Text("Run `python3 MockProject/server.py --host 0.0.0.0` on your Mac and enter the address it prints (your Mac's Wi-Fi IP, same network as the phone). 127.0.0.1 only works in the Simulator.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
             TextField("Mock server URL", text: $mockServerURL)
                 .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)

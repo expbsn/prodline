@@ -342,6 +342,16 @@ def main():
     args = ap.parse_args()
     threading.Thread(target=simulate, daemon=True).start()
     print(f"Prodline mock server on http://{args.host}:{args.port}")
+    if args.host == "0.0.0.0":
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(("192.0.2.1", 80))  # no packets sent; just picks the LAN interface
+                print(f"  On your iPhone (same Wi-Fi) use: http://{s.getsockname()[0]}:{args.port}")
+        except OSError:
+            pass
+    else:
+        print("  Simulator only. For a real iPhone run with --host 0.0.0.0")
     for slug, p in PROJECTS.items():
         print(f"  {p['name']:<12} /projects/{slug}/metrics   key={p['key']}   fail_rate={p['fail_rate']}")
     ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()

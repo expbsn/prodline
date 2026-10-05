@@ -267,7 +267,7 @@ struct GitHubFields: View {
     private func run() {
         guard let ref = GitHubRepoRef(repo) else { check = .failed(GitHubError.badRepo.localizedDescription); return }
         check = .running
-        let client = GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base)
+        let client = GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref))
         Task {
             do {
                 let snap = try await client.fetch()

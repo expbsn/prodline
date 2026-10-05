@@ -375,7 +375,7 @@ struct CreateProjectFlow: View {
         // Read the repo for context if it was linked but not checked yet.
         var snap = githubSnapshot
         if snap == nil, let ref = GitHubRepoRef(repo) {
-            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base).fetch()
+            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
             if let snap { repoCheck = .ok(snap) }
         }
         do {

@@ -207,14 +207,20 @@ final class GitHubService {
     /// GitHub's remaining quota from the last response; the probe pauses when it runs low.
     private(set) var rateRemaining: Int?
 
-    /// The API base; DEBUG builds can point it at the mock server.
-    static var base: URL {
-        UserDefaults.standard.string(forKey: "githubAPIBase").flatMap(URL.init(string:)) ?? GitHubClient.defaultBase
+    /// Owner reserved for the mock server's fake repos (demo/side-shop).
+    static let demoOwner = "demo"
+
+    /// Real repos always talk to api.github.com; only the demo's fake repos go to the mock server.
+    static func base(for ref: GitHubRepoRef) -> URL {
+        guard ref.owner == demoOwner,
+              let mock = UserDefaults.standard.string(forKey: "githubAPIBase").flatMap(URL.init(string:))
+        else { return GitHubClient.defaultBase }
+        return mock
     }
 
     static func client(for project: Project) -> GitHubClient? {
         guard let ref = GitHubRepoRef(project.githubRepo) else { return nil }
-        return GitHubClient(repo: ref, token: Keychain.get("gh-" + project.id.uuidString), base: base)
+        return GitHubClient(repo: ref, token: Keychain.get("gh-" + project.id.uuidString), base: base(for: ref))
     }
 
     func reset() {

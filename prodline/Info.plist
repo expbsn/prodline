@@ -11,6 +11,8 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Prodline connects to a test server on your Mac when you load the demo projects.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>AfacadFlux-VariableFont_slnt,wght.ttf</string>
