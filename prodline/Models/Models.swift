@@ -54,6 +54,8 @@ final class Project {
     /// Linked GitHub repository as "owner/name". An optional token lives in the Keychain.
     var githubRepo: String = ""
     var lastCommitAt: Date? = nil
+    /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
+    var commitDaysData: Data? = nil
     var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
@@ -72,6 +74,11 @@ final class Project {
     var accent: Accent { Accent(hex: accentHex) }
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
     var cover: UIImage? { CoverCache.image(coverImage, key: id.uuidString) }
+
+    var commitDays: [String: Int] {
+        get { commitDaysData.flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:] }
+        set { commitDaysData = try? JSONEncoder().encode(newValue) }
+    }
 
     var buildEnd: Date { startDate.adding(days: buildDays) }
     var observeEnd: Date { buildEnd.adding(days: observeDays) }
@@ -168,6 +175,18 @@ enum GoalSource: String, CaseIterable {
         case .ai: "Suggested"
         case .metric: "Traction target"
         case .manual: "Added by you"
+        }
+    }
+
+    /// For the "Goals from …" line.
+    var shortName: String {
+        switch self {
+        case .api: "your API"
+        case .github: "GitHub"
+        case .repoFile: "prodline.json"
+        case .ai: "suggestions"
+        case .metric: "targets"
+        case .manual: "you"
         }
     }
 

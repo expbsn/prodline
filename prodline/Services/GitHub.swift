@@ -68,6 +68,8 @@ nonisolated struct GitHubSnapshot: Sendable, Equatable {
     var lastCommit: Date?
     /// nil when the repo has no prodline.json.
     var planFile: PlanFile? = nil
+    /// Commit times since the project's start (only when asked for, newest first, up to 300).
+    var commitDates: [Date] = []
     /// Set when prodline.json exists but can't be read; existing file goals are kept meanwhile.
     var planFileError: String? = nil
 }
@@ -157,7 +159,22 @@ nonisolated struct GitHubClient: Sendable {
         }
     }
 
-    func fetch() async throws -> GitHubSnapshot {
+    /// Commit times since `since`, newest first; up to three pages of 100.
+    func commitDates(since: Date) async -> [Date] {
+        struct Commit: Decodable { struct Inner: Decodable { struct Author: Decodable { var date: Date? }; var committer: Author? }; var commit: Inner }
+        var out: [Date] = []
+        for page in 1...3 {
+            guard let data = try? await get("/commits", query: [.init(name: "since", value: MetricsPayload.iso(since)),
+                                                                .init(name: "per_page", value: "100"),
+                                                                .init(name: "page", value: "\(page)")]),
+                  let batch = try? decode([Commit].self, data) else { break }
+            out += batch.compactMap { $0.commit.committer?.date }
+            if batch.count < 100 { break }
+        }
+        return out
+    }
+
+    func fetch(commitsSince: Date? = nil) async throws -> GitHubSnapshot {
         struct Repo: Decodable { var description: String?; var pushed_at: Date? }
         struct Commit: Decodable { struct Inner: Decodable { struct Author: Decodable { var date: Date? }; var committer: Author? }; var commit: Inner }
 
@@ -178,9 +195,10 @@ nonisolated struct GitHubClient: Sendable {
             do { plan = try decode(GitHubSnapshot.PlanFile.self, data) }
             catch { planError = "prodline.json isn't valid: \(Self.describe(error))" }
         }
+        let log = commitsSince != nil ? await commitDates(since: commitsSince!) : []
         return GitHubSnapshot(description: repoInfo.description ?? "", readme: readme,
                               milestones: milestones, issues: issues, lastCommit: lastCommit ?? repoInfo.pushed_at,
-                              planFile: plan, planFileError: planError)
+                              planFile: plan, commitDates: log, planFileError: planError)
     }
 
     static func describe(_ error: Error) -> String {
@@ -263,11 +281,13 @@ final class GitHubService {
             }
             lastFetch[p.id] = now
             do {
-                let snap = try await client.fetch()
+                let snap = try await client.fetch(commitsSince: p.startDate)
                 errors[p.id] = nil
                 if snapshots[p.id] != snap { changed.append(p) }
                 snapshots[p.id] = snap
                 p.lastCommitAt = snap.lastCommit
+                let days = Momentum.dailyCounts(snap.commitDates)
+                if days != p.commitDays { p.commitDays = days }
             } catch {
                 errors[p.id] = error.localizedDescription
             }

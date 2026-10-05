@@ -115,3 +115,73 @@ struct CheckpointTests {
         #expect(m.title == "Checkpoint 2" && !m.titleIsCustom)
     }
 }
+
+@MainActor
+@Suite("Schedule changes and momentum")
+struct ScheduleChangeTests {
+    /// Monday Jan 5 2026, 14-day build, Mon+Fri checkpoints → [CP1 Fri 9, CP2 Mon 12, CP3 Fri 16, Ship Sun 18, Review Feb 15].
+    private func setup() throws -> (ModelContext, Project, Profile) {
+        let ctx = try makeContext()
+        let profile = Profile()
+        profile.milestoneWeekdayMask = (1 << 1) | (1 << 5)
+        profile.remindersEnabled = false
+        ctx.insert(profile)
+        let p = Project(name: "P", accentHex: 0x58CC02, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
+        ScheduleEngine.createProject(p, profile: profile, context: ctx)
+        return (ctx, p, profile)
+    }
+
+    @Test func movingTheStartShiftsOpenCheckpointsAndKeepsGoals() throws {
+        let (ctx, p, profile) = try setup()
+        let cp2 = p.sortedMilestones[1]
+        GoalEngine.addGoals(["Keep me"], source: .manual, to: cp2, context: ctx)
+        p.sortedMilestones[0].completedAt = day(2026, 1, 9)
+
+        ScheduleEngine.changeSchedule(p, start: day(2026, 1, 12), buildDays: 14, observeDays: 28, profile: profile, context: ctx)
+        try ctx.save()
+        let ms = p.sortedMilestones
+        #expect(p.startDate == day(2026, 1, 12))
+        #expect(ms.first?.dueDate == day(2026, 1, 9))                     // finished one stays put
+        #expect(ms.contains { $0.sortedGoals.first?.title == "Keep me" && $0.dueDate == day(2026, 1, 19) }) // shifted a week
+        #expect(ms.first { $0.isLaunch }?.dueDate == day(2026, 1, 25))
+        #expect(ms.last?.dueDate == p.observeEnd.adding(days: -1))
+    }
+
+    @Test func longerBuildAddsCheckpointsOnTheCheckpointDays() throws {
+        let (ctx, p, profile) = try setup()
+        let before = p.sortedMilestones.filter { !$0.isLaunch && $0.dueDate < p.launchDay }.count
+        ScheduleEngine.changeSchedule(p, start: p.startDate, buildDays: 21, observeDays: 28, profile: profile, context: ctx)
+        try ctx.save()
+        let build = p.sortedMilestones.filter { !$0.isLaunch && $0.dueDate < p.launchDay }
+        #expect(build.count > before)
+        #expect(build.map(\.title) == (1...build.count).map { "Checkpoint \($0)" })
+        let weekdays = Set(build.map { Calendar.current.component(.weekday, from: $0.dueDate) })
+        #expect(weekdays.isSubset(of: [2, 6]))
+        #expect(p.sortedMilestones.first { $0.isLaunch }?.dueDate == day(2026, 1, 25))
+    }
+
+    @Test func momentumCountsCommitsGoalsAndActiveDays() throws {
+        let (ctx, p, _) = try setup()
+        p.commitDays = [Momentum.key(day(2026, 1, 5)): 3, Momentum.key(day(2026, 1, 7)): 1]
+        GoalEngine.addGoals(["A", "B"], source: .manual, to: p.sortedMilestones[0], context: ctx)
+        p.sortedMilestones[0].sortedGoals[0].setDone(true, at: day(2026, 1, 6))
+        let m = Momentum.make(project: p, now: day(2026, 1, 7).addingTimeInterval(3600 * 12))
+        #expect(m.elapsedDays == 3)
+        #expect(m.totalCommits == 4 && m.commitsToday == 1)
+        #expect(m.activeDays == 2)
+        #expect(m.goalsDone == 1 && m.goalsTotal == 2)
+        #expect(m.days.map(\.goalsDone) == [0, 1, 1])
+    }
+
+    @Test func momentumFallsBackToCommitsFromTheAPI() throws {
+        let (ctx, p, _) = try setup()
+        for (i, c) in [10.0, 12.0, 12.0, 17.0].enumerated() {
+            let s = MetricSnapshot(date: day(2026, 1, 5 + i).addingTimeInterval(20 * 3600), visits: 0, socialViews: 0, revenue: 0,
+                                   extras: ["commits": c])
+            ctx.insert(s); s.project = p
+        }
+        let m = Momentum.make(project: p, now: day(2026, 1, 8).addingTimeInterval(3600 * 21))
+        #expect(m.hasCommitData)
+        #expect(m.days.map(\.commits) == [0, 2, 0, 5])
+    }
+}

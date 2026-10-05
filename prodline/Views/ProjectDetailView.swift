@@ -54,7 +54,12 @@ struct ProjectDetailView: View {
                 hero
                 VStack(spacing: 16) {
                     timelineCard
-                    metricsCard
+                    // Building: is it moving? Shipped: is anyone coming?
+                    if project.phase() == .building || project.phase() == .upcoming {
+                        MomentumCard(project: project, onConnect: { showConnection = true })
+                    } else {
+                        metricsCard
+                    }
                     milestonesCard
                     connectionCard
                     Button("Delete project") { confirmDelete = true }
@@ -110,7 +115,7 @@ struct ProjectDetailView: View {
             CircleIconButton(systemName: "xmark") { close() }
             Spacer()
             Menu {
-                Button("Edit name & cover", systemImage: "paintbrush") { showEdit = true }
+                Button("Edit project & schedule", systemImage: "paintbrush") { showEdit = true }
                 Button("Connection", systemImage: "bolt.horizontal") { showConnection = true }
                 Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
             } label: {
@@ -332,6 +337,7 @@ struct ProjectDetailView: View {
         let canSuggest = GoalPlanner.isEnabled && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
         return VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Deadlines", trailing: "\(done)/\(ms.count) done")
+            goalSources(ms)
             ChunkyProgressBar(value: ms.isEmpty ? 0 : Double(done) / Double(ms.count), height: 12)
                 .padding(.bottom, 4)
             if canSuggest || drafting {
@@ -384,6 +390,25 @@ struct ProjectDetailView: View {
             Button("Cancel", role: .cancel) { addingGoalTo = nil }
         } message: {
             Text("The checkpoint completes once all of its goals are done.")
+        }
+    }
+
+    /// Where this project's goals come from, said once instead of under every goal.
+    @ViewBuilder
+    private func goalSources(_ ms: [Milestone]) -> some View {
+        let present = Set(ms.flatMap { $0.goals ?? [] }.map(\.source))
+        let order: [GoalSource] = [.repoFile, .github, .api, .metric, .ai, .manual]
+        let sources = order.filter(present.contains)
+        if !sources.isEmpty {
+            HStack(spacing: 12) {
+                Text("Goals from").font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
+                ForEach(sources, id: \.self) { src in
+                    Label(src.shortName, systemImage: src.symbol)
+                        .font(.ui(12, .semibold)).foregroundStyle(Theme.inkSoft)
+                        .labelStyle(.titleAndIcon)
+                }
+            }
+            .lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 
@@ -542,12 +567,13 @@ struct MilestoneLine: View {
     }
 
     /// Metric goals show live progress ("412 of 500"), others their source.
-    private func goalCaption(_ g: Goal) -> String {
+    /// Live progress for number goals ("412 of 500"); where goals come from is said once in the card heading.
+    private func goalCaption(_ g: Goal) -> String? {
         guard let key = g.metricKey, let target = g.target, !g.isDone, let project = milestone.project,
-              let v = GoalEngine.value(for: key, project: project, refresher: refresher) else { return g.source.label }
+              let v = GoalEngine.value(for: key, project: project, refresher: refresher) else { return nil }
         let isMoney = key == MetricKey.revenue.rawValue
         let fmt: (Double) -> String = { isMoney ? MetricKey.money($0) : MetricKey.count($0) }
-        return "\(fmt(v)) of \(fmt(target)) · \(g.source.label)"
+        return "\(fmt(v)) of \(fmt(target))"
     }
 
     private var progress: Double {
@@ -574,19 +600,21 @@ struct MilestoneLine: View {
             .accessibilityLabel(g.source.isAutomatic ? "\(g.title), completes automatically" : "Toggle \(g.title)")
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(g.title)
-                    .font(.ui(14, .medium))
-                    .foregroundStyle(g.isDone ? Theme.secondary : Theme.ink)
-                    .strikethrough(g.isDone, color: Theme.secondary)
-                HStack(spacing: 4) {
-                    Image(systemName: g.source.symbol)
-                    Text(goalCaption(g))
-                    if let url = URL(string: g.url), !g.url.isEmpty {
-                        Link(destination: url) { Image(systemName: "arrow.up.right") }
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(g.title)
+                        .font(.ui(14, .medium))
+                        .foregroundStyle(g.isDone ? Theme.secondary : Theme.ink)
+                        .strikethrough(g.isDone, color: Theme.secondary)
+                    if let link = URL(string: g.url), !g.url.isEmpty {
+                        Link(destination: link) {
+                            Image(systemName: "arrow.up.right").font(.system(size: 10, weight: .bold)).foregroundStyle(Theme.tertiary)
+                        }
+                        .accessibilityLabel("Open \(g.title)")
                     }
                 }
-                .font(.ui(11, .medium))
-                .foregroundStyle(Theme.tertiary)
+                if let caption = goalCaption(g) {
+                    Text(caption).font(.ui(11, .medium)).foregroundStyle(Theme.tertiary)
+                }
             }
             Spacer(minLength: 0)
         }
@@ -625,6 +653,14 @@ struct EditProjectSheet: View {
     @State private var photoHex: Int?
     @State private var locked = false
     @State private var accentHex = 0
+    @State private var startDate = Date.now
+    @State private var buildDays = 14
+    @State private var observeDays = 28
+    @Query(sort: \Profile.createdAt) private var profiles: [Profile]
+
+    private var scheduleChanged: Bool {
+        startDate.startOfDay != project.startDate || buildDays != project.buildDays || observeDays != project.observeDays
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -653,6 +689,7 @@ struct EditProjectSheet: View {
                             .padding(.vertical, 14)
                             .inputField()
                     }
+                    scheduleSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
@@ -665,6 +702,10 @@ struct EditProjectSheet: View {
                 project.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
                 project.coverImage = imageData
                 project.accentHex = accentHex
+                if scheduleChanged {
+                    ScheduleEngine.changeSchedule(project, start: startDate, buildDays: buildDays, observeDays: observeDays,
+                                                  profile: profiles.first, context: context)
+                }
                 try? context.save()
                 Haptics.success()
                 dismiss()
@@ -681,7 +722,45 @@ struct EditProjectSheet: View {
             accentHex = project.accentHex
             photoHex = project.cover.flatMap(ImageTools.dominantAccentHex)
             locked = photoHex == project.accentHex
+            startDate = project.startDate
+            buildDays = project.buildDays
+            observeDays = project.observeDays
         }
+    }
+
+    private var scheduleSection: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Schedule").eyebrow()
+            HStack {
+                Text("Start").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                DatePicker("Start", selection: $startDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .tint(project.accent.text)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Build phase").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(buildDays.durationText).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                }
+                ChunkySlider(value: $buildDays, range: 3...42)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text("Observe phase").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                    Spacer()
+                    Text(observeDays.durationText).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                }
+                ChunkySlider(value: $observeDays, range: 7...90)
+            }
+            Text(scheduleChanged
+                 ? "Launch moves to \(startDate.startOfDay.adding(days: buildDays - 1).shortDay). Open checkpoints move along; finished ones and their goals stay."
+                 : "Launch on \(project.launchDay.shortDay), traction review until \(project.observeEnd.adding(days: -1).shortDay).")
+                .font(.ui(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .card(padding: 16, radius: 22)
     }
 }
 

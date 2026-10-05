@@ -215,7 +215,7 @@ class Handler(BaseHTTPRequestHandler):
         auth = self.headers.get("Authorization", "")
         return auth == f"Bearer {PROJECTS[slug]['key']}"
 
-    def github(self, parts):
+    def github(self, parts, q=None):
         # parts: ["github", "repos", "demo", "<repo>", optional resource]
         if len(parts) < 4 or parts[1] != "repos" or parts[3] not in GITHUB:
             return self.send_json(404, {"message": "Not Found"})
@@ -243,6 +243,22 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Length", str(len(data)))
             self.end_headers()
             return self.wfile.write(data)
+        if res == "commits" and q and q.get("since"):
+            # Commit history for the momentum stats: a steady but uneven rhythm, plus live pushes today.
+            since = datetime.fromisoformat(q["since"][0].replace("Z", "+00:00"))
+            now = datetime.now(timezone.utc)
+            out, d, n = [], since, 0
+            while d < now:
+                rnd = random.Random(f"{parts[3]}-{d.date()}")
+                for k in range(rnd.choice([0, 0, 1, 2, 3, 3, 4, 6])):
+                    t = d.replace(hour=9, minute=0, second=0) + timedelta(minutes=rnd.randint(0, 600))
+                    if t < now:
+                        out.append({"sha": f"{n:040x}", "commit": {"committer": {"date": iso(t)}}}); n += 1
+                d += timedelta(days=1)
+            for k in range(repo.get("commits", 0)):
+                out.append({"sha": f"live{k:036x}", "commit": {"committer": {"date": iso(now - timedelta(minutes=k))}}})
+            out.sort(key=lambda c: c["commit"]["committer"]["date"], reverse=True)
+            return self.send_json(200, out[:100])
         if res == "commits":
             sha = f"c0ffee{repo.get('commits', 0):04d}"
             etag = f'W/"{sha}"'
@@ -258,7 +274,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         url, parts, q = self.route()
         if parts and parts[0] == "github":
-            return self.github(parts)
+            return self.github(parts, q)
         if parts == ["health"]:
             return self.send_json(200, {"ok": True, "projects": list(PROJECTS), "started": iso(SERVER_START)})
         if len(parts) != 3 or parts[0] != "projects" or parts[2] != "metrics":

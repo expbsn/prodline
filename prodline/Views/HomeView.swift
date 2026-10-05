@@ -301,7 +301,10 @@ struct ProjectPanel: View {
         }
         let done = project.sortedMilestones.filter(\.isDone).count
         items.append(("checkmark.circle", "\(done)/\(project.sortedMilestones.count)"))
-        if let v = refresher.value(.visits, for: project) {
+        let momentum = project.phase() == .building ? Momentum.make(project: project) : nil
+        if let m = momentum, m.hasCommitData {
+            items.append(("chevron.left.forwardslash.chevron.right", "\(m.totalCommits) commits"))
+        } else if let v = refresher.value(.visits, for: project) {
             items.append(("globe", MetricKey.count(v)))
         } else {
             items.append(("bolt.fill", project.hasEndpoint ? "Connected" : "Sample"))

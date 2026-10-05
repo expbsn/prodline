@@ -64,6 +64,58 @@ enum ScheduleEngine {
         if let p { renumber(p) }
     }
 
+    /// Changes a running project's start date and phase lengths. Open checkpoints shift with the start,
+    /// launch and traction review follow the new phase ends, and empty automatic checkpoints are redrawn
+    /// on the checkpoint weekdays. Finished checkpoints, goals and custom names are kept.
+    static func changeSchedule(_ p: Project, start: Date, buildDays: Int, observeDays: Int,
+                               profile: Profile?, context: ModelContext) {
+        // Decide phase membership on the old schedule, before anything moves.
+        let oldLaunch = p.launchDay
+        let open = p.sortedMilestones.filter { !$0.isDone }
+        let launch = open.first { $0.isLaunch }
+        let observing = open.filter { !$0.isLaunch && $0.dueDate > oldLaunch }   // traction review & co.
+        let building = open.filter { !$0.isLaunch && $0.dueDate <= oldLaunch }
+
+        let delta = Date.days(from: p.startDate, to: start)
+        p.startDate = start.startOfDay
+        p.buildDays = buildDays
+        p.observeDays = observeDays
+
+        launch?.dueDate = p.launchDay
+        let lastObserveDay = p.observeEnd.adding(days: -1)
+        for m in observing {
+            // The review sits on the last day; anything else keeps its distance from launch.
+            let target = m.dueDate.adding(days: delta)
+            m.dueDate = m === observing.last ? lastObserveDay : min(max(target, p.buildEnd), lastObserveDay)
+        }
+
+        // Empty automatic checkpoints are redrawn on the checkpoint weekdays; the rest shift and stay inside the build.
+        var kept: [Milestone] = []
+        for m in building {
+            if !m.titleIsCustom && isAutoName(m.title) && !m.hasGoals {
+                Notifier.cancel(m)
+                m.project = nil
+                context.delete(m)
+            } else {
+                m.dueDate = min(max(m.dueDate.adding(days: delta), p.startDate.adding(days: 1)), p.launchDay.adding(days: -1))
+                kept.append(m)
+            }
+        }
+        let taken = Set(kept.map(\.dueDate) + p.sortedMilestones.filter(\.isDone).map(\.dueDate))
+        let mask = profile?.milestoneWeekdayMask ?? 0b0100010
+        for m in makeMilestones(for: p, weekdayMask: mask) where !m.isLaunch && m.dueDate < p.launchDay && !taken.contains(m.dueDate) {
+            context.insert(m)
+            m.project = p
+        }
+        renumber(p)
+        if let profile, profile.remindersEnabled {
+            for m in p.sortedMilestones where !m.isDone {
+                Notifier.cancel(m)
+                Notifier.schedule(m, hour: profile.reminderHour)
+            }
+        }
+    }
+
     /// Keeps automatic names in date order ("Checkpoint 1, 2, 3") after adds, moves and deletes.
     static func renumber(_ p: Project) {
         var n = 1
