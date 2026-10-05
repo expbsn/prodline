@@ -38,31 +38,44 @@ struct CheckpointTests {
 
     @Test func planFileNamesCheckpointsButCustomNamesWin() throws {
         let (ctx, p) = try setup()
-        let ms = p.sortedMilestones
-        ScheduleEngine.rename(ms[2], to: "My own name")
+        ScheduleEngine.rename(p.sortedMilestones[1], to: "My own name")   // Mon Jan 12
         let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Device testing", due: day(2026, 1, 12)),
-                                                                    .init(title: "Ignored", checkpoint: 3)],
+                                                                    .init(title: "Polish", due: day(2026, 1, 16))],
                                            goals: [])
         GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
-        #expect(ms[1].title == "Device testing")
-        #expect(ms[2].title == "My own name")
+        try ctx.save()
+        #expect(p.sortedMilestones.map(\.title) == ["My own name", "Polish"])
     }
 
-    @Test func planFileAddsDatedCheckpointsAndPlacesGoalsOnThem() throws {
+    @Test func planFileIsTheOnlyPlan() throws {
         let (ctx, p) = try setup()
-        let before = p.sortedMilestones.count
+        GoalEngine.addGoals(["Suggested"], source: .ai, to: p.sortedMilestones[2], context: ctx)
+        GoalEngine.addGoals(["Mine"], source: .manual, to: p.sortedMilestones[2], context: ctx)
+        p.sortedMilestones[0].completedAt = day(2026, 1, 9)
         let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Widgets", due: day(2026, 1, 28))],
                                            goals: [goal("w", due: day(2026, 1, 28)), goal("x", due: day(2026, 1, 27))])
         GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
         try ctx.save()
-        #expect(p.sortedMilestones.count == before + 1)
-        let added = try #require(p.sortedMilestones.first { $0.title == "Widgets" })
-        #expect(added.dueDate == day(2026, 1, 28))
-        #expect(Set(added.goals?.map(\.title) ?? []) == ["Goal w", "Goal x"])
+        // Exactly the file's checkpoints (no automatic ones, launch or review) and goals.
+        #expect(p.sortedMilestones.map(\.title) == ["Widgets"])
+        #expect(p.sortedMilestones[0].dueDate == day(2026, 1, 28))
+        #expect(Set(p.sortedMilestones[0].goals?.map(\.title) ?? []) == ["Goal w", "Goal x"])
 
-        // Syncing again doesn't add it twice.
+        // Syncing again changes nothing.
         GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
-        #expect(p.sortedMilestones.count == before + 1)
+        #expect(p.sortedMilestones.count == 1)
+    }
+
+    @Test func duplicatesOnOneDayAreMerged() throws {
+        let (ctx, p) = try setup()
+        ScheduleEngine.addCheckpoint(to: p, title: "Widgets", due: day(2026, 1, 14), profile: nil, context: ctx)
+        ScheduleEngine.addCheckpoint(to: p, title: "Widgets", due: day(2026, 1, 14), profile: nil, context: ctx)
+        let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Widgets", due: day(2026, 1, 14))],
+                                           goals: [goal("w", due: day(2026, 1, 14))])
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones.count == 1)
+        #expect(p.sortedMilestones[0].goals?.map(\.title) == ["Goal w"])
     }
 
     @Test func staleRepoNamedCopiesAreRemoved() throws {
@@ -75,18 +88,6 @@ struct CheckpointTests {
         let widgets = p.sortedMilestones.filter { $0.title == "Widgets" }
         #expect(widgets.count == 1)
         #expect(widgets.first?.dueDate == day(2026, 1, 14))
-    }
-
-    @Test func planFileReplacesSuggestionsEverywhere() throws {
-        let (ctx, p) = try setup()
-        let ms = p.sortedMilestones
-        GoalEngine.addGoals(["Suggested"], source: .ai, to: ms[2], context: ctx)
-        GoalEngine.addGoals(["Mine"], source: .manual, to: ms[2], context: ctx)
-        let plan = GitHubSnapshot.PlanFile(version: 1, goals: [goal("a", due: day(2026, 1, 9))])
-        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
-        try ctx.save()
-        #expect(ms[0].goals?.map(\.title) == ["Goal a"])
-        #expect(ms[2].goals?.map(\.title) == ["Mine"]) // suggestion gone even though the file put nothing here
     }
 
     @Test func previewShowsRepoGoalsPerDeadline() {

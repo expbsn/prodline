@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import OSLog
 
 struct RootView: View {
     @Environment(\.modelContext) private var context
@@ -127,6 +128,7 @@ extension RootView {
     /// GitHub issues → goals, plus the "repo has gone quiet" nudge.
     func syncGitHub() async {
         let changed = await github.refresh(projects: projects)
+        GitHubService.log.notice("sync: \(projects.count) projects, \(changed.count) changed")
         guard let profile = profiles.first else { return }
         for p in changed {
             if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }

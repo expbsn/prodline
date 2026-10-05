@@ -334,7 +334,8 @@ struct ProjectDetailView: View {
     private var milestonesCard: some View {
         let ms = project.sortedMilestones
         let done = ms.filter(\.isDone).count
-        let canSuggest = GoalPlanner.isEnabled && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
+        let fromFile = project.followsPlanFile
+        let canSuggest = !fromFile && GoalPlanner.isEnabled && ms.dropLast().contains { !$0.isDone && !$0.hasGoals }
         return VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Deadlines", trailing: "\(done)/\(ms.count) done")
             goalSources(ms)
@@ -363,16 +364,24 @@ struct ProjectDetailView: View {
                               onDone: { complete(m) },
                               onToggleGoal: { toggle($0) },
                               onDeleteGoal: { g in context.delete(g); try? context.save() },
-                              onAddGoal: { newGoalTitle = ""; addingGoalTo = m },
-                              onEdit: { checkpointSheet = .some(m) })
+                              onAddGoal: fromFile ? nil : { newGoalTitle = ""; addingGoalTo = m },
+                              onEdit: fromFile ? nil : { checkpointSheet = .some(m) })
                 if m.id != ms.last?.id { Divider().padding(.leading, 44) }
             }
-            Button { checkpointSheet = .some(nil) } label: {
-                Label("Add checkpoint", systemImage: "plus.circle")
-                    .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+            if fromFile {
+                Label("Checkpoints and goals follow prodline.json in \(project.githubRepo). Edit the file to change them.",
+                      systemImage: "doc.text")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.vertical, 4)
+            } else {
+                Button { checkpointSheet = .some(nil) } label: {
+                    Label("Add checkpoint", systemImage: "plus.circle")
+                        .font(.ui(15, .semibold)).foregroundStyle(accent.text)
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 4)
             }
-            .buttonStyle(.plain)
-            .padding(.vertical, 4)
             Divider()
             GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
         }
@@ -492,7 +501,7 @@ struct MilestoneLine: View {
     var onDone: () -> Void
     var onToggleGoal: (Goal) -> Void = { _ in }
     var onDeleteGoal: (Goal) -> Void = { _ in }
-    var onAddGoal: () -> Void = {}
+    var onAddGoal: (() -> Void)? = {}
     var onEdit: (() -> Void)? = nil
     @Environment(\.accent) private var accent
     @Environment(DataRefresher.self) private var refresher
@@ -548,10 +557,10 @@ struct MilestoneLine: View {
                 .disabled(onEdit == nil || milestone.isDone)
             }
 
-            if milestone.hasGoals || !milestone.isDone {
+            if milestone.hasGoals || (!milestone.isDone && onAddGoal != nil) {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(milestone.sortedGoals) { g in goalRow(g) }
-                    if !milestone.isDone {
+                    if !milestone.isDone, let onAddGoal {
                         Button(action: onAddGoal) {
                             Label("Add goal", systemImage: "plus")
                                 .font(.ui(13, .semibold))

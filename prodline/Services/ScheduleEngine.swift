@@ -69,6 +69,13 @@ enum ScheduleEngine {
     /// on the checkpoint weekdays. Finished checkpoints, goals and custom names are kept.
     static func changeSchedule(_ p: Project, start: Date, buildDays: Int, observeDays: Int,
                                profile: Profile?, context: ModelContext) {
+        // Checkpoints of a prodline.json project are set by the file; only the phases move.
+        if p.followsPlanFile {
+            p.startDate = start.startOfDay
+            p.buildDays = buildDays
+            p.observeDays = observeDays
+            return
+        }
         // Decide phase membership on the old schedule, before anything moves.
         let oldLaunch = p.launchDay
         let open = p.sortedMilestones.filter { !$0.isDone }

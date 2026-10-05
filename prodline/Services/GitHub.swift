@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 import SwiftUI
 
@@ -268,12 +269,15 @@ final class GitHubService {
         return head.sha != nil && head.sha != known
     }
 
+    static let log = Logger(subsystem: "expbsn.app.prodline", category: "github")
+
     /// Returns the projects whose snapshot changed.
     @discardableResult
     func refresh(projects: [Project], force: Bool = false, now: Date = .now) async -> [Project] {
         var changed: [Project] = []
         for p in projects where p.isActive || p.phase() == .upcoming {
             guard let client = Self.client(for: p) else { continue }
+            Self.log.notice("refresh \(p.name, privacy: .public) repo=\(p.githubRepo, privacy: .public) due=\(force || (self.lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true))")
             let due = force || (lastFetch[p.id].map { now.timeIntervalSince($0) >= Self.interval } ?? true)
             if !due {
                 let pushed = await hasNewCommit(p, client: client, now: now)
@@ -288,8 +292,10 @@ final class GitHubService {
                 p.lastCommitAt = snap.lastCommit
                 let days = Momentum.dailyCounts(snap.commitDates)
                 if days != p.commitDays { p.commitDays = days }
+                Self.log.notice("fetched \(p.name, privacy: .public): plan=\(snap.planFile?.goals.count ?? -1) planError=\(snap.planFileError ?? "-", privacy: .public)")
             } catch {
                 errors[p.id] = error.localizedDescription
+                Self.log.error("fetch failed \(p.name, privacy: .public): \(error.localizedDescription, privacy: .public)")
             }
         }
         return changed

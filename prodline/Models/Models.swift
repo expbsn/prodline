@@ -54,6 +54,8 @@ final class Project {
     /// Linked GitHub repository as "owner/name". An optional token lives in the Keychain.
     var githubRepo: String = ""
     var lastCommitAt: Date? = nil
+    /// The linked repo has a prodline.json: checkpoints and goals mirror the file exactly, nothing else.
+    var followsPlanFile: Bool = false
     /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
     var commitDaysData: Data? = nil
     var createdAt: Date = Date.now

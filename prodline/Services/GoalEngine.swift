@@ -63,6 +63,7 @@ enum GoalEngine {
     // MARK: Remote sync
 
     static func syncAPI(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext) {
+        guard !project.followsPlanFile else { return }
         let incoming = goals.map {
             Incoming(externalID: "api:\($0.id)", title: $0.title, detail: $0.detail ?? "", url: $0.url ?? "",
                      checkpoint: $0.checkpoint, due: $0.due, done: $0.done ?? false,
@@ -74,20 +75,80 @@ enum GoalEngine {
     /// GitHub issues become goals when they belong to a GitHub milestone or carry the `prodline` label.
     /// A milestone's due date picks the checkpoint; without one, the Nth milestone maps to the Nth checkpoint.
     static func syncGitHub(_ snap: GitHubSnapshot, project: Project, context: ModelContext) {
-        sync(githubIncoming(snap), prefix: "gh:", source: .github, project: project, context: context)
-
-        // prodline.json: same shape as API goals. A missing file clears its open goals; a broken one keeps them.
         if let plan = snap.planFile {
-            // Checkpoints first, so goals can land on ones the file just added.
-            nameCheckpoints(plan.checkpoints ?? [], project: project, context: context)
-            syncPlanFile(plan.goals, project: project, context: context)
-            // The repo's plan is the source of truth: drop open suggestions everywhere, not just where it placed goals.
-            for m in project.sortedMilestones {
-                for g in m.goals ?? [] where g.source == .ai && !g.isDone { context.delete(g) }
-            }
-        } else if snap.planFileError == nil {
+            // prodline.json is the plan: its checkpoints and goals, nothing else.
+            project.followsPlanFile = true
+            applyPlan(plan, project: project, context: context)
+            return
+        }
+        if snap.planFileError != nil { return }  // a broken file keeps what we have until it's fixed
+        if project.followsPlanFile {
+            // The file was removed: its open goals go, and the project plans normally again.
+            project.followsPlanFile = false
             syncPlanFile([], project: project, context: context)
         }
+        sync(githubIncoming(snap), prefix: "gh:", source: .github, project: project, context: context)
+    }
+
+    /// Makes the project mirror prodline.json exactly: one checkpoint per dated entry (or per goal due
+    /// date when the file lists no checkpoints), the file's goals on them, and nothing else. Done
+    /// checkpoints that aren't in the file go too; their goals are re-placed first so nothing is lost.
+    static func applyPlan(_ plan: GitHubSnapshot.PlanFile, project: Project, context: ModelContext) {
+        var targets: [(title: String?, date: Date)] = (plan.checkpoints ?? []).compactMap { c in
+            c.due.map { (c.title.trimmingCharacters(in: .whitespacesAndNewlines), $0.startOfDay) }
+        }
+        if targets.isEmpty {
+            targets = Set(plan.goals.compactMap { $0.due?.startOfDay }).sorted().map { (nil, $0) }
+        }
+        // One entry per day, in order.
+        var seen = Set<Date>()
+        targets = targets.sorted { $0.date < $1.date }.filter { seen.insert($0.date).inserted }
+        guard !targets.isEmpty else {
+            // Only positional goals: keep the checkpoints, but still nothing but the file's goals.
+            for m in project.milestones ?? [] {
+                for g in m.goals ?? [] where !g.externalID.hasPrefix("file:") { context.delete(g) }
+            }
+            syncPlanFile(plan.goals, project: project, context: context, strict: true)
+            return
+        }
+
+        // A checkpoint per target day: reuse one already on that day (merging duplicates), else add it.
+        var keep: [Milestone] = []
+        for t in targets {
+            let onDay = project.sortedMilestones.filter { $0.dueDate == t.date }
+                .sorted { ($0.goals?.count ?? 0) > ($1.goals?.count ?? 0) }
+            let m: Milestone
+            if let first = onDay.first {
+                m = first
+                for extra in onDay.dropFirst() {
+                    for g in extra.goals ?? [] { g.milestone = m }
+                    extra.project = nil
+                    context.delete(extra)
+                }
+            } else {
+                m = Milestone(title: t.title ?? "Checkpoint", dueDate: t.date)
+                context.insert(m)
+                m.project = project
+            }
+            m.isLaunch = false
+            if let title = t.title, !title.isEmpty, !m.titleIsCustom { m.title = title }
+            keep.append(m)
+        }
+
+        // Everything else goes, after handing its goals to a kept checkpoint so the file sync can place them.
+        let keepIDs = Set(keep.map(\.id))
+        for m in project.milestones ?? [] where !keepIDs.contains(m.id) {
+            for g in m.goals ?? [] { g.milestone = keep[0] }
+            Notifier.cancel(m)
+            m.project = nil
+            context.delete(m)
+        }
+        // Only the file's goals stay.
+        for m in keep {
+            for g in m.goals ?? [] where !g.externalID.hasPrefix("file:") { context.delete(g) }
+        }
+        syncPlanFile(plan.goals, project: project, context: context, strict: true)
+        ScheduleEngine.renumber(project)
     }
 
     private static func githubIncoming(_ snap: GitHubSnapshot) -> [Incoming] {
@@ -102,47 +163,18 @@ enum GoalEngine {
         }
     }
 
-    /// Checkpoints from prodline.json. A dated entry names the checkpoint on that day, or adds one if
-    /// there is none; a positional entry names the Nth deadline. Names the user set themselves win.
-    static func nameCheckpoints(_ entries: [GitHubSnapshot.PlanFile.Checkpoint], project: Project, context: ModelContext) {
-        for c in entries {
-            let title = c.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty else { continue }
-            if c.checkpoint == nil, let due = c.due?.startOfDay {
-                if let m = project.sortedMilestones.first(where: { $0.dueDate == due }) {
-                    if !m.titleIsCustom { m.title = title }
-                } else {
-                    let m = Milestone(title: title, dueDate: due)
-                    context.insert(m)
-                    m.project = project
-                }
-            } else if let m = milestone(checkpoint: c.checkpoint, due: c.due, in: project), !m.titleIsCustom {
-                m.title = title
-            }
-        }
-        // Older versions named the next checkpoint after a dated entry instead of adding one on that day.
-        // Those leftovers carry the entry's name on another date and nothing else: remove them.
-        let dated = Dictionary(entries.compactMap { c in c.checkpoint == nil ? c.due.map { (c.title.trimmingCharacters(in: .whitespacesAndNewlines), $0.startOfDay) } : nil },
-                               uniquingKeysWith: { a, _ in a })
-        for m in project.sortedMilestones where !m.isDone && !m.isLaunch && !m.titleIsCustom && !m.hasGoals {
-            if let due = dated[m.title], due != m.dueDate {
-                m.project = nil
-                context.delete(m)
-            }
-        }
-        ScheduleEngine.renumber(project)
-    }
-
-    static func syncPlanFile(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext) {
+    static func syncPlanFile(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext, strict: Bool = false) {
         let incoming = goals.map {
             Incoming(externalID: "file:\($0.id)", title: $0.title, detail: $0.detail ?? "", url: $0.url ?? "",
                      checkpoint: $0.checkpoint, due: $0.due, done: $0.done ?? false,
                      metricKey: $0.metric?.key, target: $0.metric?.target)
         }
-        sync(incoming, prefix: "file:", source: .repoFile, project: project, context: context)
+        sync(incoming, prefix: "file:", source: .repoFile, project: project, context: context, strict: strict)
     }
 
-    static func sync(_ incoming: [Incoming], prefix: String, source: GoalSource, project: Project, context: ModelContext) {
+    /// `strict`: goals always go where the source says, even out of a finished checkpoint.
+    static func sync(_ incoming: [Incoming], prefix: String, source: GoalSource, project: Project, context: ModelContext,
+                     strict: Bool = false) {
         let existing = project.sortedMilestones.flatMap { $0.goals ?? [] }.filter { $0.externalID.hasPrefix(prefix) }
         var byID = Dictionary(existing.map { ($0.externalID, $0) }, uniquingKeysWith: { a, _ in a })
         var touched: Set<Milestone.ID> = []
@@ -153,7 +185,7 @@ enum GoalEngine {
             if let g = byID.removeValue(forKey: item.externalID) {
                 goal = g
                 // Don't pull goals out of a checkpoint that's already completed.
-                if g.milestone?.id != target.id, !(g.milestone?.isDone ?? false), !target.isDone {
+                if g.milestone?.id != target.id, strict || (!(g.milestone?.isDone ?? false) && !target.isDone) {
                     g.milestone = target
                 }
             } else {
@@ -223,7 +255,7 @@ enum GoalEngine {
 
     /// During the observe phase the traction review gets data-driven targets (once).
     static func ensureTractionTargets(project: Project, refresher: DataRefresher, context: ModelContext, now: Date = .now) {
-        guard project.phase(on: now) == .observing,
+        guard !project.followsPlanFile, project.phase(on: now) == .observing,
               let review = project.sortedMilestones.last, !review.isDone,
               !(review.goals ?? []).contains(where: { $0.source == .metric }) else { return }
         let daysLeft = Date.days(from: now, to: review.dueDate)

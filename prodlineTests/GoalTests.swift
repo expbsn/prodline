@@ -179,7 +179,6 @@ struct GoalTests {
 
     @Test func planFileBecomesGoals() throws {
         let (ctx, p, _) = try setup()
-        let ms = p.sortedMilestones
         let json = #"""
         {"version": 1, "goals": [
           {"id": "auth", "title": "Sign in with Apple", "checkpoint": 1, "done": true},
@@ -188,26 +187,29 @@ struct GoalTests {
         """#
         let plan = try MetricsPayload.decoder().decode(GitHubSnapshot.PlanFile.self, from: Data(json.utf8))
         #expect(plan.goals[1].due == day(2026, 1, 17)) // date-only, local calendar
-        GoalEngine.addGoals(["Suggested"], source: .ai, to: ms[0], context: ctx)
+        GoalEngine.addGoals(["Suggested"], source: .ai, to: p.sortedMilestones[0], context: ctx)
+        GoalEngine.addGoals(["Mine"], source: .manual, to: p.sortedMilestones[1], context: ctx)
         var snap = GitHubSnapshot(description: "", readme: "", milestones: [], issues: [], lastCommit: nil, planFile: plan)
         GoalEngine.syncGitHub(snap, project: p, context: ctx)
         try ctx.save()
-        #expect(ms[0].goals?.map(\.title) == ["Sign in with Apple"]) // file replaces the suggestion
-        #expect(ms[0].goals?.first?.isDone == true && ms[0].goals?.first?.source == .repoFile)
-        #expect(ms[3].goals?.map(\.title) == ["Launch post drafted"]) // Jan 17 → Ship it (Jan 18)
+        // No checkpoints in the file: its goal dates become the checkpoints, and only its goals remain.
+        #expect(p.followsPlanFile)
+        let ms = p.sortedMilestones
+        #expect(ms.map(\.dueDate) == [day(2026, 1, 17)])
+        #expect(Set(ms[0].goals?.map(\.title) ?? []) == ["Sign in with Apple", "Launch post drafted"])
 
         // A broken file keeps what we have…
         snap.planFile = nil
         snap.planFileError = "prodline.json isn't valid"
         GoalEngine.syncGitHub(snap, project: p, context: ctx)
         try ctx.save()
-        #expect(ms[3].goals?.count == 1)
-        // …a deleted file clears open goals but keeps done ones.
+        #expect(ms[0].goals?.count == 2)
+        // …a deleted file clears open goals but keeps done ones, and the project plans normally again.
         snap.planFileError = nil
         GoalEngine.syncGitHub(snap, project: p, context: ctx)
         try ctx.save()
-        #expect(ms[3].goals?.isEmpty == true)
-        #expect(ms[0].goals?.count == 1)
+        #expect(!p.followsPlanFile)
+        #expect(ms[0].goals?.map(\.title) == ["Sign in with Apple"])
     }
 
     @Test func aiPromptCarriesProjectContext() {
@@ -310,7 +312,7 @@ struct GoalIntegrationTests {
         try await MockServer.post("side-shop", key: "ss_live_demo", body: #"{"type":"plan_goal","id":"launch-post","done":false}"#)
     }
 
-    @Test func githubIssuesCloseCheckpoint() async throws {
+    @Test func planFileWinsOverIssues() async throws {
         UserDefaults.standard.set(MockServer.base! + "/github", forKey: "githubAPIBase")
         let ctx = try makeContext()
         let profile = Profile()
@@ -321,23 +323,16 @@ struct GoalIntegrationTests {
         ScheduleEngine.createProject(p, profile: profile, context: ctx)
         let gh = GitHubService()
         await gh.refresh(projects: [p], force: true)
-        GoalEngine.syncGitHub(try #require(gh.snapshots[p.id]), project: p, context: ctx)
-        let first = p.sortedMilestones[0]
-        #expect(Set(first.goals?.map(\.title) ?? []) == ["Product grid", "Cart drawer", "Order confirmation email"])
-        #expect(p.sortedMilestones[2].goals?.map(\.title) == ["Add shipping rates table"]) // from prodline.json
-        #expect(p.sortedMilestones[2].goals?.first?.source == .repoFile)
+        let snap = try #require(gh.snapshots[p.id])
+        #expect(!snap.issues.isEmpty && snap.planFile != nil)
+        GoalEngine.syncGitHub(snap, project: p, context: ctx)
+        try ctx.save()
+        let goals = p.sortedMilestones.flatMap { $0.goals ?? [] }
+        #expect(Set(goals.map(\.title)) == ["Add shipping rates table", "Draft launch post"])
+        #expect(goals.allSatisfy { $0.source == .repoFile })
+        #expect(p.sortedMilestones[2].goals?.map(\.title) == ["Add shipping rates table"])
         #expect(p.lastCommitAt != nil)
-
-        for n in [12, 15] {
-            try await MockServer.post("side-shop", key: "ss_live_demo", body: #"{"type":"close_issue","number":\#(n)}"#)
-        }
-        await gh.refresh(projects: [p], force: true)
-        GoalEngine.syncGitHub(try #require(gh.snapshots[p.id]), project: p, context: ctx)
-        GoalEngine.autoComplete(projects: [p], profile: profile, celebration: nil)
-        #expect(first.isDone)
-        for n in [12, 15] {
-            try await MockServer.post("side-shop", key: "ss_live_demo", body: #"{"type":"reopen_issue","number":\#(n)}"#)
-        }
+        #expect(!p.commitDays.isEmpty) // commit history since the start date
     }
 }
 
