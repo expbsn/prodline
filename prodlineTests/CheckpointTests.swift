@@ -48,6 +48,23 @@ struct CheckpointTests {
         #expect(ms[2].title == "My own name")
     }
 
+    @Test func planFileAddsDatedCheckpointsAndPlacesGoalsOnThem() throws {
+        let (ctx, p) = try setup()
+        let before = p.sortedMilestones.count
+        let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Widgets", due: day(2026, 1, 28))],
+                                           goals: [goal("w", due: day(2026, 1, 28)), goal("x", due: day(2026, 1, 27))])
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones.count == before + 1)
+        let added = try #require(p.sortedMilestones.first { $0.title == "Widgets" })
+        #expect(added.dueDate == day(2026, 1, 28))
+        #expect(Set(added.goals?.map(\.title) ?? []) == ["Goal w", "Goal x"])
+
+        // Syncing again doesn't add it twice.
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        #expect(p.sortedMilestones.count == before + 1)
+    }
+
     @Test func planFileReplacesSuggestionsEverywhere() throws {
         let (ctx, p) = try setup()
         let ms = p.sortedMilestones

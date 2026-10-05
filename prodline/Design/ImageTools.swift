@@ -23,7 +23,7 @@ enum ImageTools {
     }
 
     /// Picks the most prominent vivid color and tunes it to work as a button color.
-    /// Returns nil for (near-)monochrome images.
+    /// Black-and-white or muted photos get a charcoal carrying the photo's faint tint instead.
     static func dominantAccentHex(_ image: UIImage) -> Int? {
         let side = 48
         guard let cg = image.cgImage else { return nil }
@@ -61,8 +61,8 @@ enum ImageTools {
             rSum[bin] += r * w; gSum[bin] += g * w; bSum[bin] += b * w
             total += w
         }
-        // Too little color: treat as monochrome.
-        guard total > Double(side * side) * 0.01 else { return nil }
+        // Too little color: a neutral that still leans the way the photo does (warm, cool or pure gray).
+        guard total > Double(side * side) * 0.01 else { return neutralHex(pixels) }
 
         // Merge each bin with its neighbors so hues on a bin edge aren't split.
         var best = 0, bestW = -1.0
@@ -73,6 +73,21 @@ enum ImageTools {
         let w = weight[best]
         guard w > 0 else { return nil }
         return normalize(r: rSum[best] / w, g: gSum[best] / w, b: bSum[best] / w)
+    }
+
+    /// Dark enough for white text on buttons, light enough to read as a color rather than black.
+    static func neutralHex(_ pixels: [UInt8]) -> Int? {
+        var r = 0.0, g = 0.0, b = 0.0, n = 0.0
+        for i in stride(from: 0, to: pixels.count, by: 4) where pixels[i + 3] > 127 {
+            r += Double(pixels[i]); g += Double(pixels[i + 1]); b += Double(pixels[i + 2]); n += 1
+        }
+        guard n > 0 else { return nil }
+        var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
+        UIColor(red: r / n / 255, green: g / n / 255, blue: b / n / 255, alpha: 1).getHue(&h, saturation: &s, brightness: &v, alpha: &a)
+        let out = UIColor(hue: h, saturation: min(s, 0.18), brightness: 0.27, alpha: 1)
+        var rr: CGFloat = 0, gg: CGFloat = 0, bb: CGFloat = 0
+        out.getRed(&rr, green: &gg, blue: &bb, alpha: &a)
+        return Int(rr * 255) << 16 | Int(gg * 255) << 8 | Int(bb * 255)
     }
 
     /// Keeps hue, pushes saturation/brightness into a range that reads well as a UI accent.

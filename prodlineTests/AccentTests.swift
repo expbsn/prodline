@@ -42,12 +42,14 @@ struct AccentTests {
         #expect(h > 110 && h < 150)
     }
 
-    @Test func monochromeImageHasNoAccent() {
+    @Test func monochromeImageGetsCharcoal() throws {
         let img = image { ctx in
             UIColor.black.setFill(); ctx.fill(CGRect(x: 0, y: 0, width: 200, height: 100))
             UIColor.white.setFill(); ctx.fill(CGRect(x: 0, y: 100, width: 200, height: 100))
         }
-        #expect(ImageTools.dominantAccentHex(img) == nil)
+        let a = Accent(hex: try #require(ImageTools.dominantAccentHex(img)))
+        #expect(a.luminance < 0.1)          // dark enough for white text
+        #expect(a.on == .white)
     }
 
     @Test func normalizedColorsAreUsableAsButtons() {

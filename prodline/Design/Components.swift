@@ -461,7 +461,7 @@ struct AccentGlow: View {
     }
 
     private func points(_ t: Double) -> [SIMD2<Float>] {
-        func w(_ speed: Double, _ phase: Double, _ amp: Double) -> Float { Float(sin(t * speed * 2.6 + phase) * amp) }
+        func w(_ speed: Double, _ phase: Double, _ amp: Double) -> Float { Float(sin(t * speed * 5 + phase) * amp) }
         return [
             [0, 0], [0.5 + w(0.31, 0, 0.24), 0], [1, 0],
             [0, 0.45 + w(0.27, 1, 0.16)], [0.5 + w(0.23, 2, 0.22), 0.5 + w(0.29, 3, 0.14)], [1, 0.5 + w(0.21, 4, 0.16)],
@@ -471,11 +471,11 @@ struct AccentGlow: View {
 
     private func colors(_ t: Double, h: CGFloat, s: CGFloat, b: CGFloat) -> [Color] {
         // Neighbouring hues swing in and out; saturation is pushed well past the accent itself.
-        let gray = s < 0.1
+        let gray = s < 0.2  // neutral photo accents carry a faint tint (≤ 0.18)
         func shade(_ i: Double, alpha: Double) -> Color {
-            let dh = sin(t * 0.6 + i * 1.7) * 0.08
-            let sat = gray ? s : min(1, max(s * 1.3, 0.8) + 0.12 * sin(t * 0.8 + i))
-            let bri = gray ? b * (0.85 + 0.15 * sin(t * 0.7 + i * 2)) : min(1, max(b, 0.85) + 0.08 * cos(t * 0.65 + i * 2))
+            let dh = sin(t * 1.2 + i * 1.7) * 0.08
+            let sat = gray ? s : min(1, max(s * 1.3, 0.8) + 0.12 * sin(t * 1.5 + i))
+            let bri = gray ? b * (0.85 + 0.15 * sin(t * 1.4 + i * 2)) : min(1, max(b, 0.85) + 0.08 * cos(t * 1.3 + i * 2))
             var hue = Double(h) + dh
             hue -= floor(hue)
             // Gray accents (black and white covers) get a soft smoke instead of a dark slab.

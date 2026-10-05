@@ -4,7 +4,11 @@
     { "due": "2026-10-05", "title": "Foundations" },
     { "due": "2026-10-09", "title": "On device" },
     { "due": "2026-10-12", "title": "Polish" },
-    { "due": "2026-10-16", "title": "TestFlight" }
+    { "due": "2026-10-16", "title": "TestFlight" },
+    { "due": "2026-10-19", "title": "Tester feedback" },
+    { "due": "2026-10-23", "title": "Widgets" },
+    { "due": "2026-10-26", "title": "Instant sync" },
+    { "due": "2026-10-30", "title": "App Store" }
   ],
   "goals": [
     { "id": "design-system", "title": "Ship design system and card carousel", "due": "2026-10-05", "done": true },
@@ -12,15 +16,32 @@
     { "id": "checkpoint-goals", "title": "Checkpoint goals from API and GitHub", "due": "2026-10-05", "done": true },
 
     { "id": "plan-file", "title": "Read prodline.json from the repo", "due": "2026-10-09", "done": true },
-    { "id": "device-test", "title": "Test on a physical iPhone", "due": "2026-10-09", "done": false },
+    { "id": "device-test", "title": "Test on a physical iPhone", "due": "2026-10-09", "done": true },
+    { "id": "demo-discovery", "title": "Find the mock server automatically on a phone", "due": "2026-10-09", "done": true },
     { "id": "ai-on-device", "title": "Verify goal suggestions on device", "due": "2026-10-09", "done": false },
 
     { "id": "app-icon", "title": "Design app icon and launch screen", "due": "2026-10-12", "done": true },
+    { "id": "launch-animation", "title": "Launch animation with haptics", "due": "2026-10-12", "done": true },
+    { "id": "checkpoint-editing", "title": "Rename, move and add checkpoints", "due": "2026-10-12", "done": true },
+    { "id": "data-charts", "title": "Trend charts in the Data tab", "due": "2026-10-12", "done": true },
     { "id": "onboarding-copy", "title": "Polish onboarding copy", "due": "2026-10-12", "done": false },
 
+    { "id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "due": "2026-10-16", "done": false },
+    { "id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "due": "2026-10-16", "done": false },
     { "id": "testflight-build", "title": "Upload first TestFlight build", "due": "2026-10-16", "done": false },
     { "id": "mac-prototype", "title": "Prototype the macOS layout", "due": "2026-10-16", "done": false },
+    { "id": "testers", "title": "Invite first TestFlight testers", "due": "2026-10-17", "done": false },
 
-    { "id": "testers", "title": "Invite first TestFlight testers", "due": "2026-10-17", "done": false }
+    { "id": "feedback-triage", "title": "Triage first tester feedback into goals", "due": "2026-10-19", "done": false },
+    { "id": "crash-fixes", "title": "Fix crashes reported in TestFlight", "due": "2026-10-19", "done": false },
+
+    { "id": "home-widget", "title": "Home Screen widget with the next deadline", "due": "2026-10-23", "done": false },
+    { "id": "live-activity", "title": "Live Activity on deadline days", "due": "2026-10-23", "done": false },
+
+    { "id": "push-relay", "title": "Webhook relay for instant commit updates", "due": "2026-10-26", "done": false },
+    { "id": "background-push", "title": "Silent push refreshes goals while the app is closed", "due": "2026-10-26", "done": false },
+
+    { "id": "store-listing", "title": "Write App Store listing and screenshots", "due": "2026-10-30", "done": false },
+    { "id": "submit-review", "title": "Submit for App Review", "due": "2026-10-30", "done": false }
   ]
 }

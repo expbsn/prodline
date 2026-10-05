@@ -78,8 +78,9 @@ enum GoalEngine {
 
         // prodline.json: same shape as API goals. A missing file clears its open goals; a broken one keeps them.
         if let plan = snap.planFile {
+            // Checkpoints first, so goals can land on ones the file just added.
+            nameCheckpoints(plan.checkpoints ?? [], project: project, context: context)
             syncPlanFile(plan.goals, project: project, context: context)
-            nameCheckpoints(plan.checkpoints ?? [], project: project)
             // The repo's plan is the source of truth: drop open suggestions everywhere, not just where it placed goals.
             for m in project.sortedMilestones {
                 for g in m.goals ?? [] where g.source == .ai && !g.isDone { context.delete(g) }
@@ -101,14 +102,25 @@ enum GoalEngine {
         }
     }
 
-    /// Checkpoint names from prodline.json, unless the user renamed that checkpoint themselves.
-    static func nameCheckpoints(_ names: [GitHubSnapshot.PlanFile.Checkpoint], project: Project) {
-        for c in names {
+    /// Checkpoints from prodline.json. A dated entry names the checkpoint on that day, or adds one if
+    /// there is none; a positional entry names the Nth deadline. Names the user set themselves win.
+    static func nameCheckpoints(_ entries: [GitHubSnapshot.PlanFile.Checkpoint], project: Project, context: ModelContext) {
+        for c in entries {
             let title = c.title.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !title.isEmpty, let m = milestone(checkpoint: c.checkpoint, due: c.due, in: project),
-                  !m.titleIsCustom else { continue }
-            m.title = title
+            guard !title.isEmpty else { continue }
+            if c.checkpoint == nil, let due = c.due?.startOfDay {
+                if let m = project.sortedMilestones.first(where: { $0.dueDate == due }) {
+                    if !m.titleIsCustom { m.title = title }
+                } else {
+                    let m = Milestone(title: title, dueDate: due)
+                    context.insert(m)
+                    m.project = project
+                }
+            } else if let m = milestone(checkpoint: c.checkpoint, due: c.due, in: project), !m.titleIsCustom {
+                m.title = title
+            }
         }
+        ScheduleEngine.renumber(project)
     }
 
     static func syncPlanFile(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext) {
