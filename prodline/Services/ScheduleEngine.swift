@@ -185,7 +185,7 @@ enum ScheduleEngine {
         return !goals.isEmpty && goals.allSatisfy(\.isDone)
     }
 
-    struct Shipped { let daysEarly: Int; let xp: Int }
+    struct Shipped { let daysEarly: Int; let xp: Int; let plannedDays: Int }
 
     /// The "Let's ship" button: ship, update the streak, save, and celebrate (the big moment when it's early).
     @MainActor
@@ -194,7 +194,7 @@ enum ScheduleEngine {
         Streak.update(profile, projects: projects)
         try? context.save()
         if r.daysEarly > 0 {
-            celebration.celebrateShip(.init(daysEarly: r.daysEarly, project: p.name, accent: p.accent, xp: r.xp))
+            celebration.celebrateShip(.init(daysEarly: r.daysEarly, plannedDays: r.plannedDays, project: p.name, accent: p.accent, xp: r.xp))
         } else {
             celebration.fire(title: "Shipped! +\(r.xp) XP", subtitle: "\(p.name) is out · right on time", accent: p.accent,
                              xp: r.xp, kind: .checkpoint)
@@ -207,6 +207,7 @@ enum ScheduleEngine {
     static func ship(_ p: Project, profile: Profile, now: Date = .now) -> Shipped {
         let today = now.startOfDay
         let oldLaunch = p.launchDay
+        let planned = p.buildDays
         let early = max(0, Date.days(from: today, to: oldLaunch))
         // Sorted out on the old schedule: what belongs to the build and what to the observe phase.
         let open = p.sortedMilestones.filter { !$0.isDone }
@@ -228,7 +229,7 @@ enum ScheduleEngine {
             if m.dueDate > today { m.dueDate = today }
             xp += complete(m, profile: profile, celebration: nil, now: now)
         }
-        return Shipped(daysEarly: early, xp: xp)
+        return Shipped(daysEarly: early, xp: xp, plannedDays: planned)
     }
 
     @discardableResult

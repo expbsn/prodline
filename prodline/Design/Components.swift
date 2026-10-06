@@ -314,9 +314,34 @@ final class CelebrationCenter {
     struct ShipMoment: Identifiable, Equatable {
         let id = UUID()
         let daysEarly: Int
+        /// The build phase as planned, to judge how early "early" is.
+        let plannedDays: Int
         let project: String
         let accent: Accent
         let xp: Int
+
+        /// Share of the planned build that was left over.
+        var earlyShare: Double { plannedDays > 0 ? Double(daysEarly) / Double(plannedDays) : 0 }
+
+        /// Three lines from someone who can't quite believe it, more impressed the earlier it is.
+        var reactions: [String] {
+            let options: [[String]]
+            switch earlyShare {
+            case 0.5...:
+                options = [["Wait.", "Half the time?!", "Are you even human?"],
+                           ["Excuse me?", "That fast?!", "Somebody stop this person."]]
+            case 0.3..<0.5:
+                options = [["Hold up.", "Already finished?", "You're killing it!"],
+                           ["No way.", "Done already?", "Okay, show-off."]]
+            case 0.15..<0.3:
+                options = [["Oh?", "Finished early?", "Look at you go."],
+                           ["Hey, hey.", "Ahead of schedule?", "We love to see it."]]
+            default:
+                options = [["Well, well.", "A little early, huh?", "Every day counts."],
+                           ["Psst.", "Did you just beat the clock?", "Smooth."]]
+            }
+            return options[abs(id.hashValue) % options.count]
+        }
     }
     /// What a celebration was for, so several can be summed up in one banner.
     enum Kind { case checkpoint, goals(Int), other }
@@ -325,14 +350,24 @@ final class CelebrationCenter {
     var confetti: (id: UUID, accent: Accent)?
     var ship: ShipMoment?
 
+    /// The ship moment owns the screen: a banner that's up goes back in line and waits with the others.
     func celebrateShip(_ moment: ShipMoment) {
-        Haptics.success()
-        withAnimation(.easeOut(duration: 0.25)) { ship = moment }
-        confetti = (UUID(), moment.accent)
+        if let b = banner {
+            dismissTask?.cancel()
+            withAnimation(.easeIn(duration: 0.2)) { banner = nil }
+            queue.insert((b, 2.6, false, {}), at: 0)
+        }
+        withAnimation(.easeOut(duration: 0.3)) { ship = moment }
     }
 
     func endShip() {
         withAnimation(.easeIn(duration: 0.3)) { ship = nil }
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(600))
+            guard let self, self.ship == nil, self.banner == nil, !self.queue.isEmpty else { return }
+            let next = self.queue.removeFirst()
+            self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
+        }
     }
     private var dismissTask: Task<Void, Never>?
     /// Banners waiting for the current one to leave (nothing gets overwritten mid-read).
@@ -379,7 +414,7 @@ final class CelebrationCenter {
     }
 
     private func enqueue(_ b: Banner, seconds: Double, confetti: Bool, haptic: @escaping () -> Void) {
-        if banner == nil {
+        if banner == nil && ship == nil {
             present(b, seconds: seconds, confetti: confetti, haptic: haptic)
         } else {
             queue.append((b, seconds, confetti, haptic))
@@ -396,7 +431,7 @@ final class CelebrationCenter {
             guard !Task.isCancelled, let self else { return }
             withAnimation(.easeIn(duration: 0.25)) { self.banner = nil }
             try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled, !self.queue.isEmpty else { return }
+            guard !Task.isCancelled, self.ship == nil, !self.queue.isEmpty else { return }
             let next = self.queue.removeFirst()
             self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
         }
@@ -582,10 +617,14 @@ struct AccentGlow: View {
     }
 }
 
-/// Centered over everything: the number of days early as a solid 3D block in the project's color,
-/// tipping up into place, then gently swaying until it's tapped away (or leaves by itself).
+/// Centered over everything, played like a short scene: the screen blurs, an impressed voice reacts in three
+/// beats ("Hold up." → "Already finished?" → "You're killing it!"), then the number of days early lands as a
+/// solid 3D block in the project's color and sways gently. Tap skips the intro, then closes.
 struct ShipOverlay: View {
     @Environment(CelebrationCenter.self) private var center
+    /// Which reaction is on screen; nil before the first and once the number shows.
+    @State private var line: Int?
+    @State private var reveal = false
     @State private var landed = false
     @State private var caption = false
 
@@ -593,48 +632,95 @@ struct ShipOverlay: View {
         if let m = center.ship {
             ZStack {
                 Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
-                RadialGradient(colors: [m.accent.base.opacity(0.35), m.accent.base.opacity(0.08)], center: .center,
+                RadialGradient(colors: [m.accent.base.opacity(reveal ? 0.35 : 0.18), m.accent.base.opacity(0.06)], center: .center,
                                startRadius: 20, endRadius: 420)
                     .ignoresSafeArea()
-                VStack(spacing: 6) {
-                    TimelineView(.animation) { tl in
-                        let t = tl.date.timeIntervalSinceReferenceDate
-                        ExtrudedText(text: "\(m.daysEarly)", size: 190, accent: m.accent)
-                            .rotation3DEffect(.degrees(landed ? 9 * sin(t * 1.3) : -35), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
-                            .rotation3DEffect(.degrees(landed ? 4 * sin(t * 0.9 + 1) : 70), axis: (x: 1, y: 0, z: 0),
-                                              anchor: .bottom, perspective: 0.5)
-                    }
-                    .scaleEffect(landed ? 1 : 0.55)
-                    .opacity(landed ? 1 : 0)
-                    .background(alignment: .bottom) {
-                        Ellipse().fill(Color.black.opacity(0.14)).frame(width: 220, height: 30).blur(radius: 16).offset(y: 8)
-                            .opacity(landed ? 1 : 0)
-                    }
-                    ExtrudedText(text: m.daysEarly == 1 ? "day early" : "days early", size: 40, accent: m.accent, weight: 800)
-                        .opacity(caption ? 1 : 0)
-                        .offset(y: caption ? 0 : 14)
-                    Text("\(m.project) shipped · +\(m.xp) XP")
-                        .font(.ui(16, .semibold)).foregroundStyle(Theme.secondary)
-                        .padding(.top, 10)
-                        .opacity(caption ? 1 : 0)
+                if let line, !reveal {
+                    reaction(m.reactions[line], last: line == m.reactions.count - 1, accent: m.accent)
+                        .id(line)
+                        .transition(.asymmetric(insertion: .scale(scale: 0.86).combined(with: .opacity),
+                                                removal: .scale(scale: 1.08).combined(with: .opacity)))
                 }
-                .padding(.horizontal, 24)
+                if reveal { number(m) }
             }
             .contentShape(Rectangle())
-            .onTapGesture { center.endShip() }
+            .onTapGesture {
+                if reveal { center.endShip() } else { showNumber() }
+            }
             .transition(.opacity)
-            .task(id: m.id) {
-                landed = false
-                caption = false
-                withAnimation(.spring(response: 0.7, dampingFraction: 0.62)) { landed = true }
-                try? await Task.sleep(for: .milliseconds(180))
-                Haptics.heavy()
-                try? await Task.sleep(for: .milliseconds(220))
-                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { caption = true }
-                try? await Task.sleep(for: .seconds(3.4))
-                if center.ship?.id == m.id { center.endShip() }
+            .task(id: m.id) { await play(m) }
+        }
+    }
+
+    private func reaction(_ text: String, last: Bool, accent: Accent) -> some View {
+        Group {
+            if last {
+                ExtrudedText(text: text, size: 44, accent: accent, weight: 800)
+            } else {
+                Text(text).display(44, 800).foregroundStyle(Theme.ink)
             }
         }
+        .multilineTextAlignment(.center)
+        .padding(.horizontal, 24)
+    }
+
+    private func number(_ m: CelebrationCenter.ShipMoment) -> some View {
+        VStack(spacing: 6) {
+            TimelineView(.animation) { tl in
+                let t = tl.date.timeIntervalSinceReferenceDate
+                ExtrudedText(text: "\(m.daysEarly)", size: 190, accent: m.accent)
+                    .rotation3DEffect(.degrees(landed ? 9 * sin(t * 1.3) : -35), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
+                    .rotation3DEffect(.degrees(landed ? 4 * sin(t * 0.9 + 1) : 70), axis: (x: 1, y: 0, z: 0),
+                                      anchor: .bottom, perspective: 0.5)
+            }
+            .scaleEffect(landed ? 1 : 0.55)
+            .opacity(landed ? 1 : 0)
+            .background(alignment: .bottom) {
+                Ellipse().fill(Color.black.opacity(0.14)).frame(width: 220, height: 30).blur(radius: 16).offset(y: 8)
+                    .opacity(landed ? 1 : 0)
+            }
+            ExtrudedText(text: m.daysEarly == 1 ? "day early" : "days early", size: 40, accent: m.accent, weight: 800)
+                .opacity(caption ? 1 : 0)
+                .offset(y: caption ? 0 : 14)
+            Text("\(m.project) shipped · +\(m.xp) XP")
+                .font(.ui(16, .semibold)).foregroundStyle(Theme.secondary)
+                .padding(.top, 10)
+                .opacity(caption ? 1 : 0)
+        }
+        .padding(.horizontal, 24)
+    }
+
+    private func play(_ m: CelebrationCenter.ShipMoment) async {
+        line = nil; reveal = false; landed = false; caption = false
+        // A beat of blur before anyone speaks.
+        try? await Task.sleep(for: .milliseconds(350))
+        for i in m.reactions.indices {
+            guard !Task.isCancelled, !reveal else { return }
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) { line = i }
+            Haptics.soft()
+            try? await Task.sleep(for: .milliseconds(i == m.reactions.count - 1 ? 1000 : 820))
+        }
+        guard !Task.isCancelled, !reveal else { return }
+        await landNumber(m)
+    }
+
+    private func showNumber() {
+        guard let m = center.ship else { return }
+        Task { await landNumber(m) }
+    }
+
+    private func landNumber(_ m: CelebrationCenter.ShipMoment) async {
+        guard !reveal else { return }
+        withAnimation(.easeOut(duration: 0.2)) { line = nil; reveal = true }
+        center.confetti = (UUID(), m.accent)
+        withAnimation(.spring(response: 0.7, dampingFraction: 0.62)) { landed = true }
+        try? await Task.sleep(for: .milliseconds(180))
+        Haptics.heavy()
+        Haptics.success()
+        try? await Task.sleep(for: .milliseconds(220))
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { caption = true }
+        try? await Task.sleep(for: .seconds(3.4))
+        if center.ship?.id == m.id { center.endShip() }
     }
 }
 

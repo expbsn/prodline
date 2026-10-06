@@ -379,7 +379,7 @@ struct MeView: View {
                 }
                 devButton("Play the ship animation", "paperplane.fill") {
                     let p = projects.first { $0.phase() == .building } ?? projects.first
-                    celebration.celebrateShip(.init(daysEarly: 4, project: p?.name ?? "Habit Hero",
+                    celebration.celebrateShip(.init(daysEarly: 5, plannedDays: 14, project: p?.name ?? "Habit Hero",
                                                     accent: p?.accent ?? Accent(hex: 0x58CC02), xp: 70))
                 }
                 devButton("Play weekly wrap", "play.rectangle.fill") {

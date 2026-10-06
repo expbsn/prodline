@@ -70,7 +70,9 @@ struct RootView: View {
             if UserDefaults.standard.bool(forKey: "PRODLINE_SHIP") {
                 Task {
                     try? await Task.sleep(for: .seconds(1))
-                    celebration.celebrateShip(.init(daysEarly: 4, project: "Habit Hero", accent: Accent(hex: 0x58CC02), xp: 70))
+                    let days = UserDefaults.standard.integer(forKey: "PRODLINE_SHIP_DAYS")
+                    celebration.celebrateShip(.init(daysEarly: days > 0 ? days : 5, plannedDays: 14, project: "Habit Hero",
+                                                    accent: Accent(hex: 0x58CC02), xp: 70))
                 }
             }
             if UserDefaults.standard.bool(forKey: "PRODLINE_BANNER") {
