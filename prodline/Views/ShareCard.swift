@@ -91,93 +91,138 @@ struct ShareCardData {
 }
 
 enum ShareCardStyle: String, CaseIterable, Identifiable {
-    case color, photo, light
+    case photo, color, light
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
 
-/// The card itself: 360×450 points, rendered at 3× (1080×1350, a 4:5 post).
+/// The card itself: 360×450 points, rendered at 3× (1080×1350, a 4:5 post). Built like the Dash cards:
+/// artwork on top melting into the accent (color fade plus progressive blur), the numbers on the accent slab.
 struct ShareCardView: View {
     static let size = CGSize(width: 360, height: 450)
+    static let inset: CGFloat = 24
     let data: ShareCardData
     let stats: [ShareStat]
     let style: ShareCardStyle
 
-    private var onDark: Bool { style != .light && !(style == .color && data.accent.luminance > 0.55) }
-    private var ink: Color { onDark ? .white : Theme.ink }
-    private var soft: Color { onDark ? .white.opacity(0.72) : Theme.secondary }
+    private var w: CGFloat { Self.size.width }
+    /// Artwork height; its lower part fades into the slab.
+    private var art: CGFloat { 270 }
+    private var light: Bool { style == .light }
+    /// Text on the slab.
+    private var ink: Color { light ? Theme.ink : data.accent.on }
+    private var soft: Color { light ? Theme.secondary : data.accent.on.opacity(0.75) }
+    private var showsPhoto: Bool { style == .photo && data.cover != nil }
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topLeading) {
             background
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 10) {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(style == .light ? data.accent.base : .white.opacity(onDark ? 0.22 : 0.6))
-                        .overlay(Text(data.initial).display(18, 800).foregroundStyle(style == .light ? data.accent.on : ink))
-                        .frame(width: 34, height: 34)
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(data.name).display(22, 800).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.6)
-                        Text(data.status.uppercased()).font(.ui(10, .bold)).tracking(1).foregroundStyle(soft)
-                    }
+            header
+                .padding(Self.inset)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .lastTextBaseline, spacing: 10) {
+                    Text("\(data.days)").display(76, 850).foregroundStyle(ink).lineLimit(1)
+                    Text(data.days == 1 ? "day spent" : "days spent").font(.ui(18, .bold)).foregroundStyle(ink.opacity(light ? 0.6 : 0.92))
+                    Spacer(minLength: 0)
                 }
-                Spacer(minLength: 12)
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("\(data.days)").display(92, 850).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.5)
-                    Text(data.days == 1 ? "day\nspent" : "days\nspent").font(.ui(17, .bold)).foregroundStyle(soft)
-                        .lineSpacing(-2)
-                }
-                .padding(.bottom, 14)
+                .shadow(color: .black.opacity(showsPhoto ? 0.18 : 0), radius: 8)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                     ForEach(stats) { s in
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(data.values[s] ?? "–").display(24, 800).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.5)
+                            Text(data.values[s] ?? "–").display(23, 800).foregroundStyle(ink).lineLimit(1).minimumScaleFactor(0.5)
                             Text(s.label).font(.ui(12, .semibold)).foregroundStyle(soft).lineLimit(1)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
+                        .padding(.horizontal, 12).padding(.vertical, 10)
                         .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(style == .light ? Theme.background : .white.opacity(onDark ? 0.16 : 0.5)))
+                            .fill(light ? Theme.background : Color.white.opacity(0.18)))
                     }
                 }
                 HStack(spacing: 6) {
-                    Image("Mark").resizable().renderingMode(.template).scaledToFit()
-                        .frame(width: 14, height: 14)
+                    Image("Mark").resizable().renderingMode(.template).scaledToFit().frame(width: 13, height: 13)
                     Text("Built with Prodline").font(.ui(11, .bold))
                     Spacer()
                     Text(Date.now.formatted(.dateTime.month(.abbreviated).day().year())).font(.ui(11, .semibold))
                 }
                 .foregroundStyle(soft)
-                .padding(.top, 16)
             }
-            .padding(24)
+            .padding(.horizontal, Self.inset)
+            .padding(.bottom, 20)
+            .frame(width: w, height: Self.size.height, alignment: .bottomLeading)
         }
-        .frame(width: Self.size.width, height: Self.size.height)
-        .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+        .frame(width: w, height: Self.size.height)
+        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+    }
+
+    /// Badge, name and status, top left. On photos they get a soft blur behind them and a shadow.
+    private var header: some View {
+        let onPhoto = showsPhoto
+        let textColor: Color = onPhoto || style == .color ? .white : Theme.ink
+        return HStack(spacing: 10) {
+            Text(data.initial).display(19, 800).foregroundStyle(data.accent.on)
+                .frame(width: 38, height: 38)
+                .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(data.accent.base))
+                .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 1.5))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(data.name).display(22, 800).foregroundStyle(style == .color ? data.accent.on : textColor)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(data.status.uppercased()).font(.ui(10, .bold)).tracking(1.2)
+                    .foregroundStyle((style == .color ? data.accent.on : textColor).opacity(0.8))
+            }
+        }
+        .shadow(color: .black.opacity(onPhoto ? 0.45 : 0), radius: 1.5, y: 0.5)
+        .shadow(color: .black.opacity(onPhoto ? 0.3 : 0), radius: 10)
     }
 
     @ViewBuilder
     private var background: some View {
         switch style {
+        case .photo:
+            ZStack(alignment: .top) {
+                data.accent.base
+                artwork
+            }
         case .color:
             LinearGradient(colors: [data.accent.base, data.accent.dark], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .photo:
-            ZStack {
-                if let cover = data.cover {
-                    Image(uiImage: cover).resizable().scaledToFill()
-                        .frame(width: Self.size.width, height: Self.size.height).clipped()
-                } else {
-                    data.accent.base
-                }
-                LinearGradient(stops: [.init(color: .black.opacity(0.35), location: 0), .init(color: .black.opacity(0.15), location: 0.3),
-                                       .init(color: .black.opacity(0.7), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-            }
         case .light:
             ZStack(alignment: .topTrailing) {
                 Color.white
-                Circle().fill(data.accent.base.opacity(0.14)).frame(width: 260).offset(x: 90, y: -110)
+                Circle().fill(data.accent.base.opacity(0.14)).frame(width: 300).offset(x: 110, y: -130)
             }
+        }
+    }
+
+    /// Same recipe as the Dash card: the photo, a blurred copy revealed toward the bottom, an eased fade
+    /// into the accent, and here also a blurred top-left corner under the header.
+    @ViewBuilder
+    private var artwork: some View {
+        if let cover = data.cover {
+            let photo = Image(uiImage: cover).resizable().scaledToFill().frame(width: w, height: art).clipped()
+            photo
+                .overlay {
+                    photo.blur(radius: 18)
+                        .mask(LinearGradient(stops: [.init(color: .clear, location: 0.4), .init(color: .black, location: 1)],
+                                             startPoint: .top, endPoint: .bottom))
+                }
+                .overlay {
+                    photo.blur(radius: 14)
+                        .mask(RadialGradient(colors: [.black, .black.opacity(0.6), .clear], center: .topLeading,
+                                             startRadius: 0, endRadius: 210))
+                }
+                .overlay {
+                    LinearGradient(stops: [.init(color: data.accent.base.opacity(0), location: 0.42),
+                                           .init(color: data.accent.base.opacity(0.35), location: 0.66),
+                                           .init(color: data.accent.base.opacity(0.8), location: 0.84),
+                                           .init(color: data.accent.base, location: 0.97)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .overlay(alignment: .top) {
+                    LinearGradient(colors: [.black.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom)
+                        .frame(height: art * 0.4)
+                }
+                .frame(width: w, height: art)
+        } else {
+            data.accent.base
         }
     }
 }
@@ -188,7 +233,7 @@ struct ShareCardSheet: View {
     @Environment(DataRefresher.self) private var refresher
     @State private var data: ShareCardData?
     @State private var picks: [ShareStat] = []
-    @State private var style: ShareCardStyle = .color
+    @State private var style: ShareCardStyle = .photo
     @State private var image: UIImage?
 
     var body: some View {
@@ -246,7 +291,7 @@ struct ShareCardSheet: View {
             data = d
             let shipped = project.phase() == .observing || project.phase() == .finished
             picks = d.defaultPicks(shipped: shipped)
-            style = .color
+            style = d.cover != nil ? .photo : .color
             render()
         }
         .onChange(of: style) { render() }

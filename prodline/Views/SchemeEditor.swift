@@ -377,7 +377,7 @@ struct MeView: View {
                 devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
                     celebration.nudge(title: "A deadline slipped", subtitle: "Finish it today. Late still earns XP.")
                 }
-                devButton("Play the weekly review", "play.rectangle") {
+                devButton("Play weekly wrap", "play.rectangle.fill") {
                     NotificationCenter.default.post(name: WeeklyReview.open, object: nil)
                 }
                 devButton("Replay launch animation", "play.circle") {

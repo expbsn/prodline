@@ -156,8 +156,8 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             "Revenue is paid orders since the project started, in USD.",
         ]
         case .gumroad: [
-            "On Gumroad open Settings → Advanced → Applications and create an application (any name, any redirect URL).",
-            "Tap Generate access token and paste it here.",
+            "On Gumroad open Settings → Advanced. Under Applications, give it a name and icon, and enter http://127.0.0.1 as the Redirect URI (it isn't used).",
+            "Click Create application, then Generate access token, and paste the token here. It doesn't expire until you revoke it.",
             "Revenue is sales since the project started, minus refunds.",
         ]
         case .plausible: [
@@ -664,7 +664,8 @@ nonisolated enum IntegrationSources {
             var comps = URLComponents(string: "https://api.gumroad.com/v2/sales")!
             comps.queryItems = [.init(name: "access_token", value: secret), .init(name: "after", value: DayKey.string(start.adding(days: -1)))]
             if let pageKey { comps.queryItems?.append(.init(name: "page_key", value: pageKey)) }
-            let obj = try json(try await load(request(comps.url!), session: session)) as? [String: Any]
+            let req = request(comps.url!, headers: ["Authorization": "Bearer \(secret)"])
+            let obj = try json(try await load(req, session: session)) as? [String: Any]
             for s in (obj?["sales"] as? [[String: Any]]) ?? [] {
                 guard let created = iso(s["created_at"] as? String), (s["refunded"] as? Bool) != true else { continue }
                 let cents = (s["price"] as? Double) ?? (s["price"] as? Int).map(Double.init) ?? 0
