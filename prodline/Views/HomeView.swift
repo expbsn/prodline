@@ -146,10 +146,9 @@ struct HomeView: View {
             ZStack {
                 Circle().fill(.white)
                 Circle().strokeBorder(tint.opacity(0.9), lineWidth: 2.5)
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 20))
-                    .foregroundStyle(tint)
-                    .symbolEffect(.bounce, value: profile.streak)
+                FlameMark(color: tint, lit: lit)
+                    .frame(height: 23)
+                    .offset(y: -1)
             }
             .frame(width: 46, height: 46)
             Text("\(profile.streak)")

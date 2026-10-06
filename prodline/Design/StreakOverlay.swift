@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Today's first progress: the room slowly goes dark around the edges, a faint ember flickers in the middle,
-/// then the streak flame catches — a cartoon squash and stretch with a burst of sparks — and settles. The
-/// streak ticks up by one. Banners (like the XP that came with it) wait until it's over. Tap to skip.
+/// Today's first progress: the room slowly goes dark around the edges, the unlit flame emerges, then it
+/// catches — filling from the bottom up with a burst of sparks — and keeps burning, tongues licking and
+/// flickering. The streak ticks up by one. Banners (like the XP that came with it) wait until it's over. Tap to skip.
 struct StreakOverlay: View {
     @Environment(CelebrationCenter.self) private var center
     @State private var dim = false
@@ -57,7 +57,7 @@ struct StreakOverlay: View {
         // Slowly, the room goes dark.
         withAnimation(.easeIn(duration: 1.3)) { dim = true }
         try? await Task.sleep(for: .milliseconds(700))
-        // Something's there: a faint ember in the middle.
+        // Something is there: the unlit flame emerges.
         withAnimation(.easeInOut(duration: 0.6)) { ember = true }
         Haptics.soft()
         try? await Task.sleep(for: .milliseconds(850))
@@ -76,71 +76,70 @@ struct StreakOverlay: View {
     }
 }
 
-/// Squash and stretch for the ignition.
-private struct Stretch {
-    var x: CGFloat = 0.9
-    var y: CGFloat = 0.9
-}
-
-/// The flame as a solid cartoon object: a dark orange body behind the face for depth, a bright core glowing
-/// through its cutout, layered glow. Ignition squashes, shoots up tall and thin, and settles — then holds still.
+/// The flame as a solid cartoon object that burns: nested layers (red-orange, orange, yellow, a white-hot core)
+/// on a dark extruded body. Unlit it's a dark silhouette. Lighting fills each layer from the bottom up, outside
+/// in; from then on the outline itself moves — tongues licking and swaying, each layer at its own rhythm.
 private struct Flame3D: View {
     let lit: Bool
     let ember: Bool
-    private let size: CGFloat = 150
+    @State private var fill: [CGFloat] = [0, 0, 0, 0]
+    @State private var burning = Date.distantFuture
+
+    private let w: CGFloat = 150
+    private var h: CGFloat { w * 1.3 }
+
+    private struct Layer { let scale: CGFloat; let phase: Double; let speed: Double; let colors: [Int] }
+    private let layers = [
+        Layer(scale: 1.0, phase: 0, speed: 1.0, colors: [0xFF8A00, 0xFF4B1F]),
+        Layer(scale: 0.74, phase: 1.3, speed: 1.15, colors: [0xFFB000, 0xFF8A00]),
+        Layer(scale: 0.5, phase: 2.6, speed: 1.3, colors: [0xFFE04A, 0xFFB000]),
+        Layer(scale: 0.27, phase: 3.9, speed: 1.5, colors: [0xFFFFFF, 0xFFF0A0]),
+    ]
 
     var body: some View {
-        ZStack {
-            ForEach((1...9).reversed(), id: \.self) { i in
-                flame(size).foregroundStyle(lit ? Color(hex: 0xC2410C) : Color(hex: 0x2C2C2E))
-                    .offset(x: CGFloat(i) * 0.6, y: CGFloat(i) * 1.1)
+        TimelineView(.animation(paused: !lit)) { tl in
+            // The motion eases in as it catches, so it doesn't start mid-wobble.
+            let since = max(0, tl.date.timeIntervalSince(burning))
+            let life = lit ? min(1, since / 0.6) : 0
+            let t = tl.date.timeIntervalSinceReferenceDate
+            ZStack(alignment: .bottom) {
+                ForEach((1...8).reversed(), id: \.self) { i in
+                    FlameShape(time: t, life: life).fill(lit ? Color(hex: 0xB83214) : Color(hex: 0x1C1C1E))
+                        .offset(x: CGFloat(i) * 0.6, y: CGFloat(i) * 1.1)
+                }
+                FlameShape(time: t, life: life).fill(Color(hex: 0x3A3A3C))
+                ForEach(layers.indices, id: \.self) { i in
+                    let l = layers[i]
+                    FlameShape(time: t * l.speed + l.phase, life: life * (1 + Double(i) * 0.25))
+                        .fill(LinearGradient(colors: l.colors.map { Color(hex: $0) }, startPoint: .bottom, endPoint: .top))
+                        .frame(width: w * l.scale, height: h * l.scale)
+                        .offset(y: -CGFloat(i) * 6)
+                        .mask(alignment: .bottom) {
+                            Rectangle().frame(height: h * fill[i])
+                        }
+                }
+                // Gloss on the left of the belly, like the chunky buttons.
+                Capsule().fill(.white.opacity(lit ? 0.32 : 0.08))
+                    .frame(width: 9, height: 46)
+                    .rotationEffect(.degrees(16))
+                    .offset(x: -w * 0.3, y: -h * 0.2)
+                    .blur(radius: 0.5)
             }
-            flame(size).foregroundStyle(Color(hex: 0x48484A))
-            // The hot core, under the face: it glows through the flame's inner cutout. Before ignition, a faint ember.
-            core
-            flame(size)
-                .foregroundStyle(LinearGradient(colors: [Color(hex: 0xFFD23F), Color(hex: 0xFF9600), Color(hex: 0xFF5A1F)],
-                                                startPoint: .bottom, endPoint: .top))
-                .opacity(lit ? 1 : 0)
+            .frame(width: w, height: h)
         }
-        // The unlit flame only emerges out of the dark together with the ember.
+        // No glow until it actually burns.
+        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.9 : 0), radius: 16)
+        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.6 : 0), radius: 42)
+        .shadow(color: Color(hex: 0xFF4B00).opacity(lit ? 0.4 : 0), radius: 90)
+        // The silhouette emerges out of the dark with the ember beat.
         .opacity(lit || ember ? 1 : 0)
-        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.95 : ember ? 0.35 : 0), radius: 16)
-        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.65 : 0), radius: 42)
-        .shadow(color: Color(hex: 0xFF4B00).opacity(lit ? 0.45 : 0), radius: 90)
-        .keyframeAnimator(initialValue: Stretch(), trigger: lit) { view, s in
-            view.scaleEffect(x: lit ? s.x : 0.9, y: lit ? s.y : 0.9, anchor: .bottom)
-        } keyframes: { _ in
-            KeyframeTrack(\.x) {
-                CubicKeyframe(1.42, duration: 0.14)   // squash
-                CubicKeyframe(0.68, duration: 0.2)    // stretch up
-                CubicKeyframe(1.14, duration: 0.16)
-                CubicKeyframe(0.96, duration: 0.14)
-                CubicKeyframe(1.0, duration: 0.14)    // and still
-            }
-            KeyframeTrack(\.y) {
-                CubicKeyframe(0.5, duration: 0.14)
-                CubicKeyframe(1.42, duration: 0.2)
-                CubicKeyframe(0.88, duration: 0.16)
-                CubicKeyframe(1.04, duration: 0.14)
-                CubicKeyframe(1.0, duration: 0.14)
+        .onChange(of: lit) {
+            guard lit else { fill = [0, 0, 0, 0]; return }
+            burning = .now
+            for i in fill.indices {
+                withAnimation(.easeOut(duration: 0.55).delay(Double(i) * 0.11)) { fill[i] = 1.02 }
             }
         }
-    }
-
-    private var core: some View {
-        Ellipse()
-            .fill(RadialGradient(colors: [.white, Color(hex: 0xFFE680), Color(hex: 0xFFB020).opacity(0)],
-                                 center: .center, startRadius: 2, endRadius: size * 0.28))
-            .frame(width: size * 0.5, height: size * 0.62)
-            .offset(y: size * 0.18)
-            .phaseAnimator([0.3, 0.6], trigger: ember) { view, flicker in
-                view.opacity(lit ? 1 : ember ? flicker : 0)
-            } animation: { _ in .easeInOut(duration: 0.3) }
-    }
-
-    private func flame(_ s: CGFloat) -> some View {
-        Image(systemName: "flame.fill").font(.system(size: s, weight: .regular))
     }
 }
 
@@ -155,7 +154,7 @@ private struct Sparks: View {
         TimelineView(.animation(paused: !burst)) { tl in
             let t = tl.date.timeIntervalSince(start)
             Canvas { ctx, size in
-                guard burst, t >= 0, t < life + 0.6 else { return }
+                guard burst, t >= 0 else { return }
                 let base = CGPoint(x: size.width / 2, y: size.height * 0.62)
                 for i in 0..<count {
                     // Fixed per-spark randomness, so each keeps its own path.
@@ -180,6 +179,20 @@ private struct Sparks: View {
                         .applying(CGAffineTransform(rotationAngle: heading))
                         .applying(CGAffineTransform(translationX: x, y: y))
                     ctx.fill(p, with: .color(color))
+                }
+                // Then a few embers keep drifting up from the tip while it burns.
+                guard t > 0.5 else { return }
+                for i in 0..<12 {
+                    let r1 = fract(sin(Double(i) * 91.17) * 4373.1)
+                    let r2 = fract(sin(Double(i) * 23.71) * 9183.4)
+                    let period = 1.3 + r2 * 0.8
+                    let age = ((t - 0.5) + r1 * period).truncatingRemainder(dividingBy: period) / period
+                    let x = base.x + CGFloat((r1 - 0.5) * 50 + sin(age * 5 + r2 * 6) * 10)
+                    let y = base.y - 130 - CGFloat(age * (110 + r2 * 90))
+                    let size = CGFloat(1.5 + r2 * 2.5) * CGFloat(1 - age * 0.5)
+                    ctx.opacity = (1 - age) * min(1, age * 5) * 0.9
+                    ctx.fill(Path(ellipseIn: CGRect(x: x - size / 2, y: y - size / 2, width: size, height: size)),
+                             with: .color(r1 > 0.5 ? Color(hex: 0xFFD23F) : Color(hex: 0xFF9600)))
                 }
             }
         }
