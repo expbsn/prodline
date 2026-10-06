@@ -90,6 +90,10 @@ enum WeeklyReview {
     /// Fresh review waiting on Dash: from Sunday 18:00 until it's watched, for three days at most.
     static func isWaiting(now: Date = .now, defaults: UserDefaults = .standard) -> Bool {
         let start = reviewWeekStart(now: now)
+        #if DEBUG
+        // -PRODLINE_REVIEW_READY YES: pretend it's Sunday evening.
+        if defaults.bool(forKey: "PRODLINE_REVIEW_READY") { return !isWatched(start, defaults: defaults) }
+        #endif
         let ready = calendar.date(byAdding: .hour, value: 6 * 24 + hour, to: start) ?? now
         return now >= ready && now < ready.addingTimeInterval(3 * 86_400) && !isWatched(start, defaults: defaults)
     }

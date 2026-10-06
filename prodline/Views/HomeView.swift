@@ -37,6 +37,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var context
     /// On-screen frames of the cards, so the project page can put its card exactly there.
     @State private var cardFrames: [UUID: CGRect] = [:]
+    /// The review counts as seen the moment it opens; reading it here makes the chip go away right then.
+    @AppStorage(WeeklyReview.watchedKey) private var watchedWeek = ""
     /// Once the user touches the carousel, startup centering stands down so it can't fight the swipe.
     @State private var userScrolled = false
 
@@ -54,7 +56,7 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 0) {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") {
                         HStack(alignment: .top, spacing: 10) {
-                            if WeeklyReview.isWaiting() { reviewChip }
+                            if reviewWaiting { reviewChip.transition(.scale.combined(with: .opacity)) }
                             streakBadge
                         }
                     }
@@ -95,6 +97,11 @@ struct HomeView: View {
     }
 
     // MARK: Header
+
+    private var reviewWaiting: Bool {
+        _ = watchedWeek
+        return WeeklyReview.isWaiting()
+    }
 
     /// Sunday evening until watched: this week's review.
     private var reviewChip: some View {
