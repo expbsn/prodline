@@ -48,10 +48,20 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         }
     }
 
+    /// Official mark from the partner's brand kit (design/IMAGE_CREDITS.md). A full icon is shown as is;
+    /// a wordmark sits on the brand color.
+    var logo: (asset: String, isIcon: Bool)? {
+        switch self {
+        case .revenueCat: ("Logo-revenuecat", true)
+        case .stripe: ("Logo-stripe", false)
+        default: nil
+        }
+    }
+
     var colorHex: Int {
         switch self {
         case .appStore: 0x1C8CF5
-        case .revenueCat: 0xF25A5A
+        case .revenueCat: 0xF2545B
         case .stripe: 0x635BFF
         case .lemonSqueezy: 0xFFC233
         case .gumroad: 0xFF90E8

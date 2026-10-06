@@ -78,10 +78,21 @@ struct IntegrationIcon: View {
 
     var body: some View {
         let accent = Accent(hex: kind.colorHex)
-        RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-            .fill(accent.base)
-            .overlay(Image(systemName: kind.symbol).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(accent.on))
-            .frame(width: size, height: size)
+        if let logo = kind.logo, logo.isIcon {
+            Image(logo.asset).resizable().scaledToFit()
+                .frame(width: size, height: size)
+        } else {
+            RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
+                .fill(accent.base)
+                .overlay {
+                    if let logo = kind.logo {
+                        Image(logo.asset).resizable().scaledToFit().frame(width: size * 0.7)
+                    } else {
+                        Image(systemName: kind.symbol).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(accent.on)
+                    }
+                }
+                .frame(width: size, height: size)
+        }
     }
 }
 
