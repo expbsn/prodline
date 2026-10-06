@@ -8,6 +8,7 @@ struct ProdlineWidgetBundle: WidgetBundle {
         ProjectWidget()
         TractionWidget()
         LineupWidget()
+        DeadlineLiveActivity()
     }
 }
 

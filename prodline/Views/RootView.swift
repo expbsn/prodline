@@ -36,6 +36,8 @@ struct RootView: View {
                     .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
+        // Ticking a goal updates the deadline Live Activity right away, not on the next sync.
+        .onChange(of: deadlineSignature) { Task { await LiveActivities.sync(projects) } }
         .onReceive(NotificationCenter.default.publisher(for: LaunchGate.replay)) { _ in showLaunch = true }
         .environment(refresher)
         .environment(github)
@@ -54,6 +56,7 @@ struct RootView: View {
                 DemoData.load(baseURL: UserDefaults.standard.string(forKey: "mockServerURL") ?? "http://127.0.0.1:8787",
                               profile: profile, context: context)
             }
+            if UserDefaults.standard.bool(forKey: "PRODLINE_LIVE") { Task { await LiveActivities.demo() } }
             if UserDefaults.standard.bool(forKey: "PRODLINE_BANNER") {
                 Task {
                     try? await Task.sleep(for: .seconds(1))
@@ -70,6 +73,7 @@ struct RootView: View {
                     UserDefaults.standard.set(Date.now, forKey: Self.lastBackgroundKey)
                     DataRefresher.scheduleBackgroundRefresh()
                     WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
+                    Task { await LiveActivities.sync(projects) }
                 }
                 return
             }
@@ -89,6 +93,7 @@ struct RootView: View {
                                             celebration: celebration, context: context)
                 }
                 WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
+                await LiveActivities.sync(projects)
                 if firstPass {
                     firstPass = false
                     celebration.endCollecting(awayTitle: away > 15 * 60)
@@ -104,6 +109,20 @@ struct RootView: View {
 
 /// Tabs + floating tab bar + global sheets.
 extension RootView {
+    /// Changes whenever a goal or checkpoint due today changes.
+    private var deadlineSignature: String {
+        var parts: [String] = []
+        for (_, m) in LiveActivities.candidates(projects) {
+            parts.append(m.id.uuidString + m.title)
+            for g in m.sortedGoals { parts.append(g.title + (g.isDone ? "1" : "0")) }
+        }
+        let today = Date.now.startOfDay
+        for p in projects {
+            for m in p.milestones ?? [] where m.isDone && m.dueDate == today { parts.append(m.id.uuidString) }
+        }
+        return parts.joined(separator: "|")
+    }
+
     static let lastBackgroundKey = "app.lastBackgroundAt"
     static let lateReminderKey = "app.lateReminderAt"
 

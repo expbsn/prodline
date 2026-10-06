@@ -103,7 +103,7 @@ nonisolated struct WidgetMomentum: Codable, Equatable, Sendable {
     var goalsTotal: Int
 }
 
-nonisolated struct WidgetGoal: Codable, Equatable, Sendable {
+nonisolated struct WidgetGoal: Codable, Hashable, Sendable {
     var title: String
     var done: Bool
 }
