@@ -128,7 +128,7 @@ def main():
 
     feed = {
         "schemaVersion": 1,
-        "project": "Prodline",
+        "project": repo.get("name", args.repo.split("/")[-1]),
         "asOf": iso(now),
         "metrics": current,
         "history": history,

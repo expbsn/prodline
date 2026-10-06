@@ -796,7 +796,7 @@ struct ConnectionSheet: View {
             .padding(20)
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
-                    ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
+                    ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
                     Divider()
                     GitHubFields(repo: $repo, token: $token, check: $repoCheck)
                 }

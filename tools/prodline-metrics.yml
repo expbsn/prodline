@@ -1,0 +1,54 @@
+# Prodline metrics feed for any GitHub repo: commits, stars, forks, open issues, goals from
+# prodline.json and (optional) page views, published as a file the Prodline app reads.
+#
+# 1. Save this file as .github/workflows/prodline-metrics.yml in your repo and push.
+# 2. In Prodline, set the project's endpoint to
+#      https://raw.githubusercontent.com/<owner>/<repo>/metrics/metrics.json
+#    and leave the API key empty. (Public repos only: raw files of private repos need a login.)
+# 3. Optional page views: add a repository secret METRICS_TOKEN with a fine-grained token that can
+#    read this repo's Administration (traffic) data.
+name: Prodline metrics
+
+on:
+  push:
+    branches-ignore: [metrics]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prodline-metrics
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build metrics.json
+        env:
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRAFFIC_TOKEN: ${{ secrets.METRICS_TOKEN }}
+        run: |
+          git fetch origin metrics || true
+          git show origin/metrics:metrics.json > /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
+          curl -fsSL https://raw.githubusercontent.com/expbsn/prodline/main/tools/prodline_metrics.py -o /tmp/prodline_metrics.py
+          python3 /tmp/prodline_metrics.py --previous /tmp/previous.json --out /tmp/metrics.json
+
+      - name: Publish to the metrics branch
+        run: |
+          git config user.name "prodline-metrics"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan metrics-publish
+          git rm -rf --quiet .
+          cp /tmp/metrics.json metrics.json
+          git add metrics.json
+          git commit --quiet -m "Metrics $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force origin HEAD:metrics

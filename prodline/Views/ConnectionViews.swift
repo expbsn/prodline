@@ -30,6 +30,8 @@ struct ConnectionFields: View {
     @Binding var endpoint: String
     @Binding var apiKey: String
     @Binding var probe: ProbeState
+    /// The linked repo (if any), so the GitHub feed URL can be filled in with one tap.
+    var repo: String = ""
     @Environment(\.accent) private var accent
     @FocusState private var focus: Field?
     @State private var showSpec = false
@@ -89,7 +91,137 @@ struct ConnectionFields: View {
 
             if showSpec { APISpecView() }
 
+            GuideDisclosure(title: "Use GitHub as the endpoint") {
+                GitHubFeedGuideView(repo: repo, endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
+            }
             GuideDisclosure(title: "How do I send goals?") { GoalsGuideView() }
+        }
+    }
+}
+
+/// No server? A GitHub Action builds the metrics from the repo and publishes them as a file.
+struct GitHubFeedGuideView: View {
+    let repo: String
+    @Binding var endpoint: String
+    @Binding var apiKey: String
+    @Binding var probe: ProbeState
+    @State private var copied = false
+
+    static let workflow = #"""
+# Prodline metrics feed for any GitHub repo: commits, stars, forks, open issues, goals from
+# prodline.json and (optional) page views, published as a file the Prodline app reads.
+#
+# 1. Save this file as .github/workflows/prodline-metrics.yml in your repo and push.
+# 2. In Prodline, set the project's endpoint to
+#      https://raw.githubusercontent.com/<owner>/<repo>/metrics/metrics.json
+#    and leave the API key empty. (Public repos only: raw files of private repos need a login.)
+# 3. Optional page views: add a repository secret METRICS_TOKEN with a fine-grained token that can
+#    read this repo's Administration (traffic) data.
+name: Prodline metrics
+
+on:
+  push:
+    branches-ignore: [metrics]
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prodline-metrics
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build metrics.json
+        env:
+          REPO: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TRAFFIC_TOKEN: ${{ secrets.METRICS_TOKEN }}
+        run: |
+          git fetch origin metrics || true
+          git show origin/metrics:metrics.json > /tmp/previous.json 2>/dev/null || echo '{}' > /tmp/previous.json
+          curl -fsSL https://raw.githubusercontent.com/expbsn/prodline/main/tools/prodline_metrics.py -o /tmp/prodline_metrics.py
+          python3 /tmp/prodline_metrics.py --previous /tmp/previous.json --out /tmp/metrics.json
+
+      - name: Publish to the metrics branch
+        run: |
+          git config user.name "prodline-metrics"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan metrics-publish
+          git rm -rf --quiet .
+          cp /tmp/metrics.json metrics.json
+          git add metrics.json
+          git commit --quiet -m "Metrics $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push --force origin HEAD:metrics
+"""#
+
+    static func feedURL(for ref: GitHubRepoRef) -> String {
+        "https://raw.githubusercontent.com/\(ref.owner)/\(ref.name)/metrics/metrics.json"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("No server needed: a GitHub Action reads your repo every push and every 6 hours and publishes the numbers as a file Prodline polls. Works for public repos.")
+                .font(.ui(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            step(1, "Add the workflow",
+                 "Save it as `.github/workflows/prodline-metrics.yml` in your repo and push. Or paste it into Claude Code and ask it to add the file.")
+            Button {
+                UIPasteboard.general.string = Self.workflow
+                Haptics.success()
+                copied = true
+            } label: {
+                Label(copied ? "Copied" : "Copy workflow", systemImage: copied ? "checkmark" : "doc.on.doc")
+                    .font(.ui(14, .semibold))
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(Theme.ink)
+            .padding(.leading, 34)
+            step(2, "Let it run once",
+                 "GitHub → your repo → Actions → “Prodline metrics”. It creates a `metrics` branch with `metrics.json`.")
+            step(3, "Use it as the endpoint",
+                 "`https://raw.githubusercontent.com/<owner>/<repo>/metrics/metrics.json`, with no API key.")
+            if let ref = GitHubRepoRef(repo) {
+                Button {
+                    endpoint = Self.feedURL(for: ref)
+                    apiKey = ""
+                    probe = .idle
+                    Haptics.success()
+                } label: {
+                    Label("Use \(ref.slug)", systemImage: "arrow.down.doc")
+                        .font(.ui(14, .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Theme.ink)
+                .padding(.leading, 34)
+            }
+            step(4, "Optional: page views",
+                 "Add a repository secret `METRICS_TOKEN`: a fine-grained token for this repo with **Administration: Read**. Then visits show up too.")
+            Text("Reports commits (Momentum while building), GitHub stars, forks, open issues, goals done and open from prodline.json, and revenue (0). Linking the repo below counts commits as well; the feed adds the rest and keeps 30 days of history.")
+                .font(.ui(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func step(_ n: Int, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(n)").font(.ui(13, .bold)).foregroundStyle(Theme.ink)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Theme.background))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                Text(LocalizedStringKey(text)).font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }

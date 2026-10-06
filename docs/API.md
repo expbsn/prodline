@@ -116,6 +116,10 @@ See [`MockProject/`](../MockProject/README.md) for a dependency-free mock server
 
 The API key is optional. Leave it empty for public endpoints and the app sends no `Authorization` header.
 
+## GitHub as the endpoint (any public repo)
+
+Copy `tools/prodline-metrics.yml` into a repo as `.github/workflows/prodline-metrics.yml` (the app's "Use GitHub as the endpoint" guide has a copy button). On every push and every 6 hours it downloads `tools/prodline_metrics.py` from this repo, builds `metrics.json` and force-pushes it to a `metrics` branch. Use `https://raw.githubusercontent.com/<owner>/<repo>/metrics/metrics.json` as the endpoint with no key. Private repos don't work this way (their raw files need a login).
+
 ## Prodline's own feed
 
 Prodline tracks itself with a public feed built by `.github/workflows/metrics.yml` (script: `tools/prodline_metrics.py`) on every push to `main` and every 6 hours:

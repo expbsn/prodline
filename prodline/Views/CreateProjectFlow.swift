@@ -259,7 +259,7 @@ struct CreateProjectFlow: View {
     private var connectStep: some View {
         VStack(alignment: .leading, spacing: 18) {
             stepTitle("Step 4 of 5", "Connect your project")
-            ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe)
+            ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
             Divider().padding(.vertical, 6)
             GitHubFields(repo: $repo, token: $token, check: $repoCheck)
         }
