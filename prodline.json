@@ -55,6 +55,8 @@
 
     {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": false},
     {"id": "background-push", "title": "Silent push refreshes goals while the app is closed", "day": 22, "done": false},
+    {"id": "tiktok-views", "title": "Track TikTok views through the relay's login", "day": 22, "done": false},
+    {"id": "meta-views", "title": "Track Instagram and Threads views through the relay's login", "day": 22, "done": false},
 
     {"id": "app-store-connect", "title": "Pull downloads, proceeds and rating from App Store Connect", "day": 23, "done": true},
     {"id": "revenue-integrations", "title": "Connect RevenueCat, Stripe, Lemon Squeezy and Gumroad", "day": 23, "done": true},

@@ -617,13 +617,16 @@ struct AccentGlow: View {
     }
 }
 
-/// Centered over everything, played like a short scene: the screen blurs, an impressed voice reacts in three
-/// beats ("Hold up." → "Already finished?" → "You're killing it!"), then the number of days early lands as a
-/// solid 3D block in the project's color and sways gently. Tap skips the intro, then closes.
+/// Centered over everything, played like a short scene: the screen blurs, then someone impressed types three
+/// lines at you ("Hold up." → "Already finished?" → "You're killing it!"), then the number of days early lands
+/// as a solid 3D block in the project's color and sways gently. Tap skips the intro, then closes.
 struct ShipOverlay: View {
     @Environment(CelebrationCenter.self) private var center
     /// Which reaction is on screen; nil before the first and once the number shows.
     @State private var line: Int?
+    /// Letters of the current line typed so far.
+    @State private var typed = 0
+    @State private var caretOn = true
     @State private var reveal = false
     @State private var landed = false
     @State private var caption = false
@@ -636,10 +639,9 @@ struct ShipOverlay: View {
                                startRadius: 20, endRadius: 420)
                     .ignoresSafeArea()
                 if let line, !reveal {
-                    reaction(m.reactions[line], last: line == m.reactions.count - 1, accent: m.accent)
+                    reaction(m.reactions[line])
                         .id(line)
-                        .transition(.asymmetric(insertion: .scale(scale: 0.86).combined(with: .opacity),
-                                                removal: .scale(scale: 1.08).combined(with: .opacity)))
+                        .transition(.asymmetric(insertion: .opacity, removal: .opacity.combined(with: .offset(y: -10))))
                 }
                 if reveal { number(m) }
             }
@@ -652,16 +654,20 @@ struct ShipOverlay: View {
         }
     }
 
-    private func reaction(_ text: String, last: Bool, accent: Accent) -> some View {
-        Group {
-            if last {
-                ExtrudedText(text: text, size: 44, accent: accent, weight: 800)
-            } else {
-                Text(text).display(44, 800).foregroundStyle(Theme.ink)
+    /// A line being typed out, like someone writing to you. The full line sits invisibly underneath so the
+    /// text grows in place instead of re-centering with every letter.
+    private func reaction(_ text: String) -> some View {
+        let shown = String(text.prefix(typed))
+        return Text(text).display(44, 800).foregroundStyle(.clear)
+            .overlay(alignment: .leading) {
+                (Text(shown).foregroundStyle(Theme.ink) + Text("|").foregroundStyle(Theme.ink.opacity(caretOn ? 0.8 : 0)))
+                    .display(44, 800)
+                    .fixedSize()
             }
-        }
-        .multilineTextAlignment(.center)
-        .padding(.horizontal, 24)
+            .multilineTextAlignment(.center)
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)
+            .padding(.horizontal, 24)
     }
 
     private func number(_ m: CelebrationCenter.ShipMoment) -> some View {
@@ -691,14 +697,34 @@ struct ShipOverlay: View {
     }
 
     private func play(_ m: CelebrationCenter.ShipMoment) async {
-        line = nil; reveal = false; landed = false; caption = false
+        line = nil; typed = 0; reveal = false; landed = false; caption = false
         // A beat of blur before anyone speaks.
         try? await Task.sleep(for: .milliseconds(350))
-        for i in m.reactions.indices {
+        for (i, text) in m.reactions.enumerated() {
             guard !Task.isCancelled, !reveal else { return }
-            withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) { line = i }
-            Haptics.soft()
-            try? await Task.sleep(for: .milliseconds(i == m.reactions.count - 1 ? 1000 : 820))
+            typed = 0
+            caretOn = true
+            withAnimation(.easeOut(duration: 0.15)) { line = i }
+            try? await Task.sleep(for: .milliseconds(120))
+            // Typed like a person: steady letters, a little hitch after punctuation.
+            for (n, ch) in text.enumerated() {
+                guard !Task.isCancelled, !reveal else { return }
+                typed = n + 1
+                if ch != " " { Haptics.select() }
+                let pause = ".?!,".contains(ch) ? 140 : ch == " " ? 70 : 45
+                try? await Task.sleep(for: .milliseconds(pause))
+            }
+            // Let it sit for a moment with the cursor blinking.
+            for _ in 0..<(i == m.reactions.count - 1 ? 4 : 3) {
+                guard !Task.isCancelled, !reveal else { return }
+                try? await Task.sleep(for: .milliseconds(170))
+                caretOn.toggle()
+            }
+            caretOn = false
+            if i < m.reactions.count - 1 {
+                withAnimation(.easeIn(duration: 0.15)) { line = nil }
+                try? await Task.sleep(for: .milliseconds(180))
+            }
         }
         guard !Task.isCancelled, !reveal else { return }
         await landNumber(m)
