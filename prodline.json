@@ -28,7 +28,7 @@
     {"id": "building-metrics", "title": "Momentum stats while building: commits, goals, active days", "day": 5, "done": true},
     {"id": "edit-schedule", "title": "Change a project's start date and rhythm later", "day": 5, "done": true},
     {"id": "goal-source-heading", "title": "Show where goals come from once per deadline list", "day": 5, "done": true},
-    {"id": "ai-on-device", "title": "Verify goal suggestions on device", "day": 5, "done": false},
+    {"id": "ai-on-device", "title": "Verify goal suggestions on device", "day": 5, "done": true},
 
     {"id": "app-icon", "title": "Design app icon and launch screen", "day": 8, "done": true},
     {"id": "launch-animation", "title": "Launch animation with haptics", "day": 8, "done": true},
@@ -61,6 +61,7 @@
     {"id": "app-store-connect", "title": "Pull downloads, proceeds and rating from App Store Connect", "day": 23, "done": true},
     {"id": "revenue-integrations", "title": "Connect RevenueCat, Stripe, Lemon Squeezy and Gumroad", "day": 23, "done": true},
     {"id": "analytics-integrations", "title": "Connect Plausible and Umami for visitors", "day": 23, "done": true},
+    {"id": "youtube-views", "title": "Count YouTube views on videos posted since the start", "day": 23, "done": true},
 
     {"id": "keep-pivot-kill", "title": "Add the keep, pivot or kill review", "day": 24, "done": true},
     {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": true},

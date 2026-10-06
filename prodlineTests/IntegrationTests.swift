@@ -140,3 +140,44 @@ final class StripeStub: URLProtocol {
         client?.urlProtocolDidFinishLoading(self)
     }
 }
+
+@Suite("YouTube")
+struct YouTubeTests {
+    @Test func countsViewsOnVideosSinceTheStart() async throws {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.protocolClasses = [YouTubeStub.self]
+        let i = Integration(kind: .youtube, fields: ["channel": "@prodline"])
+        let r = try await IntegrationSources.youtube(i, secret: "AIzaTest", start: day(2026, 10, 1), session: URLSession(configuration: cfg))
+        #expect(r.totals["social_views"] == 1500)
+        #expect(r.totals["videos_posted"] == 2)
+        #expect(r.totals["subscribers"] == 321)
+        #expect(YouTubeStub.sawHandle)
+    }
+}
+
+/// Channel → uploads (two new videos, then one from before the start) → video stats.
+final class YouTubeStub: URLProtocol {
+    nonisolated(unsafe) static var sawHandle = false
+
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func stopLoading() {}
+    override func startLoading() {
+        let url = request.url!
+        let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        func has(_ name: String, _ value: String) -> Bool { q.contains { $0.name == name && $0.value == value } }
+        var body = "{}"
+        if url.path.hasSuffix("/channels") {
+            Self.sawHandle = has("forHandle", "@prodline") && has("key", "AIzaTest")
+            body = #"{"items":[{"statistics":{"subscriberCount":"321","viewCount":"99999"},"contentDetails":{"relatedPlaylists":{"uploads":"UUx"}}}]}"#
+        } else if url.path.hasSuffix("/playlistItems") {
+            body = #"{"items":[{"contentDetails":{"videoId":"a","videoPublishedAt":"2026-10-05T10:00:00Z"}},{"contentDetails":{"videoId":"b","videoPublishedAt":"2026-10-02T10:00:00Z"}},{"contentDetails":{"videoId":"old","videoPublishedAt":"2026-09-20T10:00:00Z"}}],"nextPageToken":"p2"}"#
+        } else if url.path.hasSuffix("/videos") {
+            body = has("id", "a,b") ? #"{"items":[{"statistics":{"viewCount":"1000"}},{"statistics":{"viewCount":"500"}}]}"# : #"{"items":[]}"#
+        }
+        let resp = HTTPURLResponse(url: url, statusCode: 200, httpVersion: nil, headerFields: nil)!
+        client?.urlProtocol(self, didReceive: resp, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: Data(body.utf8))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+}

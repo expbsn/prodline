@@ -10,17 +10,18 @@ import Compression
 // (docs/API.md), and daily steps where the service has them, so charts get a real history.
 
 nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, Sendable {
-    case appStore, revenueCat, stripe, lemonSqueezy, gumroad, plausible, umami
+    case appStore, revenueCat, stripe, lemonSqueezy, gumroad, plausible, umami, youtube
 
     var id: String { rawValue }
 
-    enum Group: String, CaseIterable { case store = "App Store", revenue = "Revenue", analytics = "Analytics" }
+    enum Group: String, CaseIterable { case store = "App Store", revenue = "Revenue", analytics = "Analytics", social = "Social" }
 
     var group: Group {
         switch self {
         case .appStore: .store
         case .revenueCat, .stripe, .lemonSqueezy, .gumroad: .revenue
         case .plausible, .umami: .analytics
+        case .youtube: .social
         }
     }
 
@@ -33,6 +34,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .gumroad: "Gumroad"
         case .plausible: "Plausible"
         case .umami: "Umami"
+        case .youtube: "YouTube"
         }
     }
 
@@ -45,6 +47,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .gumroad: "bag.fill"
         case .plausible: "chart.bar.fill"
         case .umami: "chart.line.uptrend.xyaxis"
+        case .youtube: "play.rectangle.fill"
         }
     }
 
@@ -67,6 +70,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .gumroad: 0xFF90E8
         case .plausible: 0x5850EC
         case .umami: 0x1C1C1E
+        case .youtube: 0xFF0033
         }
     }
 
@@ -80,6 +84,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .gumroad: "Revenue and sales"
         case .plausible: "Visitors and pageviews"
         case .umami: "Visitors and pageviews"
+        case .youtube: "Views on videos posted since the start"
         }
     }
 
@@ -114,6 +119,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             Field(key: "website", label: "Website ID", placeholder: "4fb7fa4c-5b46-438d-94b3-3a8fb9bc2e8b"),
             Field(key: "base", label: "API address", placeholder: "https://api.umami.is/v1", optional: true),
         ]
+        case .youtube: [Field(key: "channel", label: "Channel", placeholder: "@yourchannel or UC…")]
         }
     }
 
@@ -126,6 +132,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .gumroad: "Access token"
         case .plausible: "Stats API key"
         case .umami: "API key"
+        case .youtube: "YouTube Data API key"
         }
     }
 
@@ -134,6 +141,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .appStore: "-----BEGIN PRIVATE KEY-----"
         case .revenueCat: "sk_…"
         case .stripe: "rk_live_…"
+        case .youtube: "AIza…"
         default: "Paste the key"
         }
     }
@@ -179,6 +187,12 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             "Umami Cloud: Settings → API keys → Create key. The website ID is under Settings → Websites → Edit.",
             "Self-hosted: use your server's API address (https://your-umami.com/api) and an API token.",
         ]
+        case .youtube: [
+            "In the Google Cloud Console create a project (or pick one) and enable YouTube Data API v3 under APIs & Services → Library.",
+            "Go to APIs & Services → Credentials → Create credentials → API key. Restrict it to YouTube Data API v3.",
+            "Channel: your handle (@yourchannel) or the channel ID from YouTube → Settings → Advanced settings.",
+            "Social views counts views on videos published since the project started, so older uploads don't inflate it. Videos posted gets the count, subscribers the channel total.",
+        ]
         }
     }
 }
@@ -216,6 +230,7 @@ nonisolated enum IntegrationMetric {
         case "active_trials": "Trials"
         case "app_store_proceeds": "App Store proceeds"
         case "rating": "Rating"
+        case "videos_posted": "Videos posted"
         case "ratings": "Ratings"
         default: key.replacingOccurrences(of: "_", with: " ").capitalized
         }
@@ -397,6 +412,7 @@ nonisolated enum IntegrationSources {
         case .gumroad: return try await gumroad(secret: secret, start: start, session: session)
         case .plausible: return try await plausible(i, secret: secret, start: start, session: session)
         case .umami: return try await umami(i, secret: secret, start: start, session: session)
+        case .youtube: return try await youtube(i, secret: secret, start: start, session: session)
         }
     }
 
@@ -731,6 +747,62 @@ nonisolated enum IntegrationSources {
             }
         }
         return summed(items, start: start, keys: ["visits", "pageviews"])
+    }
+
+    // MARK: YouTube
+
+    /// Views on the videos uploaded since the project started (the uploads playlist, newest first), plus the
+    /// channel's subscribers. View counts are only known as totals, so there's no daily history.
+    static func youtube(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        let api = "https://www.googleapis.com/youtube/v3"
+        func get(_ path: String, _ items: [URLQueryItem]) async throws -> [String: Any] {
+            var comps = URLComponents(string: api + path)!
+            comps.queryItems = items + [.init(name: "key", value: secret)]
+            let obj = try json(try await load(request(comps.url!), session: session)) as? [String: Any]
+            return obj ?? [:]
+        }
+        func number(_ x: Any?) -> Double { (x as? String).flatMap(Double.init) ?? (x as? Double) ?? (x as? Int).map(Double.init) ?? 0 }
+
+        let channel = i.field("channel")
+        let lookup: URLQueryItem = channel.hasPrefix("UC") && !channel.hasPrefix("@")
+            ? .init(name: "id", value: channel)
+            : .init(name: "forHandle", value: channel.hasPrefix("@") ? channel : "@" + channel)
+        let ch = try await get("/channels", [.init(name: "part", value: "statistics,contentDetails"), lookup])
+        guard let item = (ch["items"] as? [[String: Any]])?.first else {
+            throw MetricsError.badPayload("no channel found for \(channel)")
+        }
+        let stats = item["statistics"] as? [String: Any]
+        let uploads = ((item["contentDetails"] as? [String: Any])?["relatedPlaylists"] as? [String: Any])?["uploads"] as? String
+
+        var ids: [String] = []
+        if let uploads {
+            var page: String?
+            pages: for _ in 0..<10 {
+                var q: [URLQueryItem] = [.init(name: "part", value: "contentDetails"), .init(name: "playlistId", value: uploads),
+                                         .init(name: "maxResults", value: "50")]
+                if let page { q.append(.init(name: "pageToken", value: page)) }
+                let list = try await get("/playlistItems", q)
+                for v in (list["items"] as? [[String: Any]]) ?? [] {
+                    guard let cd = v["contentDetails"] as? [String: Any], let id = cd["videoId"] as? String else { continue }
+                    // Newest first: once a video predates the project, so do the rest.
+                    if let at = iso(cd["videoPublishedAt"] as? String), at < start.startOfDay { break pages }
+                    ids.append(id)
+                }
+                guard let next = list["nextPageToken"] as? String else { break }
+                page = next
+            }
+        }
+        var views = 0.0
+        for chunk in stride(from: 0, to: ids.count, by: 50).map({ Array(ids[$0..<min($0 + 50, ids.count)]) }) {
+            let vids = try await get("/videos", [.init(name: "part", value: "statistics"), .init(name: "id", value: chunk.joined(separator: ","))])
+            for v in (vids["items"] as? [[String: Any]]) ?? [] { views += number((v["statistics"] as? [String: Any])?["viewCount"]) }
+        }
+
+        var r = SourceResult()
+        r.totals["social_views"] = views
+        r.totals["videos_posted"] = Double(ids.count)
+        if (stats?["hiddenSubscriberCount"] as? Bool) != true { r.totals["subscribers"] = number(stats?["subscriberCount"]) }
+        return r
     }
 
     /// Totals and complete daily steps from a list of dated amounts.
