@@ -8,6 +8,8 @@
     {"day": 15, "title": "Tester feedback"},
     {"day": 19, "title": "Widgets"},
     {"day": 22, "title": "Instant sync"},
+    {"day": 23, "title": "Observe integrations"},
+    {"day": 24, "title": "Reviews and ideas"},
     {"day": 26, "title": "App Store"},
     {"day": 29, "title": "Launch marketing"}
   ],
@@ -33,6 +35,7 @@
     {"id": "checkpoint-editing", "title": "Rename, move and add checkpoints", "day": 8, "done": true},
     {"id": "data-charts", "title": "Trend charts in the Data tab", "day": 8, "done": true},
     {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": false},
+    {"id": "instant-goal-ticks", "title": "Make goal ticks respond instantly", "day": 8, "done": true},
 
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},
     {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": false},
@@ -45,13 +48,22 @@
     {"id": "crash-fixes", "title": "Fix crashes reported in TestFlight", "day": 15, "done": false},
 
     {"id": "home-widget", "title": "Home Screen widgets: project, traction and all projects", "day": 19, "done": true},
-    {"id": "live-activity", "title": "Live Activity on deadline days", "day": 19, "done": false},
+    {"id": "live-activity", "title": "Live Activity on deadline days", "day": 19, "done": true},
     {"id": "widget-project-picker", "title": "Let each widget follow a chosen project", "day": 19, "done": true},
     {"id": "lock-screen-widgets", "title": "Lock Screen widgets for the next deadline", "day": 19, "done": true},
-    {"id": "widget-goal-toggle", "title": "Tick goals off right from the widget", "day": 19, "done": false},
+    {"id": "widget-goal-toggle", "title": "Tick goals off right from the widget", "day": 19, "done": true},
 
     {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": false},
     {"id": "background-push", "title": "Silent push refreshes goals while the app is closed", "day": 22, "done": false},
+
+    {"id": "app-store-connect", "title": "Pull downloads, proceeds and rating from App Store Connect", "day": 23, "done": true},
+    {"id": "revenue-integrations", "title": "Connect RevenueCat, Stripe, Lemon Squeezy and Gumroad", "day": 23, "done": true},
+    {"id": "analytics-integrations", "title": "Connect Plausible and Umami for visitors", "day": 23, "done": true},
+
+    {"id": "keep-pivot-kill", "title": "Add the keep, pivot or kill review", "day": 24, "done": false},
+    {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": false},
+    {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": false},
+    {"id": "share-cards", "title": "Share cards with days spent and results", "day": 24, "done": false},
 
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},

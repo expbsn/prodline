@@ -310,7 +310,7 @@ struct ProjectPanel: View {
         } else if let v = refresher.value(.visits, for: project) {
             items.append(("globe", MetricKey.count(v)))
         } else {
-            items.append(("bolt.fill", project.hasEndpoint ? "Connected" : "Sample"))
+            items.append(("bolt.fill", project.hasDataSource ? "Connected" : "Sample"))
         }
         return items
     }

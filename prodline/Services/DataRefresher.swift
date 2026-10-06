@@ -35,9 +35,16 @@ final class DataRefresher {
 
     static func defaultClient(for project: Project) -> (client: any MetricsClient, isSample: Bool) {
         // The key is optional: public endpoints (like a JSON file on GitHub) don't need one.
+        var endpoint: (any MetricsClient)?
         if project.hasEndpoint, let url = URL(string: project.endpoint.trimmingCharacters(in: .whitespaces)) {
-            return (RESTMetricsClient(url: url, apiKey: Keychain.get(project.id.uuidString) ?? ""), false)
+            endpoint = RESTMetricsClient(url: url, apiKey: Keychain.get(project.id.uuidString) ?? "")
         }
+        let integrations = project.integrations
+        if !integrations.isEmpty {
+            return (IntegrationsClient(integrations: integrations.map { ($0, Keychain.get($0.keychainAccount) ?? "") },
+                                       start: project.startDate, endpoint: endpoint), false)
+        }
+        if let endpoint { return (endpoint, false) }
         let seed = Int(project.id.uuid.0) * 256 + Int(project.id.uuid.1)
         return (SampleMetricsClient(seed: seed, start: project.startDate), true)
     }

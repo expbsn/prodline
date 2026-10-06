@@ -145,7 +145,7 @@ extension Int {
     var shortDuration: String { self % 7 == 0 && self > 0 ? "\(self / 7)w" : "\(self)d" }
 }
 
-extension Date {
+nonisolated extension Date {
     var startOfDay: Date { Calendar.current.startOfDay(for: self) }
     func adding(days: Int) -> Date { Calendar.current.date(byAdding: .day, value: days, to: self) ?? self }
     var shortDay: String { formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()) }
@@ -156,7 +156,7 @@ extension Date {
     }
 }
 
-extension Collection {
+nonisolated extension Collection {
     subscript(safe i: Index) -> Element? { indices.contains(i) ? self[i] : nil }
 }
 

@@ -61,6 +61,8 @@ final class Project {
     var followsPlanFile: Bool = false
     /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
     var commitDaysData: Data? = nil
+    /// Connected services (App Store Connect, RevenueCat, Plausible…), without their keys (those are in the Keychain).
+    var integrationsData: Data? = nil
     var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
@@ -79,6 +81,11 @@ final class Project {
     var accent: Accent { Accent(hex: accentHex) }
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
     var cover: UIImage? { CoverCache.image(coverImage, key: id.uuidString) }
+
+    var integrations: [Integration] {
+        get { integrationsData.flatMap { try? JSONDecoder().decode([Integration].self, from: $0) } ?? [] }
+        set { integrationsData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
+    }
 
     var commitDays: [String: Int] {
         get { commitDaysData.flatMap { try? JSONDecoder().decode([String: Int].self, from: $0) } ?? [:] }
@@ -131,6 +138,9 @@ final class Project {
     var nextMilestone: Milestone? { sortedMilestones.first { !$0.isDone } }
     var sortedSnapshots: [MetricSnapshot] { (snapshots ?? []).sorted { $0.date < $1.date } }
     var latestSnapshot: MetricSnapshot? { (snapshots ?? []).max { $0.date < $1.date } }
+
+    /// Numbers come from somewhere real: an endpoint or at least one integration.
+    var hasDataSource: Bool { hasEndpoint || !integrations.isEmpty }
 
     var hasEndpoint: Bool {
         guard let url = URL(string: endpoint.trimmingCharacters(in: .whitespaces)) else { return false }

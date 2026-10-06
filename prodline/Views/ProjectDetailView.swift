@@ -298,10 +298,10 @@ struct ProjectDetailView: View {
                 VStack(spacing: 8) {
                     ForEach(extras, id: \.key) { e in
                         HStack {
-                            Text(e.key.replacingOccurrences(of: "_", with: " ").capitalized)
+                            Text(IntegrationMetric.title(e.key))
                                 .font(.ui(15)).foregroundStyle(Theme.secondary)
                             Spacer()
-                            Text(MetricKey.count(e.value)).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                            Text(IntegrationMetric.format(e.key, e.value)).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
                         }
                     }
                 }
@@ -327,7 +327,7 @@ struct ProjectDetailView: View {
             }
             .font(.ui(12, .semibold)).foregroundStyle(Theme.danger)
         default:
-            Text(project.hasEndpoint ? "Connecting" : "Sample data").eyebrow(size: 10)
+            Text(project.hasDataSource ? "Connecting" : "Sample data").eyebrow(size: 10)
         }
     }
 
@@ -534,11 +534,18 @@ struct ProjectDetailView: View {
         .buttonStyle(PressableStyle())
     }
 
+    /// "RevenueCat, Plausible" or the endpoint's address.
+    private var sourceNames: String {
+        var names = project.integrations.map(\.kind.title)
+        if project.hasEndpoint { names.append(URL(string: project.endpoint)?.host() ?? project.endpoint) }
+        return names.joined(separator: ", ")
+    }
+
     private var connectionSubtitle: String {
         switch refresher.status[project.id] {
         case .failing(let msg, let retry): "\(msg) Retrying \(retry.formatted(.relative(presentation: .named)))."
-        case .live: project.endpoint
-        default: project.hasEndpoint ? project.endpoint : "Not connected · showing sample data"
+        case .live: sourceNames
+        default: project.hasDataSource ? sourceNames : "Not connected · showing sample data"
         }
     }
 }
@@ -849,6 +856,15 @@ struct ConnectionSheet: View {
             .padding(20)
             ScrollView {
                 VStack(alignment: .leading, spacing: 28) {
+                    IntegrationsSection(project: project)
+                    Divider()
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Your own endpoint").eyebrow()
+                        Text("For anything the integrations don't cover. Its goals and extra numbers are used alongside them.")
+                            .font(.ui(14)).foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    .padding(.bottom, -14)
                     ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
                     Divider()
                     GitHubFields(repo: $repo, token: $token, check: $repoCheck)
