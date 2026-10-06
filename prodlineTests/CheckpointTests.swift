@@ -89,6 +89,17 @@ struct CheckpointTests {
         #expect(p.sortedMilestones[0] === first && first.isDone)
     }
 
+    @Test func checkpointsWithOpenGoalsAreNotDone() throws {
+        let (ctx, p) = try setup()
+        let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Widgets", due: day(2026, 1, 16))],
+                                           goals: [goal("w", due: day(2026, 1, 16))])
+        p.sortedMilestones[2].completedAt = day(2026, 1, 6)   // Fri 16, finished in an earlier mix-up
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones.map(\.title) == ["Widgets"])
+        #expect(!p.sortedMilestones[0].isDone)
+    }
+
     @Test func goalsAreInChronologicalOrder() throws {
         let (ctx, p) = try setup()
         let json = #"""

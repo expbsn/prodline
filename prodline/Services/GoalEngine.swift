@@ -154,6 +154,11 @@ enum GoalEngine {
             for g in m.goals ?? [] where !g.externalID.hasPrefix("file:") { context.delete(g) }
         }
         syncPlanFile(plan.goals, project: project, context: context, strict: true)
+        // The file decides what's done: a checkpoint with open goals isn't finished, whatever it was before
+        // (it completes again, with XP, once its goals are done).
+        for m in keep where m.isDone && (m.goals ?? []).contains(where: { !$0.isDone }) {
+            m.completedAt = nil
+        }
         ScheduleEngine.renumber(project)
     }
 

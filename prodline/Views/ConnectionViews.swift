@@ -206,9 +206,11 @@ struct GitHubFields: View {
                     .textInputAutocapitalization(.never).autocorrectionDisabled()
                     .focused($focus, equals: .token)
                     .inputField(focused: focus == .token)
-                Text("A prodline.json in the repo and issues in GitHub milestones (or labeled “prodline”) become checkpoint goals that tick themselves. New commits show up within ~30 s with a token, ~2 min without. Your README guides suggestions, and quiet weeks get a nudge.")
+                Text("The repo's prodline.json becomes the project's plan, and commits count toward Momentum.")
                     .font(.ui(12)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                GuideDisclosure(title: "How does linking GitHub work?") { GitHubGuideView() }
+                    .padding(.top, 4)
             }
 
             if !repo.trimmingCharacters(in: .whitespaces).isEmpty {
@@ -304,6 +306,46 @@ struct GuideDisclosure<Content: View>: View {
             }
             .buttonStyle(.plain)
             if open { content }
+        }
+    }
+}
+
+/// Linking a GitHub repo: what to enter, the optional token, what syncs and how fast.
+struct GitHubGuideView: View {
+    private static let tokenURL = URL(string: "https://github.com/settings/personal-access-tokens/new")!
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            item("link", "What to enter",
+                 "`owner/repo` or the repo's github.com link. Public repos work without anything else.")
+            item("key.fill", "Token (optional)",
+                 "Needed for private repos, and makes updates faster. Create a **fine-grained token**: Repository access → *Only select repositories* → this repo; Permissions → **Contents: Read** and **Issues: Read** (Metadata is added automatically). Nothing can be written with it. It's stored in this iPhone's Keychain, never in iCloud data.")
+            Link(destination: Self.tokenURL) {
+                Label("Create a token on GitHub", systemImage: "arrow.up.right.square")
+                    .font(.ui(14, .semibold))
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.leading, 34)
+            item("arrow.triangle.2.circlepath", "What syncs",
+                 "• **prodline.json** in the repo root is the whole plan: its checkpoints and goals, ticked as you commit.\n• Without it: issues in a GitHub milestone or labeled “prodline” become goals; closing one ticks it.\n• **Commits** feed Momentum (commits per day, active days) while building.\n• The last commit drives the “gone quiet” nudge; the README guides suggestions.")
+            item("clock", "How fast",
+                 "The app checks for new commits every ~25 s with a token and every ~2 min without, and reads everything again every 10 min (Me → Configuration). Without a token GitHub allows 60 requests an hour, shared by every device on your network.")
+            item("exclamationmark.triangle", "If it doesn't work",
+                 "“Repo not found”: it's private (add a token) or the name is off. “Rate limited”: add a token, or wait up to an hour. A prodline.json with a typo is reported, and the last good plan stays until it's fixed.")
+        }
+    }
+
+    private func item(_ symbol: String, _ title: String, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: symbol)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 22, height: 22)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                Text(LocalizedStringKey(text)).font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
