@@ -20,6 +20,7 @@ struct ProjectDetailView: View {
     @State private var showConnection = false
     @State private var showCriteria = false
     @State private var showVerdict = false
+    @State private var showShare = false
     @State private var confirmDelete = false
     @State private var drafting = false
     @State private var draftError: String?
@@ -104,6 +105,7 @@ struct ProjectDetailView: View {
             case "connection": showConnection = true
             case "verdict": showVerdict = true
             case "targets": showCriteria = true
+            case "share": showShare = true
             default: break
             }
         }
@@ -112,6 +114,7 @@ struct ProjectDetailView: View {
         .sheet(isPresented: $showConnection) { ConnectionSheet(project: project) }
         .sheet(isPresented: $showCriteria) { CriteriaSheet(project: project) }
         .sheet(isPresented: $showVerdict) { VerdictSheet(project: project) }
+        .sheet(isPresented: $showShare) { ShareCardSheet(project: project) }
         .sheet(isPresented: Binding(get: { checkpointSheet != nil }, set: { if !$0 { checkpointSheet = nil } })) {
             if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m) }
         }
@@ -137,6 +140,7 @@ struct ProjectDetailView: View {
             CircleIconButton(systemName: "xmark") { close() }
             Spacer()
             Menu {
+                Button("Share card", systemImage: "square.and.arrow.up") { showShare = true }
                 Button("Edit project & schedule", systemImage: "paintbrush") { showEdit = true }
                 Button("Connection", systemImage: "bolt.horizontal") { showConnection = true }
                 Button("Success targets", systemImage: "target") { showCriteria = true }
