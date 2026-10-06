@@ -359,5 +359,25 @@ enum Notifier {
         for m in projects.flatMap({ $0.milestones ?? [] }) where !m.isDone {
             schedule(m, hour: profile.reminderHour)
         }
+        for p in projects { scheduleVerdict(p, hour: profile.reminderHour) }
+    }
+
+    /// The morning after the observe phase ends: time for keep, pivot or kill. Re-adding replaces it,
+    /// so a changed schedule or a keep moves it along.
+    static func scheduleVerdict(_ p: Project, hour: Int) {
+        let id = "verdict-" + p.id.uuidString
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [id])
+        guard p.verdict != .pivot, p.verdict != .kill else { return }
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: p.observeEnd)
+        comps.hour = hour
+        guard let fire = Calendar.current.date(from: comps), fire > .now else { return }
+        let content = UNMutableNotificationContent()
+        content.title = "\(p.name): decision time"
+        content.body = p.criteria.isEmpty
+            ? "The observe phase is over. Keep it, pivot it or kill it?"
+            : "The observe phase is over. See how it did against your targets, then make the call."
+        content.sound = .default
+        center.add(UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
     }
 }

@@ -61,6 +61,13 @@ final class Project {
     var followsPlanFile: Bool = false
     /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
     var commitDaysData: Data? = nil
+    /// What success looks like (1–3 targets), judged when the observe phase ends.
+    var criteriaData: Data? = nil
+    /// "keep", "pivot" or "kill" once decided; a keep extends the observe phase and asks again at its end.
+    var verdictRaw: String = ""
+    var verdictAt: Date? = nil
+    /// What changes (pivot) or what was learned (kill).
+    var verdictNote: String = ""
     /// Connected services (App Store Connect, RevenueCat, Plausible…), without their keys (those are in the Keychain).
     var integrationsData: Data? = nil
     var createdAt: Date = Date.now
@@ -81,6 +88,13 @@ final class Project {
     var accent: Accent { Accent(hex: accentHex) }
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
     var cover: UIImage? { CoverCache.image(coverImage, key: id.uuidString) }
+
+    var criteria: [SuccessCriterion] {
+        get { criteriaData.flatMap { try? JSONDecoder().decode([SuccessCriterion].self, from: $0) } ?? [] }
+        set { criteriaData = newValue.isEmpty ? nil : try? JSONEncoder().encode(newValue) }
+    }
+
+    var verdict: Verdict? { Verdict(rawValue: verdictRaw) }
 
     var integrations: [Integration] {
         get { integrationsData.flatMap { try? JSONDecoder().decode([Integration].self, from: $0) } ?? [] }

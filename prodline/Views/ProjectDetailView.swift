@@ -18,6 +18,8 @@ struct ProjectDetailView: View {
     @State private var metric: MetricKey = .visits
     @State private var showEdit = false
     @State private var showConnection = false
+    @State private var showCriteria = false
+    @State private var showVerdict = false
     @State private var confirmDelete = false
     @State private var drafting = false
     @State private var draftError: String?
@@ -55,12 +57,20 @@ struct ProjectDetailView: View {
             VStack(spacing: 16) {
                 hero
                 VStack(spacing: 16) {
+                    if VerdictEngine.isDue(project) {
+                        SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
+                                    onUndo: undoVerdict)
+                    }
                     timelineCard
                     // Building: is it moving? Shipped: is anyone coming?
                     if project.phase() == .building || project.phase() == .upcoming {
                         MomentumCard(project: project, onConnect: { showConnection = true })
                     } else {
                         metricsCard
+                    }
+                    if project.phase() != .upcoming && !VerdictEngine.isDue(project) {
+                        SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
+                                    onUndo: undoVerdict)
                     }
                     milestonesCard
                     connectionCard
@@ -89,10 +99,19 @@ struct ProjectDetailView: View {
         .environment(\.accent, accent)
         .refreshable { await refresher.refresh(projects: [project], context: context, force: true) }
         #if DEBUG
-        .onAppear { if UserDefaults.standard.string(forKey: "PRODLINE_SHEET") == "connection" { showConnection = true } }
+        .onAppear {
+            switch UserDefaults.standard.string(forKey: "PRODLINE_SHEET") {
+            case "connection": showConnection = true
+            case "verdict": showVerdict = true
+            case "targets": showCriteria = true
+            default: break
+            }
+        }
         #endif
         .sheet(isPresented: $showEdit) { EditProjectSheet(project: project) }
         .sheet(isPresented: $showConnection) { ConnectionSheet(project: project) }
+        .sheet(isPresented: $showCriteria) { CriteriaSheet(project: project) }
+        .sheet(isPresented: $showVerdict) { VerdictSheet(project: project) }
         .sheet(isPresented: Binding(get: { checkpointSheet != nil }, set: { if !$0 { checkpointSheet = nil } })) {
             if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m) }
         }
@@ -103,6 +122,7 @@ struct ProjectDetailView: View {
                     for m in p.milestones ?? [] { Notifier.cancel(m) }
                     Keychain.delete(p.id.uuidString)
                     Keychain.delete("gh-" + p.id.uuidString)
+                    for i in p.integrations { Keychain.delete(i.keychainAccount) }
                     context.delete(p)
                     try? context.save()
                 }
@@ -119,6 +139,10 @@ struct ProjectDetailView: View {
             Menu {
                 Button("Edit project & schedule", systemImage: "paintbrush") { showEdit = true }
                 Button("Connection", systemImage: "bolt.horizontal") { showConnection = true }
+                Button("Success targets", systemImage: "target") { showCriteria = true }
+                if VerdictEngine.canDecide(project) {
+                    Button("Keep, pivot or kill", systemImage: "scalemass") { showVerdict = true }
+                }
                 Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
             } label: {
                 Image(systemName: "ellipsis")
@@ -440,6 +464,13 @@ struct ProjectDetailView: View {
             return "It finished because all its goals are done. Untick a goal to reopen it."
         }
         return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned." : "It goes back to open."
+    }
+
+    private func undoVerdict() {
+        guard let profile = profiles.first else { return }
+        Haptics.warning()
+        withAnimation(.snappy) { VerdictEngine.reopen(project, profile: profile) }
+        try? context.save()
     }
 
     private func undo(_ m: Milestone) {

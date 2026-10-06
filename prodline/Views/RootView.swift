@@ -107,6 +107,9 @@ struct RootView: View {
                     firstPass = false
                     celebration.endCollecting(awayTitle: away > 15 * 60)
                     remindAboutLateDeadlines()
+                    if let profile = profiles.first, profile.remindersEnabled {
+                        for p in projects { Notifier.scheduleVerdict(p, hour: profile.reminderHour) }
+                    }
                 }
                 try? await Task.sleep(for: .seconds(AppSettings.refreshSeconds))
             }

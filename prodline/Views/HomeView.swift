@@ -291,7 +291,11 @@ struct ProjectPanel: View {
         case .observing:
             return "Shipped. Watching traction for \(project.daysLeftInPhase.durationText) more."
         case .finished:
-            return "Wrapped up on \(project.observeEnd.adding(days: -1).shortDay). Time to decide: double down or move on?"
+            switch project.verdict {
+            case .pivot: return "Pivoted on \(project.verdictAt?.shortDay ?? "–"). The next version took over."
+            case .kill: return "Killed on \(project.verdictAt?.shortDay ?? "–"). Lessons kept, time freed."
+            default: return "Wrapped up on \(project.observeEnd.adding(days: -1).shortDay). Decision time: keep, pivot or kill?"
+            }
         }
     }
 
@@ -300,7 +304,9 @@ struct ProjectPanel: View {
         switch project.phase() {
         case .upcoming: items.append(("hourglass", "in \(project.daysLeftInPhase)d"))
         case .building, .observing: items.append(("clock", "\(project.daysLeftInPhase)d left"))
-        case .finished: items.append(("flag.checkered", "Done"))
+        case .finished:
+            if let v = project.verdict, v != .keep { items.append((v.symbol, v.pastTense)) }
+            else { items.append(("scalemass", "Decide")) }
         }
         let done = project.sortedMilestones.filter(\.isDone).count
         items.append(("checkmark.circle", "\(done)/\(project.sortedMilestones.count)"))
