@@ -6,9 +6,11 @@ struct Momentum {
     struct Day: Identifiable {
         let date: Date
         let commits: Int
-        let goalsDone: Int   // cumulative
+        let goalsDone: Int        // cumulative
+        let goalsFinished: Int    // finished that day
         var id: Date { date }
-        var isActive: Bool { commits > 0 }
+        /// Something moved that day: a commit or a finished goal (so it works without a repo too).
+        var isActive: Bool { commits > 0 || goalsFinished > 0 }
     }
 
     /// Build days from the start up to today (later build days are left out).
@@ -44,7 +46,8 @@ struct Momentum {
         let days = (0..<elapsed).map { i -> Day in
             let d = p.startDate.adding(days: i)
             let end = d.adding(days: 1)
-            return Day(date: d, commits: perDay[key(d)] ?? 0, goalsDone: doneDates.filter { $0 < end }.count)
+            return Day(date: d, commits: perDay[key(d)] ?? 0, goalsDone: doneDates.filter { $0 < end }.count,
+                       goalsFinished: doneDates.filter { $0 >= d && $0 < end }.count)
         }
         return Momentum(days: days, buildLength: buildLength, hasCommitData: hasData,
                         goalsDone: goals.filter(\.isDone).count, goalsTotal: goals.count)

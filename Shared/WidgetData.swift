@@ -32,6 +32,8 @@ nonisolated struct WidgetProject: Codable, Equatable, Identifiable, Sendable {
     var observeEnd: Date
     var checkpoints: [WidgetCheckpoint]
     var metrics: [WidgetMetric]
+    /// Build-phase stats (commits, goals, active days); nil once the project has shipped.
+    var momentum: WidgetMomentum? = nil
 
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
     var accent: Accent { Accent(hex: accentHex) }
@@ -87,6 +89,18 @@ nonisolated struct WidgetCheckpoint: Codable, Equatable, Sendable {
         default: return "\(-n) days late"
         }
     }
+}
+
+nonisolated struct WidgetMomentum: Codable, Equatable, Sendable {
+    /// nil without a linked repo or a commits number from the API.
+    var totalCommits: Int?
+    var commitsToday: Int?
+    /// Commits per day, oldest first, ending today (up to 14 days).
+    var dailyCommits: [Int]
+    var activeDays: Int
+    var elapsedDays: Int
+    var goalsDone: Int
+    var goalsTotal: Int
 }
 
 nonisolated struct WidgetGoal: Codable, Equatable, Sendable {
@@ -197,7 +211,9 @@ extension WidgetData {
                           cp("Ship it", 4, launch: true)],
             metrics: [metric("visits", "Visits", "globe", 9_444, "9,444", "+3.1K", spark: [2.1, 3.0, 3.8, 4.9, 6.0, 7.6, 9.4]),
                       metric("social_views", "Social views", "eye.fill", 41_200, "41.2K", "+12K", spark: [9, 14, 18, 22, 29, 35, 41]),
-                      metric("revenue", "Revenue", "dollarsign.circle.fill", 612, "$612.00", "+$240", spark: [120, 180, 260, 330, 410, 520, 612])])
+                      metric("revenue", "Revenue", "dollarsign.circle.fill", 612, "$612.00", "+$240", spark: [120, 180, 260, 330, 410, 520, 612])],
+            momentum: WidgetMomentum(totalCommits: 31, commitsToday: 4, dailyCommits: [2, 5, 0, 3, 6, 1, 0, 4, 6, 4],
+                                     activeDays: 8, elapsedDays: 10, goalsDone: 5, goalsTotal: 9))
         let pixel = WidgetProject(
             id: "sample-pixel", name: "Pixel Quest", accentHex: 0xA35CFF,
             startDate: today.adding(days: -23), buildEnd: today.adding(days: -9), observeEnd: today.adding(days: 19),

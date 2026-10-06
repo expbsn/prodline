@@ -290,20 +290,14 @@ struct ProjectWidgetView: View {
                         Text(next.isLaunch ? "Launch day. Tick it off when it's out." : "No goals on this checkpoint.")
                             .font(.ui(13)).foregroundStyle(Theme.secondary).lineLimit(2)
                     }
-                    ForEach(Array(next.goals.prefix(3).enumerated()), id: \.offset) { _, g in
-                        GoalLine(goal: g, accent: p.accent)
-                    }
+                    goalList(next, max: 3, size: 13)
                 } else {
                     Text("Every checkpoint done").display(18, 750).foregroundStyle(Theme.ink)
                 }
                 Spacer(minLength: 0)
-                HStack(spacing: 12) {
-                    ForEach(p.metrics.prefix(2), id: \.key) { m in
-                        Label(m.formatted, systemImage: m.symbol).font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
-                    }
-                }
-                .labelStyle(.titleAndIcon)
+                statsRow(p)
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
         .widgetURL(p.url)
     }
@@ -328,29 +322,97 @@ struct ProjectWidgetView: View {
                         Spacer(minLength: 4)
                         DueChip(checkpoint: next, accent: p.accent, date: date)
                     }
-                    ForEach(Array(next.goals.prefix(4).enumerated()), id: \.offset) { _, g in
-                        GoalLine(goal: g, accent: p.accent, size: 14)
-                    }
-                    if next.goalCount > 4 {
-                        Text("+\(next.goalCount - 4) more").font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
-                    }
+                    goalList(next, max: 4, size: 14)
                 }
             }
             Spacer(minLength: 0)
             HStack(spacing: 8) {
-                ForEach(p.metrics.prefix(3), id: \.key) { m in
-                    VStack(alignment: .leading, spacing: 3) {
-                        Image(systemName: m.symbol).font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.secondary)
-                        Text(m.formatted).display(16, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
-                        WSparkline(values: m.spark, color: p.accent.base, lineWidth: 2).frame(height: 18)
+                if p.phase(on: date) == .building, let m = p.momentum {
+                    tile(symbol: "chevron.left.forwardslash.chevron.right", value: m.totalCommits.map(String.init) ?? "–", label: "commits") {
+                        if m.totalCommits != nil {
+                            WSparkline(values: m.dailyCommits.map(Double.init), color: p.accent.base, lineWidth: 2)
+                        } else {
+                            Text("Link the repo").font(.ui(10, .medium)).foregroundStyle(Theme.tertiary)
+                        }
                     }
-                    .padding(9)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
+                    tile(symbol: "checkmark.circle.fill", value: "\(m.goalsDone)/\(m.goalsTotal)", label: "goals") {
+                        progressBar(m.goalsTotal == 0 ? 0 : Double(m.goalsDone) / Double(m.goalsTotal), accent: p.accent)
+                    }
+                    tile(symbol: "flame.fill", value: "\(m.activeDays)/\(m.elapsedDays)", label: "active days") {
+                        progressBar(m.elapsedDays == 0 ? 0 : Double(m.activeDays) / Double(m.elapsedDays), accent: p.accent)
+                    }
+                } else {
+                    ForEach(p.metrics.prefix(3), id: \.key) { m in
+                        tile(symbol: m.symbol, value: m.formatted, label: nil) {
+                            WSparkline(values: m.spark, color: p.accent.base, lineWidth: 2)
+                        }
+                    }
                 }
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
         .widgetURL(p.url)
+    }
+
+    /// The next checkpoint's goals, open ones first, capped with "+N more" so the layout never grows.
+    @ViewBuilder
+    private func goalList(_ next: WidgetCheckpoint, max: Int, size: CGFloat) -> some View {
+        let ordered = next.goals.filter { !$0.done } + next.goals.filter(\.done)
+        let shown = next.goalCount > max ? max - 1 : max
+        ForEach(Array(ordered.prefix(shown).enumerated()), id: \.offset) { _, g in
+            GoalLine(goal: g, accent: next.goals.isEmpty ? Accent.neutral : accentFor(next), size: size)
+        }
+        if next.goalCount > shown {
+            Text("+\(next.goalCount - shown) more").font(.ui(size - 1, .semibold)).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    private func accentFor(_ c: WidgetCheckpoint) -> Accent { project?.accent ?? .neutral }
+
+    /// While building: commits and active days; once shipped: visits and social views.
+    @ViewBuilder
+    private func statsRow(_ p: WidgetProject) -> some View {
+        HStack(spacing: 12) {
+            if p.phase(on: date) == .building, let m = p.momentum {
+                if let commits = m.totalCommits {
+                    Label("\(commits) commits", systemImage: "chevron.left.forwardslash.chevron.right")
+                }
+                Label("\(m.activeDays)/\(m.elapsedDays) active", systemImage: "flame.fill")
+            } else {
+                ForEach(p.metrics.prefix(2), id: \.key) { m in
+                    Label(m.formatted, systemImage: m.symbol)
+                }
+            }
+        }
+        .font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
+        .labelStyle(.titleAndIcon)
+        .lineLimit(1)
+    }
+
+    private func tile<Graph: View>(symbol: String, value: String, label: String?, @ViewBuilder graph: () -> Graph) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 4) {
+                Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+                if let label { Text(label).font(.ui(10, .semibold)).lineLimit(1) }
+            }
+            .foregroundStyle(Theme.secondary)
+            Text(value).display(16, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.7)
+            graph().frame(height: 18)
+        }
+        .padding(9)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
+    }
+
+    private func progressBar(_ value: Double, accent: Accent) -> some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(accent.base.opacity(0.15))
+                Capsule().fill(accent.base).frame(width: max(6, geo.size.width * min(1, value)))
+            }
+        }
+        .frame(height: 6)
+        .frame(maxHeight: .infinity, alignment: .center)
     }
 
     /// Build and observe bars with a marker for today, like the project screen.

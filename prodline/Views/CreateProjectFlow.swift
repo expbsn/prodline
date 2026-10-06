@@ -409,7 +409,7 @@ struct CreateProjectFlow: View {
                 loadingRepo = false
                 if let snap { repoCheck = .ok(snap) }
             }
-            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.dueDate)) }
+            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.dueDate), start: startDate) }
             else { draftNote = "Couldn't read the repo right now. Its goals will sync in once the project is created." }
         } else {
             repoPreview = nil

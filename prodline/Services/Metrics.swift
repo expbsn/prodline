@@ -80,6 +80,8 @@ nonisolated struct MetricsPayload: Codable, Sendable, Equatable {
         var checkpoint: Int?
         /// Alternative to `checkpoint`: the goal lands on the first deadline on or after this date.
         var due: Date?
+        /// Like `due`, but counted from the project's start (day 1 = start date), so it follows schedule changes.
+        var day: Int? = nil
         var done: Bool?
         var url: String?
         /// Completes automatically once the metric reaches the target.

@@ -45,17 +45,18 @@ enum GoalEngine {
         var isEmpty: Bool { goals.allSatisfy(\.isEmpty) && names.allSatisfy { $0 == nil } }
     }
 
-    static func repoPreview(_ snap: GitHubSnapshot, dues: [Date]) -> RepoPreview {
+    static func repoPreview(_ snap: GitHubSnapshot, dues: [Date], start: Date) -> RepoPreview {
+        func dayDate(_ d: Int?) -> Date? { d.map { start.startOfDay.adding(days: max($0, 1) - 1) } }
         var goals = Array(repeating: [(title: String, source: GoalSource)](), count: dues.count)
         var names = Array(repeating: String?.none, count: dues.count)
         for item in githubIncoming(snap) {
             if let i = slot(checkpoint: item.checkpoint, due: item.due, dues: dues), !item.done { goals[i].append((item.title, .github)) }
         }
         for g in snap.planFile?.goals ?? [] where !(g.done ?? false) {
-            if let i = slot(checkpoint: g.checkpoint, due: g.due, dues: dues) { goals[i].append((g.title, .repoFile)) }
+            if let i = slot(checkpoint: g.checkpoint, due: dayDate(g.day) ?? g.due, dues: dues) { goals[i].append((g.title, .repoFile)) }
         }
         for c in snap.planFile?.checkpoints ?? [] {
-            if let i = slot(checkpoint: c.checkpoint, due: c.due, dues: dues) { names[i] = c.title }
+            if let i = slot(checkpoint: c.checkpoint, due: dayDate(c.day) ?? c.due, dues: dues) { names[i] = c.title }
         }
         return RepoPreview(goals: goals, names: names, hasPlanFile: snap.planFile != nil)
     }
@@ -66,7 +67,7 @@ enum GoalEngine {
         guard !project.followsPlanFile else { return }
         let incoming = goals.map {
             Incoming(externalID: "api:\($0.id)", title: $0.title, detail: $0.detail ?? "", url: $0.url ?? "",
-                     checkpoint: $0.checkpoint, due: $0.due, done: $0.done ?? false,
+                     checkpoint: $0.checkpoint, due: $0.day.map { date(ofDay: $0, in: project) } ?? $0.due, done: $0.done ?? false,
                      metricKey: $0.metric?.key, target: $0.metric?.target)
         }
         sync(incoming, prefix: "api:", source: .api, project: project, context: context)
@@ -93,12 +94,17 @@ enum GoalEngine {
     /// Makes the project mirror prodline.json exactly: one checkpoint per dated entry (or per goal due
     /// date when the file lists no checkpoints), the file's goals on them, and nothing else. Done
     /// checkpoints that aren't in the file go too; their goals are re-placed first so nothing is lost.
+    /// Day N of the project (day 1 = start date) as a calendar date.
+    static func date(ofDay day: Int, in project: Project) -> Date { project.startDate.adding(days: max(day, 1) - 1) }
+
     static func applyPlan(_ plan: GitHubSnapshot.PlanFile, project: Project, context: ModelContext) {
         var targets: [(title: String?, date: Date)] = (plan.checkpoints ?? []).compactMap { c in
-            c.due.map { (c.title.trimmingCharacters(in: .whitespacesAndNewlines), $0.startOfDay) }
+            let d = c.day.map { date(ofDay: $0, in: project) } ?? c.due?.startOfDay
+            return d.map { (c.title.trimmingCharacters(in: .whitespacesAndNewlines), $0) }
         }
         if targets.isEmpty {
-            targets = Set(plan.goals.compactMap { $0.due?.startOfDay }).sorted().map { (nil, $0) }
+            targets = Set(plan.goals.compactMap { g in g.day.map { date(ofDay: $0, in: project) } ?? g.due?.startOfDay })
+                .sorted().map { (nil, $0) }
         }
         // One entry per day, in order.
         var seen = Set<Date>()
@@ -164,11 +170,14 @@ enum GoalEngine {
     }
 
     static func syncPlanFile(_ goals: [MetricsPayload.RemoteGoal], project: Project, context: ModelContext, strict: Bool = false) {
-        let incoming = goals.map {
-            Incoming(externalID: "file:\($0.id)", title: $0.title, detail: $0.detail ?? "", url: $0.url ?? "",
-                     checkpoint: $0.checkpoint, due: $0.due, done: $0.done ?? false,
-                     metricKey: $0.metric?.key, target: $0.metric?.target)
+        // Chronological: by day/date, keeping the file's order within a day.
+        let incoming = goals.enumerated().map { i, g in
+            (i, Incoming(externalID: "file:\(g.id)", title: g.title, detail: g.detail ?? "", url: g.url ?? "",
+                         checkpoint: g.checkpoint, due: g.day.map { date(ofDay: $0, in: project) } ?? g.due, done: g.done ?? false,
+                         metricKey: g.metric?.key, target: g.metric?.target))
         }
+        .sorted { ($0.1.due ?? .distantFuture, $0.0) < ($1.1.due ?? .distantFuture, $1.0) }
+        .map(\.1)
         sync(incoming, prefix: "file:", source: .repoFile, project: project, context: context, strict: strict)
     }
 

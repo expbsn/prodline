@@ -314,33 +314,31 @@ struct GoalsGuideView: View {
     {
       "version": 1,
       "checkpoints": [
-        { "checkpoint": 1, "title": "Accounts" },
-        { "checkpoint": 2, "title": "Payments" }
+        { "day": 3, "title": "Accounts" },
+        { "day": 7, "title": "Payments" }
       ],
       "goals": [
         { "id": "auth", "title": "Sign in with Apple",
-          "checkpoint": 1, "done": true },
+          "day": 2, "done": true },
         { "id": "paywall", "title": "Paywall live",
-          "checkpoint": 2 },
+          "day": 6 },
         { "id": "launch-post", "title": "Launch post drafted",
-          "due": "2026-10-15" }
+          "day": 12 }
       ]
     }
     """
 
     /// Paste into Claude Code (or a CLAUDE.md) so the agent keeps the plan current while it works.
     static let agentInstructions = """
-    Keep a prodline.json file in the repository root. It tells the Prodline app what has to be done by each checkpoint of this project.
+    Keep a prodline.json file in the repository root. It is this project's plan in the Prodline app: the app shows exactly its checkpoints and goals, nothing else, and ticks goals off as they change here.
 
-    Format: {"version": 1, "goals": [{"id": "...", "title": "...", "checkpoint": N, "done": false}]}
-    - "checkpoint" is the position in the deadline list: Checkpoint 1, Checkpoint 2, …, then "Ship it", then "Traction review". Use "due": "YYYY-MM-DD" instead to place a goal by date.
-    - 1–3 goals per checkpoint. Titles are short, concrete and start with a verb ("Add Stripe checkout"), never vague activities.
+    Format: {"version": 1, "checkpoints": [{"day": 3, "title": "Accounts"}], "goals": [{"id": "...", "title": "...", "day": 2, "done": false}]}
+    - "day" counts from the project's start in the app (day 1 = start date), so the plan moves along when the schedule changes. A goal lands on the first checkpoint on or after its day.
+    - 1–4 goals per checkpoint. Titles are short, concrete and start with a verb ("Add Stripe checkout"), never vague activities.
     - Keep ids stable and lowercase-with-dashes. Never reuse an id for a different goal.
     - When you finish the work for a goal, set "done": true in the same commit. Never delete goals that are done.
-    - If the plan changes, update titles or move goals to another checkpoint instead of piling up new ones.
+    - If the plan changes, update titles or move goals to another day instead of piling up new ones.
     - Optional: "metric": {"key": "signups", "target": 500} for goals that are reached by a number instead of by code.
-    - Optional: name the checkpoints with "checkpoints": [{"checkpoint": 1, "title": "Accounts"}] (or "due" instead of "checkpoint"). Names the user set in the app are kept.
-    - This file is the plan: when it exists, the app shows these goals instead of its own suggestions.
     """
 
     static let example = """

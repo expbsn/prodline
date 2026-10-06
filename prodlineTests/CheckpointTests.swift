@@ -66,6 +66,41 @@ struct CheckpointTests {
         #expect(p.sortedMilestones.count == 1)
     }
 
+    @Test func dayBasedPlanFollowsTheSchedule() throws {
+        let (ctx, p) = try setup()   // starts Mon Jan 5
+        let json = #"""
+        {"version": 1,
+         "checkpoints": [{"day": 3, "title": "Accounts"}, {"day": 7, "title": "Payments"}],
+         "goals": [{"id": "pay", "title": "Paywall", "day": 6}, {"id": "auth", "title": "Sign in", "day": 2, "done": true}]}
+        """#
+        let plan = try MetricsPayload.decoder().decode(GitHubSnapshot.PlanFile.self, from: Data(json.utf8))
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones.map(\.dueDate) == [day(2026, 1, 7), day(2026, 1, 11)])
+        #expect(p.sortedMilestones[0].goals?.map(\.title) == ["Sign in"])
+        p.sortedMilestones[0].completedAt = day(2026, 1, 7)
+
+        // A week later start: the plan moves along and nothing is rebuilt.
+        let first = p.sortedMilestones[0]
+        ScheduleEngine.changeSchedule(p, start: day(2026, 1, 12), buildDays: 14, observeDays: 28, profile: nil, context: ctx)
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones.map(\.dueDate) == [day(2026, 1, 14), day(2026, 1, 18)])
+        #expect(p.sortedMilestones[0] === first && first.isDone)
+    }
+
+    @Test func goalsAreInChronologicalOrder() throws {
+        let (ctx, p) = try setup()
+        let json = #"""
+        {"version": 1, "checkpoints": [{"day": 5, "title": "One"}],
+         "goals": [{"id": "c", "title": "Third", "day": 5}, {"id": "a", "title": "First", "day": 1}, {"id": "b", "title": "Second", "day": 3}]}
+        """#
+        let plan = try MetricsPayload.decoder().decode(GitHubSnapshot.PlanFile.self, from: Data(json.utf8))
+        GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
+        try ctx.save()
+        #expect(p.sortedMilestones[0].sortedGoals.map(\.title) == ["First", "Second", "Third"])
+    }
+
     @Test func duplicatesOnOneDayAreMerged() throws {
         let (ctx, p) = try setup()
         ScheduleEngine.addCheckpoint(to: p, title: "Widgets", due: day(2026, 1, 14), profile: nil, context: ctx)
@@ -94,7 +129,7 @@ struct CheckpointTests {
         let dues = [day(2026, 1, 9), day(2026, 1, 12), day(2026, 1, 16)]
         let plan = GitHubSnapshot.PlanFile(version: 1, checkpoints: [.init(title: "Beta", due: day(2026, 1, 15))],
                                            goals: [goal("a", due: day(2026, 1, 10)), goal("b", due: day(2026, 3, 1))])
-        let preview = GoalEngine.repoPreview(snapshot(plan: plan), dues: dues)
+        let preview = GoalEngine.repoPreview(snapshot(plan: plan), dues: dues, start: day(2026, 1, 5))
         #expect(preview.hasPlanFile)
         #expect(preview.goals[1].map(\.title) == ["Goal a"])
         #expect(preview.goals[2].map(\.title) == ["Goal b"]) // past the last deadline → last one
@@ -181,7 +216,7 @@ struct ScheduleChangeTests {
         let m = Momentum.make(project: p, now: day(2026, 1, 7).addingTimeInterval(3600 * 12))
         #expect(m.elapsedDays == 3)
         #expect(m.totalCommits == 4 && m.commitsToday == 1)
-        #expect(m.activeDays == 2)
+        #expect(m.activeDays == 3) // commits on the 5th and 7th, a finished goal on the 6th
         #expect(m.goalsDone == 1 && m.goalsTotal == 2)
         #expect(m.days.map(\.goalsDone) == [0, 1, 1])
     }

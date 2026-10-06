@@ -34,9 +34,18 @@ enum WidgetPublisher {
                                 delta: spark.count > 1 ? (change >= 0 ? "+" : "−") + key.format(abs(change)) : nil,
                                 deltaPositive: change > 0, spark: spark)
         }
+        var momentum: WidgetMomentum?
+        if p.phase(on: now) == .building || p.phase(on: now) == .upcoming {
+            let m = Momentum.make(project: p, now: now)
+            momentum = WidgetMomentum(totalCommits: m.hasCommitData ? m.totalCommits : nil,
+                                      commitsToday: m.hasCommitData ? m.commitsToday : nil,
+                                      dailyCommits: m.days.suffix(14).map(\.commits),
+                                      activeDays: m.activeDays, elapsedDays: m.elapsedDays,
+                                      goalsDone: m.goalsDone, goalsTotal: m.goalsTotal)
+        }
         return WidgetProject(id: p.id.uuidString, name: p.name, accentHex: p.accentHex,
                              startDate: p.startDate, buildEnd: p.buildEnd, observeEnd: p.observeEnd,
-                             checkpoints: checkpoints, metrics: metrics)
+                             checkpoints: checkpoints, metrics: metrics, momentum: momentum)
     }
 
     /// End-of-day values for the last 7 days (oldest first), ending with the live value.

@@ -56,6 +56,8 @@ nonisolated struct GitHubSnapshot: Sendable, Equatable {
             var title: String
             var checkpoint: Int?
             var due: Date?
+            /// Day of the project (day 1 = start date). Preferred over `due`: it moves with the schedule.
+            var day: Int? = nil
         }
         var version: Int?
         var checkpoints: [Checkpoint]? = nil

@@ -23,15 +23,13 @@ struct MomentumCard: View {
                      value: m.hasCommitData ? "\(m.totalCommits)" : "–", label: "Commits")
                 tile(.goals, symbol: "checkmark.circle.fill",
                      value: "\(m.goalsDone)/\(m.goalsTotal)", label: "Goals done")
-                tile(.active, symbol: "flame.fill",
-                     value: m.hasCommitData ? "\(m.activeDays)/\(m.elapsedDays)" : "–", label: "Active days")
+                tile(.active, symbol: "flame.fill", value: "\(m.activeDays)/\(m.elapsedDays)", label: "Active days")
             }
             chart(m)
                 .frame(height: 150)
                 .animation(.snappy, value: stat)
-            Text(caption(m)).font(.ui(13)).foregroundStyle(Theme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if !m.hasCommitData && stat != .goals {
+            Text(caption(m)).font(.ui(13)).foregroundStyle(Theme.secondary).lineLimit(1)
+            if !m.hasCommitData && stat == .commits {
                 Button(action: onConnect) {
                     Label("Link the GitHub repo to count commits", systemImage: "link")
                         .font(.ui(14, .semibold)).foregroundStyle(accent.text)
@@ -97,43 +95,60 @@ struct MomentumCard: View {
         }
     }
 
-    /// One dot per build day: filled when something was committed, outlined for days still ahead.
+    /// One box per build day, filling the chart area: filled when something moved, outlined for days ahead.
     private func activeStrip(_ m: Momentum) -> some View {
-        let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 7)
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(0..<m.buildLength, id: \.self) { i in
-                let day = m.days[safe: i]
-                ZStack {
-                    if let day {
-                        Circle().fill(day.isActive ? accent.base : Theme.line)
-                        if Calendar.current.isDateInToday(day.date) {
-                            Circle().strokeBorder(Theme.ink, lineWidth: 2)
+        GeometryReader { geo in
+            let gap: CGFloat = 6
+            let columns = min(7, m.buildLength)
+            let rows = Int((Double(m.buildLength) / Double(columns)).rounded(.up))
+            let width = (geo.size.width - gap * CGFloat(columns - 1)) / CGFloat(columns)
+            // Fill the same height as the other charts.
+            let height = (geo.size.height - gap * CGFloat(rows - 1)) / CGFloat(rows)
+            VStack(alignment: .leading, spacing: gap) {
+                ForEach(0..<rows, id: \.self) { r in
+                    HStack(spacing: gap) {
+                        ForEach(0..<columns, id: \.self) { c in
+                            let i = r * columns + c
+                            if i < m.buildLength {
+                                dayBox(index: i, day: m.days[safe: i]).frame(width: width, height: height)
+                            } else {
+                                Color.clear.frame(width: width, height: height)
+                            }
                         }
-                    } else {
-                        Circle().strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1.5, dash: [3, 3]))
                     }
                 }
-                .frame(width: 22, height: 22)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         }
-        .frame(maxHeight: .infinity, alignment: .center)
-        .opacity(m.hasCommitData ? 1 : 0.35)
+    }
+
+    private func dayBox(index: Int, day: Momentum.Day?) -> some View {
+        let shape = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let date = project.startDate.adding(days: index)
+        let isToday = Calendar.current.isDateInToday(date)
+        return ZStack {
+            if let day {
+                shape.fill(day.isActive ? accent.base : Theme.background)
+            } else {
+                shape.strokeBorder(Theme.line, style: StrokeStyle(lineWidth: 1.5, dash: [4, 4]))
+            }
+            if isToday { shape.strokeBorder(Theme.ink, lineWidth: 2) }
+            Text(date.formatted(.dateTime.day()))
+                .font(.display(17, 700))
+                .foregroundStyle(day?.isActive == true ? accent.on : (day == nil ? Theme.tertiary : Theme.secondary))
+        }
     }
 
     private func caption(_ m: Momentum) -> String {
         switch stat {
         case .commits:
             guard m.hasCommitData else { return "Commits per day while building." }
-            return m.commitsToday > 0
-                ? "\(m.commitsToday) commit\(m.commitsToday == 1 ? "" : "s") today. Keep it moving."
-                : "Nothing committed yet today."
+            return m.commitsToday > 0 ? "\(m.commitsToday) commit\(m.commitsToday == 1 ? "" : "s") today." : "Nothing committed yet today."
         case .goals:
             let left = m.goalsTotal - m.goalsDone
-            return m.goalsTotal == 0 ? "Add goals to your checkpoints to see them here."
-                : left == 0 ? "Every goal of the build is done." : "\(left) goal\(left == 1 ? "" : "s") left before launch."
+            return m.goalsTotal == 0 ? "No goals yet." : left == 0 ? "Every goal of the build is done." : "\(left) goal\(left == 1 ? "" : "s") left before launch."
         case .active:
-            guard m.hasCommitData else { return "Days with at least one commit." }
-            return "Days with at least one commit. Small daily steps beat one big push."
+            return "Days with a commit or a finished goal."
         }
     }
 }
