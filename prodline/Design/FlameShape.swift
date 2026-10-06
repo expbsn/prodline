@@ -42,29 +42,54 @@ struct FlameShape: Shape {
         let notchR = (x: 74 + 2 * w(4.8, 8.4, 8), y: 46 + 3 * w(5.5, 9.3, 9))
         let breath = 1.5 * w(3.2, 5.1, 10)
 
-        // The tongues only come out once it's well alight: while small they sit down in the belly's outline.
-        let out = min(1, max(0, (g - 0.45) / 0.5))
-        let lt = (x: 20 + (left.x - 20) * out, y: 70 + (left.y - 70) * out)
-        let rt = (x: 84 + (right.x - 84) * out, y: 64 + (right.y - 64) * out)
-        let nl = (x: 34 + (notchL.x - 34) * out, y: 60 + (notchL.y - 60) * out)
-        let nr = (x: 70 + (notchR.x - 70) * out, y: 56 + (notchR.y - 56) * out)
-
-        // Hidden tongues move with the body; once out, they lag behind it.
-        let tl = 0.6 + 0.4 * out
+        // While small it's a clean teardrop; the tongues and notches come out of its outline as it grows.
+        // Hidden, every point sits on the teardrop's sides, so there are no odd shoulders.
+        let out = min(1, max(0, (g - 0.4) / 0.5))
+        func bez(_ a: (Double, Double), _ b: (Double, Double), _ c: (Double, Double), _ d: (Double, Double), _ u: Double) -> (x: Double, y: Double) {
+            let v = 1 - u
+            return (v * v * v * a.0 + 3 * v * v * u * b.0 + 3 * v * u * u * c.0 + u * u * u * d.0,
+                    v * v * v * a.1 + 3 * v * v * u * b.1 + 3 * v * u * u * c.1 + u * u * u * d.1)
+        }
+        // The teardrop's two sides, from the widest point of the belly up to the tip.
+        func leftEdge(_ u: Double) -> (x: Double, y: Double) { bez((6, 90), (6, 52), (36, 20), (tip.x, tip.y), u) }
+        func rightEdge(_ u: Double) -> (x: Double, y: Double) { bez((tip.x, tip.y), (78, 20), (96, 52), (96, 88), u) }
+        func mix(_ hidden: (x: Double, y: Double), _ shown: (x: Double, y: Double)) -> (x: Double, y: Double) {
+            (hidden.x + (shown.x - hidden.x) * out, hidden.y + (shown.y - hidden.y) * out)
+        }
+        let lt = mix(leftEdge(0.3), left)
+        let nl = mix(leftEdge(0.55), notchL)
+        let nr = mix(rightEdge(0.35), notchR)
+        let rt = mix(rightEdge(0.6), right)
+        // Control points: along the teardrop while hidden, the tongue shapes once out.
+        let c1 = mix(leftEdge(0.12), (8 - breath, 70))
+        let c2 = mix(leftEdge(0.22), (lt.x - 6, lt.y + 18))
+        let c3 = mix(leftEdge(0.4), (lt.x + 6, lt.y + 10))
+        let c4 = mix(leftEdge(0.48), (nl.x - 6, nl.y - 4))
+        let c5 = mix(leftEdge(0.72), (nl.x + 2, 34))
+        let c6 = mix(leftEdge(0.88), (tip.x - 14, tip.y + 20))
+        let c7 = mix(rightEdge(0.12), (tip.x + 10, tip.y + 18))
+        let c8 = mix(rightEdge(0.26), (nr.x - 2, nr.y - 14))
+        let c9 = mix(rightEdge(0.45), (nr.x + 4, nr.y - 6))
+        let c10 = mix(rightEdge(0.52), (rt.x - 6, rt.y + 8))
+        let c11 = mix(rightEdge(0.75), (rt.x + 6, rt.y + 16))
+        let c12 = mix(rightEdge(0.9), (98 + breath, 66))
+        // Hidden, everything rises together (a scaled teardrop); out, the tip leads and the tongues lag.
+        let tipLead = 0.6 - 0.05 * out
+        let tongueLead = 0.6 + 0.4 * out
 
         var path = Path()
         path.move(to: p(50, 130))
         // Belly, left side, up to the left tongue.
         path.addCurve(to: p(6 - breath, 90), control1: p(16, 130), control2: p(4 - breath, 112))
-        path.addCurve(to: p(lt.x, lt.y, lead: tl), control1: p(8 - breath, 70), control2: p(lt.x - 6, lt.y + 18, lead: tl))
+        path.addCurve(to: p(lt.x, lt.y, lead: tongueLead), control1: p(c1.x, c1.y), control2: p(c2.x, c2.y, lead: tongueLead))
         // Down into the notch, then up the long main tongue to the tip.
-        path.addCurve(to: p(nl.x, nl.y), control1: p(lt.x + 6, lt.y + 10, lead: tl), control2: p(nl.x - 6, nl.y - 4))
-        path.addCurve(to: p(tip.x, tip.y, lead: 0.55), control1: p(nl.x + 2, 34, lead: 0.58), control2: p(tip.x - 14, tip.y + 20, lead: 0.55))
+        path.addCurve(to: p(nl.x, nl.y), control1: p(c3.x, c3.y, lead: tongueLead), control2: p(c4.x, c4.y))
+        path.addCurve(to: p(tip.x, tip.y, lead: tipLead), control1: p(c5.x, c5.y, lead: tipLead), control2: p(c6.x, c6.y, lead: tipLead))
         // Down the right of the tip into the right notch, up to the right tongue.
-        path.addCurve(to: p(nr.x, nr.y), control1: p(tip.x + 10, tip.y + 18, lead: 0.55), control2: p(nr.x - 2, nr.y - 14))
-        path.addCurve(to: p(rt.x, rt.y, lead: tl), control1: p(nr.x + 4, nr.y - 6), control2: p(rt.x - 6, rt.y + 8, lead: tl))
+        path.addCurve(to: p(nr.x, nr.y), control1: p(c7.x, c7.y, lead: tipLead), control2: p(c8.x, c8.y))
+        path.addCurve(to: p(rt.x, rt.y, lead: tongueLead), control1: p(c9.x, c9.y), control2: p(c10.x, c10.y, lead: tongueLead))
         // Right side down and round the belly.
-        path.addCurve(to: p(96 + breath, 88), control1: p(rt.x + 6, rt.y + 16, lead: tl), control2: p(98 + breath, 66))
+        path.addCurve(to: p(96 + breath, 88), control1: p(c11.x, c11.y, lead: tongueLead), control2: p(c12.x, c12.y))
         path.addCurve(to: p(50, 130), control1: p(94 + breath, 116), control2: p(78, 130))
         path.closeSubpath()
         return path

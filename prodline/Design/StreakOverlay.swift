@@ -60,7 +60,7 @@ struct StreakOverlay: View {
         // Something is there: the unlit flame emerges.
         withAnimation(.easeInOut(duration: 0.6)) { ember = true }
         Haptics.soft()
-        try? await Task.sleep(for: .milliseconds(850))
+        try? await Task.sleep(for: .milliseconds(1100))
         // Then it catches.
         lit = true
         Haptics.heavy()
@@ -76,16 +76,16 @@ struct StreakOverlay: View {
     }
 }
 
-/// The flame as a solid cartoon object that burns: nested layers (red-orange, orange, yellow, a white-hot core)
-/// on a dark extruded body. Unlit it's a dark silhouette. Lighting fills each layer from the bottom up, outside
-/// in; from then on the outline itself moves — tongues licking and swaying, each layer at its own rhythm.
+/// The flame as a solid cartoon object that is always burning: nested layers (red-orange, orange, yellow, a
+/// white-hot core) on a dark extruded body. It appears as a tiny flickering teardrop and keeps growing in the
+/// dark, dim and without glow; when it catches it shoots up past full height and settles into the full flame,
+/// tongues licking and swaying, each layer at its own rhythm.
 private struct Flame3D: View {
     let lit: Bool
     let ember: Bool
-    @State private var fill: [CGFloat] = [0, 0, 0, 0]
-    @State private var burning = Date.distantFuture
-    /// A low ember until it catches, then it grows into the full flame (and overshoots a touch, like a flare).
-    @State private var grow: Double = 0.22
+    @State private var grow: Double = 0.05
+    @State private var bright: Double = 0
+    @State private var appeared = Date.distantFuture
 
     private let w: CGFloat = 150
     private var h: CGFloat { w * 1.3 }
@@ -99,50 +99,52 @@ private struct Flame3D: View {
     ]
 
     var body: some View {
-        TimelineView(.animation(paused: !lit)) { tl in
-            // The motion eases in as it catches, so it doesn't start mid-wobble.
-            let since = max(0, tl.date.timeIntervalSince(burning))
-            let life = lit ? min(1, since / 0.6) : 0
+        TimelineView(.animation) { tl in
+            // It flickers from the first frame; the motion just eases in over a moment.
+            let since = max(0, tl.date.timeIntervalSince(appeared))
+            let life = min(1, 0.4 + since / 0.8)
             let t = tl.date.timeIntervalSinceReferenceDate
             ZStack(alignment: .bottom) {
                 ForEach((1...8).reversed(), id: \.self) { i in
-                    FlameShape(time: t, life: life, grow: grow).fill(lit ? Color(hex: 0xB83214) : Color(hex: 0x1C1C1E))
-                        .offset(x: CGFloat(i) * 0.6, y: CGFloat(i) * 1.1)
+                    FlameShape(time: t, life: life, grow: grow).fill(Color(hex: 0x8A2410))
+                        .offset(x: CGFloat(i) * 0.6 * min(1, grow + 0.2), y: CGFloat(i) * 1.1 * min(1, grow + 0.2))
                 }
-                FlameShape(time: t, life: life, grow: grow).fill(Color(hex: 0x3A3A3C))
                 ForEach(layers.indices, id: \.self) { i in
                     let l = layers[i]
                     FlameShape(time: t * l.speed + l.phase, life: life * (1 + Double(i) * 0.25), grow: grow)
                         .fill(LinearGradient(colors: l.colors.map { Color(hex: $0) }, startPoint: .bottom, endPoint: .top))
                         .frame(width: w * l.scale, height: h * l.scale)
-                        .offset(y: -CGFloat(i) * 6)
-                        .mask(alignment: .bottom) {
-                            Rectangle().frame(height: h * fill[i])
-                        }
+                        .offset(y: -CGFloat(i) * 6 * min(1, grow))
                 }
-                // Gloss on the left of the belly, like the chunky buttons; it rises with the flame.
-                Capsule().fill(.white.opacity(lit ? 0.32 : 0.08))
+                // Gloss on the left of the belly, like the chunky buttons; it grows with the flame.
+                Capsule().fill(.white.opacity(0.3 * bright))
                     .frame(width: 9 * (0.4 + 0.6 * min(1, grow)), height: 46 * min(1, grow + 0.1))
                     .rotationEffect(.degrees(16))
                     .offset(x: -w * 0.3 * (0.25 + 0.75 * min(1, grow)), y: -h * 0.2 * min(1, grow))
                     .blur(radius: 0.5)
             }
             .frame(width: w, height: h)
+            // Dim and smoky while it's small in the dark; full color once it catches.
+            .saturation(0.55 + 0.45 * bright)
+            .brightness(-0.28 * (1 - bright))
         }
-        // No glow until it actually burns.
-        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.9 : 0), radius: 16)
-        .shadow(color: Color(hex: 0xFF9600).opacity(lit ? 0.6 : 0), radius: 42)
-        .shadow(color: Color(hex: 0xFF4B00).opacity(lit ? 0.4 : 0), radius: 90)
-        // The silhouette emerges out of the dark with the ember beat.
+        // No glow until it actually catches.
+        .shadow(color: Color(hex: 0xFF9600).opacity(0.9 * bright), radius: 16)
+        .shadow(color: Color(hex: 0xFF9600).opacity(0.6 * bright), radius: 42)
+        .shadow(color: Color(hex: 0xFF4B00).opacity(0.4 * bright), radius: 90)
         .opacity(lit || ember ? 1 : 0)
+        .onChange(of: ember) {
+            guard ember else { return }
+            // A tiny flame appears and slowly grows in the dark.
+            appeared = .now
+            grow = 0.05
+            withAnimation(.easeOut(duration: 1.6)) { grow = 0.34 }
+        }
         .onChange(of: lit) {
-            guard lit else { fill = [0, 0, 0, 0]; grow = 0.22; return }
-            burning = .now
-            // It catches: grows up out of the ember with a flare past full height, then settles.
+            guard lit else { grow = 0.05; bright = 0; return }
+            // It catches: shoots up past full height, then settles.
             withAnimation(.spring(response: 0.7, dampingFraction: 0.55)) { grow = 1 }
-            for i in fill.indices {
-                withAnimation(.easeOut(duration: 0.5).delay(Double(i) * 0.1)) { fill[i] = 1.02 }
-            }
+            withAnimation(.easeOut(duration: 0.35)) { bright = 1 }
         }
     }
 }
