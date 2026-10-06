@@ -679,7 +679,7 @@ struct MilestoneLine: View {
 
             if milestone.hasGoals || (!milestone.isDone && onAddGoal != nil) {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(milestone.sortedGoals) { g in goalRow(g) }
+                    ForEach(milestone.displayGoals) { g in goalRow(g) }
                     if !milestone.isDone, let onAddGoal {
                         Button(action: onAddGoal) {
                             Label(milestone.hasGoals ? "Edit goals" : "Add goals", systemImage: milestone.hasGoals ? "pencil" : "plus")
@@ -1050,7 +1050,7 @@ struct CheckpointSheet: View {
             if let m = milestone {
                 name = m.titleIsCustom || !ScheduleEngine.isAutoName(m.title) ? m.title : ""
                 due = m.dueDate
-                goalRows = m.sortedGoals.map { GoalRow(goal: $0, title: $0.title, source: $0.source, isDone: $0.isDone) }
+                goalRows = m.displayGoals.map { GoalRow(goal: $0, title: $0.title, source: $0.source, isDone: $0.isDone) }
             } else {
                 // Default: halfway between today and the next open deadline.
                 let next = project.nextMilestone?.dueDate ?? project.launchDay

@@ -26,9 +26,8 @@ enum LiveActivities {
     }
 
     static func state(_ m: Milestone) -> DeadlineAttributes.ContentState {
-        let goals = m.sortedGoals
-        let ordered = goals.filter { !$0.isDone } + goals.filter(\.isDone)
-        return .init(goals: ordered.prefix(maxGoals).map { WidgetGoal(title: $0.title, done: $0.isDone) },
+        let goals = m.displayGoals
+        return .init(goals: goals.prefix(maxGoals).map { WidgetGoal(title: $0.title, done: $0.isDone) },
                      goalCount: goals.count, goalsDone: goals.filter(\.isDone).count)
     }
 

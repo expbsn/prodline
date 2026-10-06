@@ -42,7 +42,8 @@ enum WidgetPublisher {
 
     static func make(_ p: Project, refresher: DataRefresher, now: Date) -> WidgetProject {
         let checkpoints = p.sortedMilestones.map { m in
-            let goals = m.sortedGoals
+            // Open ones first, so the five the widget gets are the ones that still matter.
+            let goals = m.displayGoals
             return WidgetCheckpoint(title: m.title, due: m.dueDate, done: m.isDone, isLaunch: m.isLaunch,
                                     goals: goals.prefix(5).map { WidgetGoal(title: $0.title, done: $0.isDone, id: $0.id.uuidString,
                                                                               tickable: !$0.source.isAutomatic) },

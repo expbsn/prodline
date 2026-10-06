@@ -195,6 +195,8 @@ final class Milestone {
 
     var sortedGoals: [Goal] { (goals ?? []).sorted { ($0.order, $0.title) < ($1.order, $1.title) } }
     var openGoals: [Goal] { sortedGoals.filter { !$0.isDone } }
+    /// How lists show them: open goals on top, done ones below, each in their usual order.
+    var displayGoals: [Goal] { openGoals + sortedGoals.filter(\.isDone) }
     var hasGoals: Bool { !(goals ?? []).isEmpty }
 }
 

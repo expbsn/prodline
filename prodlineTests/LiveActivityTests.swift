@@ -73,3 +73,26 @@ struct WidgetTickTests {
         #expect(!WidgetPublisher.applyWidgetTicks(projects: [p], profile: nil))
     }
 }
+
+@MainActor
+@Suite("Goal order")
+struct GoalOrderTests {
+    @Test func openGoalsComeFirstEverywhere() throws {
+        let ctx = try makeContext()
+        let p = Project(name: "Order", accentHex: 0x58CC02, startDate: day(2026, 10, 1), buildDays: 14, observeDays: 28)
+        ctx.insert(p)
+        let m = Milestone(title: "C", dueDate: day(2026, 10, 8))
+        ctx.insert(m); m.project = p
+        // Six goals, the first five done: the widget used to get only those five.
+        for i in 0..<6 {
+            let g = Goal(title: "G\(i)", source: .manual, order: i)
+            ctx.insert(g); g.milestone = m
+            if i < 5 { g.setDone(true, at: day(2026, 10, 2)) }
+        }
+        #expect(m.displayGoals.map(\.title) == ["G5", "G0", "G1", "G2", "G3", "G4"])
+        let widget = WidgetPublisher.make(p, refresher: DataRefresher(), now: day(2026, 10, 3))
+        #expect(widget.checkpoints.first?.goals.first?.title == "G5")
+        #expect(widget.checkpoints.first?.goalsDone == 5)
+        #expect(widget.checkpoints.first?.goalCount == 6)
+    }
+}
