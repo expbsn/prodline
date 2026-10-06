@@ -84,6 +84,8 @@ private struct Flame3D: View {
     let ember: Bool
     @State private var fill: [CGFloat] = [0, 0, 0, 0]
     @State private var burning = Date.distantFuture
+    /// A low ember until it catches, then it grows into the full flame (and overshoots a touch, like a flare).
+    @State private var grow: Double = 0.22
 
     private let w: CGFloat = 150
     private var h: CGFloat { w * 1.3 }
@@ -104,13 +106,13 @@ private struct Flame3D: View {
             let t = tl.date.timeIntervalSinceReferenceDate
             ZStack(alignment: .bottom) {
                 ForEach((1...8).reversed(), id: \.self) { i in
-                    FlameShape(time: t, life: life).fill(lit ? Color(hex: 0xB83214) : Color(hex: 0x1C1C1E))
+                    FlameShape(time: t, life: life, grow: grow).fill(lit ? Color(hex: 0xB83214) : Color(hex: 0x1C1C1E))
                         .offset(x: CGFloat(i) * 0.6, y: CGFloat(i) * 1.1)
                 }
-                FlameShape(time: t, life: life).fill(Color(hex: 0x3A3A3C))
+                FlameShape(time: t, life: life, grow: grow).fill(Color(hex: 0x3A3A3C))
                 ForEach(layers.indices, id: \.self) { i in
                     let l = layers[i]
-                    FlameShape(time: t * l.speed + l.phase, life: life * (1 + Double(i) * 0.25))
+                    FlameShape(time: t * l.speed + l.phase, life: life * (1 + Double(i) * 0.25), grow: grow)
                         .fill(LinearGradient(colors: l.colors.map { Color(hex: $0) }, startPoint: .bottom, endPoint: .top))
                         .frame(width: w * l.scale, height: h * l.scale)
                         .offset(y: -CGFloat(i) * 6)
@@ -118,11 +120,11 @@ private struct Flame3D: View {
                             Rectangle().frame(height: h * fill[i])
                         }
                 }
-                // Gloss on the left of the belly, like the chunky buttons.
+                // Gloss on the left of the belly, like the chunky buttons; it rises with the flame.
                 Capsule().fill(.white.opacity(lit ? 0.32 : 0.08))
-                    .frame(width: 9, height: 46)
+                    .frame(width: 9 * (0.4 + 0.6 * min(1, grow)), height: 46 * min(1, grow + 0.1))
                     .rotationEffect(.degrees(16))
-                    .offset(x: -w * 0.3, y: -h * 0.2)
+                    .offset(x: -w * 0.3 * (0.25 + 0.75 * min(1, grow)), y: -h * 0.2 * min(1, grow))
                     .blur(radius: 0.5)
             }
             .frame(width: w, height: h)
@@ -134,10 +136,12 @@ private struct Flame3D: View {
         // The silhouette emerges out of the dark with the ember beat.
         .opacity(lit || ember ? 1 : 0)
         .onChange(of: lit) {
-            guard lit else { fill = [0, 0, 0, 0]; return }
+            guard lit else { fill = [0, 0, 0, 0]; grow = 0.22; return }
             burning = .now
+            // It catches: grows up out of the ember with a flare past full height, then settles.
+            withAnimation(.spring(response: 0.7, dampingFraction: 0.55)) { grow = 1 }
             for i in fill.indices {
-                withAnimation(.easeOut(duration: 0.55).delay(Double(i) * 0.11)) { fill[i] = 1.02 }
+                withAnimation(.easeOut(duration: 0.5).delay(Double(i) * 0.1)) { fill[i] = 1.02 }
             }
         }
     }
