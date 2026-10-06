@@ -375,7 +375,10 @@ struct MeView: View {
                     celebration.fire(title: "+10 XP", subtitle: "\(ScheduleEngine.praise()) · just a test", accent: projects.first?.accent ?? .neutral)
                 }
                 devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
-                    celebration.nudge(title: "A deadline slipped", subtitle: "Streak reset. The next checkpoint starts a new one.")
+                    celebration.nudge(title: "A deadline slipped", subtitle: "Finish it today. Late still earns XP.")
+                }
+                devButton("Play the weekly review", "play.rectangle") {
+                    NotificationCenter.default.post(name: WeeklyReview.open, object: nil)
                 }
                 devButton("Replay launch animation", "play.circle") {
                     NotificationCenter.default.post(name: LaunchGate.replay, object: nil)

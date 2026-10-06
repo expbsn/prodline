@@ -30,6 +30,7 @@ struct HomeView: View {
     var onOpen: (Project, CGRect?) -> Void
     var onCreate: () -> Void
     var onStreak: () -> Void
+    var onReview: () -> Void = {}
 
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
@@ -51,7 +52,12 @@ struct HomeView: View {
             let cardW = DashLayout.cardWidth(in: geo.size)
             ScrollView(.vertical, showsIndicators: false) {
                 VStack(alignment: .leading, spacing: 0) {
-                    ScreenHeader(eyebrow: "Prodline", title: "Projects") { streakBadge }
+                    ScreenHeader(eyebrow: "Prodline", title: "Projects") {
+                        HStack(alignment: .top, spacing: 10) {
+                            if WeeklyReview.isWaiting() { reviewChip }
+                            streakBadge
+                        }
+                    }
 
                     carousel(cardW: cardW, screenW: geo.size.width)
                         .padding(.top, DashLayout.cardTop)
@@ -89,6 +95,33 @@ struct HomeView: View {
     }
 
     // MARK: Header
+
+    /// Sunday evening until watched: this week's review.
+    private var reviewChip: some View {
+        Button {
+            Haptics.select()
+            onReview()
+        } label: {
+            VStack(spacing: -6) {
+                ZStack {
+                    Circle().fill(.white)
+                    Circle().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2.5)
+                    Image(systemName: "play.fill").font(.system(size: 17)).foregroundStyle(Accent.sale.text)
+                }
+                .frame(width: 46, height: 46)
+                Text("Week \(WeeklyReview.calendar.component(.weekOfYear, from: WeeklyReview.reviewWeekStart()))")
+                    .display(11, 800)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 8).padding(.vertical, 1)
+                    .background(Capsule().fill(.white))
+                    .overlay(Capsule().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2))
+                    .fixedSize()
+            }
+            .shadow(color: Color(hex: 0xFFC800).opacity(0.45), radius: 10)
+        }
+        .buttonStyle(PressableStyle(scale: 0.92))
+        .accessibilityLabel("Weekly review ready")
+    }
 
     private var streakBadge: some View {
         Button {

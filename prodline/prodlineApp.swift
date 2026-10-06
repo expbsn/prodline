@@ -1,8 +1,30 @@
 import SwiftUI
 import SwiftData
+import UserNotifications
+
+/// Notification taps: ones that carry a prodline:// link (the weekly review) open it.
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        guard let link = response.notification.request.content.userInfo["url"] as? String, link == "prodline://review" else { return }
+        // The UI may still be starting; give it a moment before asking it to open.
+        try? await Task.sleep(for: .milliseconds(600))
+        await MainActor.run { NotificationCenter.default.post(name: WeeklyReview.open, object: nil) }
+    }
+
+    /// While the app is open, deadline reminders stay quiet (the app shows its own nudges).
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
+        notification.request.identifier == WeeklyReview.notificationID ? [.banner] : []
+    }
+}
 
 @main
 struct prodlineApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     let container: ModelContainer = {
         let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self, Idea.self])
         // Unit tests get a throwaway in-memory store.

@@ -61,7 +61,7 @@
     {"id": "analytics-integrations", "title": "Connect Plausible and Umami for visitors", "day": 23, "done": true},
 
     {"id": "keep-pivot-kill", "title": "Add the keep, pivot or kill review", "day": 24, "done": true},
-    {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": false},
+    {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": true},
     {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": true},
     {"id": "share-cards", "title": "Share cards with days spent and results", "day": 24, "done": true},
 

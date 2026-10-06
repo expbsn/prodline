@@ -108,6 +108,7 @@ struct RootView: View {
                     celebration.endCollecting(awayTitle: away > 15 * 60)
                     remindAboutLateDeadlines()
                     nudgeAboutFreeSlot()
+                    WeeklyReview.scheduleNotification(enabled: profiles.first?.remindersEnabled ?? false)
                     if let profile = profiles.first, profile.remindersEnabled {
                         for p in projects { Notifier.scheduleVerdict(p, hour: profile.reminderHour) }
                     }
@@ -196,6 +197,7 @@ struct MainShell: View {
     @State private var showCreate = false
     @State private var showLimit = false
     @State private var showIdeas = false
+    @State private var showReview = false
     /// The idea the create flow starts from, if any.
     @State private var startingIdea: Idea?
     @State private var opened: Opened?
@@ -222,7 +224,7 @@ struct MainShell: View {
                 tabPage(.projects) {
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
                              onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { requestCreate() },
-                             onStreak: { tab = .me })
+                             onStreak: { tab = .me }, onReview: { showReview = true })
                 }
                 tabPage(.plan) {
                     PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { requestCreate() },
@@ -273,6 +275,9 @@ struct MainShell: View {
             case "data":
                 opened = nil
                 tab = .insights
+            case "review":
+                opened = nil
+                showReview = true
             default: break
             }
         }
@@ -281,6 +286,7 @@ struct MainShell: View {
             let d = UserDefaults.standard
             if let t = d.string(forKey: "PRODLINE_TAB").flatMap(AppTab.init(rawValue:)) { tab = t }
             if d.bool(forKey: "PRODLINE_CREATE") { showCreate = true }
+            if d.bool(forKey: "PRODLINE_REVIEW") { showReview = true }
             if let name = d.string(forKey: "PRODLINE_OPEN") {
                 Task {
                     try? await Task.sleep(for: .milliseconds(600))
@@ -296,6 +302,14 @@ struct MainShell: View {
             }
         }
         .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile) }
+        .fullScreenCover(isPresented: $showReview) {
+            WeeklyReviewView(stats: WeeklyReview.make(projects: projects, profile: profile, weekStart: WeeklyReview.reviewWeekStart()),
+                             profile: profile) { showReview = false }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WeeklyReview.open)) { _ in
+            opened = nil
+            showReview = true
+        }
         .sheet(isPresented: $showIdeas) {
             IdeaInboxSheet(profile: profile) { idea in
                 showIdeas = false
