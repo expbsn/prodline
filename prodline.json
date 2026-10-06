@@ -62,7 +62,7 @@
 
     {"id": "keep-pivot-kill", "title": "Add the keep, pivot or kill review", "day": 24, "done": true},
     {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": false},
-    {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": false},
+    {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": true},
     {"id": "share-cards", "title": "Share cards with days spent and results", "day": 24, "done": false},
 
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
