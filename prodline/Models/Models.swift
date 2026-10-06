@@ -10,7 +10,10 @@ final class Profile {
     var createdAt: Date = Date.now
     var onboarded: Bool = false
     var xp: Int = 0
+    /// Consecutive days with progress (see Streak).
     var streak: Int = 0
+    /// The last day that counted toward the streak; the flame is lit when that's today.
+    var streakActiveToday: Date? = nil
     var bestStreak: Int = 0
     var completedOnTime: Int = 0
     var completedLate: Int = 0

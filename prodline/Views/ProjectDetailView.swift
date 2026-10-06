@@ -13,6 +13,7 @@ struct ProjectDetailView: View {
     @Environment(DataRefresher.self) private var refresher
     @Environment(CelebrationCenter.self) private var celebration
     @Query private var profiles: [Profile]
+    @Query private var allProjects: [Project]
 
     @State private var metric: MetricKey = .visits
     @State private var showEdit = false
@@ -438,7 +439,7 @@ struct ProjectDetailView: View {
         if m.hasGoals && m.openGoals.isEmpty {
             return "It finished because all its goals are done. Untick a goal to reopen it."
         }
-        return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned\(m.countedOnTime ? " and a step of your streak" : "")." : "It goes back to open."
+        return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned." : "It goes back to open."
     }
 
     private func undo(_ m: Milestone) {
@@ -448,6 +449,7 @@ struct ProjectDetailView: View {
             ScheduleEngine.uncomplete(m, profile: profile)
         }
         undoing = nil
+        Streak.update(profile, projects: allProjects)
         try? context.save()
     }
 
@@ -456,6 +458,7 @@ struct ProjectDetailView: View {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
             ScheduleEngine.complete(m, profile: profile, celebration: celebration)
         }
+        Streak.update(profile, projects: allProjects)
         try? context.save()
     }
 
@@ -472,6 +475,7 @@ struct ProjectDetailView: View {
                 // A finished checkpoint with an open goal isn't finished anymore.
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { ScheduleEngine.uncomplete(m, profile: profile) }
             }
+            Streak.update(profile, projects: allProjects)
         }
         try? context.save()
     }

@@ -147,7 +147,7 @@ struct WMiniCard: View {
                 if let cover {
                     Image(uiImage: cover).resizable().scaledToFill()
                         .frame(width: w, height: w)
-                        .frame(maxHeight: .infinity, alignment: .top)
+                        .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
                         .clipped()
                 } else {
                     Text(project.initial).display(w * 0.9, 900)
@@ -271,7 +271,7 @@ struct ProjectWidgetView: View {
                 Text(p.phase(on: date).title).font(.ui(11, .bold)).foregroundStyle(p.accent.text)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .widgetURL(p.url)
     }
 
@@ -297,7 +297,7 @@ struct ProjectWidgetView: View {
                 Spacer(minLength: 0)
                 statsRow(p)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
+            .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
         }
         .widgetURL(p.url)
     }
@@ -322,7 +322,7 @@ struct ProjectWidgetView: View {
                         Spacer(minLength: 4)
                         DueChip(checkpoint: next, accent: p.accent, date: date)
                     }
-                    goalList(next, max: 4, size: 14)
+                    goalList(next, max: 3, size: 14)
                 }
             }
             Spacer(minLength: 0)
@@ -350,7 +350,7 @@ struct ProjectWidgetView: View {
                 }
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
         .widgetURL(p.url)
     }
 

@@ -124,7 +124,7 @@ struct MeView: View {
                     HStack {
                         Text("\(profile.xp % 100) / 100 XP to level \(profile.level + 1)").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
                         Spacer()
-                        Text("Best streak \(profile.bestStreak)").font(.ui(13)).foregroundStyle(Theme.secondary)
+                        Text("Best streak \(profile.bestStreak) day\(profile.bestStreak == 1 ? "" : "s")").font(.ui(13)).foregroundStyle(Theme.secondary)
                     }
                     ChunkyProgressBar(value: profile.levelProgress, color: Color(hex: 0xFFC800))
                 }

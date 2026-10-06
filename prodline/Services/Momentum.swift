@@ -65,6 +65,7 @@ struct Momentum {
     }()
 
     static func key(_ date: Date) -> String { keyFormatter.string(from: date) }
+    static func date(fromKey key: String) -> Date? { keyFormatter.date(from: key)?.startOfDay }
 
     /// Commit times → commits per local day.
     static func dailyCounts(_ dates: [Date]) -> [String: Int] {

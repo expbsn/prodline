@@ -105,7 +105,7 @@ struct HomeView: View {
                 Circle().strokeBorder(Theme.flame.opacity(0.9), lineWidth: 2.5)
                 Image(systemName: "flame.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(profile.streak > 0 ? Theme.flame : Theme.tertiary)
+                    .foregroundStyle(Streak.isActiveToday(profile) ? Theme.flame : Theme.tertiary)
                     .symbolEffect(.bounce, value: profile.streak)
             }
             .frame(width: 46, height: 46)
@@ -118,7 +118,7 @@ struct HomeView: View {
                 .contentTransition(.numericText())
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Streak \(profile.streak)")
+        .accessibilityLabel("\(profile.streak) day streak\(Streak.isActiveToday(profile) ? "" : ", nothing done yet today")")
     }
 
     // MARK: Carousel
@@ -210,17 +210,19 @@ struct HomeView: View {
         if let p = focused {
             ProjectPanel(project: p) { onOpen(p, cardFrames[p.id]) }
         } else {
-            VStack(alignment: .leading, spacing: 14) {
+            // Same type, spacing and two-line text area as a project's panel, so the button doesn't jump.
+            VStack(alignment: .leading, spacing: 12) {
                 Text(projects.isEmpty
                      ? "Start your first build: pick a cover, set the clock, connect your numbers."
-                     : "Next project due \(ScheduleEngine.nextProjectDate(projects: projects, profile: profile).shortDay). New builds start every \(profile.newProjectEveryDays.durationText).")
-                    .font(.ui(19))
+                     : "Next project due \(ScheduleEngine.nextProjectDate(projects: projects, profile: profile).shortDay). New builds every \(profile.newProjectEveryDays.durationText).")
+                    .font(.ui(18))
                     .foregroundStyle(Theme.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2, reservesSpace: true)
+                    .minimumScaleFactor(0.85)
                 MetaRow(items: [("clock", "~2 min setup"), ("photo", "Cover photo"), ("bolt.fill", "Live data")])
                 Button("Create project", action: onCreate)
                     .buttonStyle(.chunky)
-                    .padding(.top, 6)
+                    .padding(.top, 4)
             }
         }
     }
@@ -269,7 +271,8 @@ struct ProjectPanel: View {
             Text(summary)
                 .font(.ui(18))
                 .foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2, reservesSpace: true)
+                .minimumScaleFactor(0.85)
             MetaRow(items: meta)
             Button("Open project", action: onOpen)
                 .buttonStyle(.chunky)

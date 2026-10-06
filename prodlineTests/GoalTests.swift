@@ -93,7 +93,7 @@ struct GoalTests {
         let done = GoalEngine.autoComplete(projects: [p], profile: profile, celebration: nil, now: now)
         #expect(done.count == 1 && done[0] === ms[0])
         #expect(ms[0].isDone && ms[0].completedOnTime)
-        #expect(profile.xp == ScheduleEngine.checkpointXP && profile.streak == 1)
+        #expect(profile.xp == ScheduleEngine.checkpointXP)
         // Plain checkpoints (no goals) are never auto-completed.
         #expect(!ms[1].isDone)
     }
@@ -474,10 +474,10 @@ struct UndoXPTests {
         let (_, p, profile, _) = try setup()
         let m = p.sortedMilestones[0]
         ScheduleEngine.complete(m, profile: profile, celebration: nil, now: day(2026, 1, 8))
-        #expect(profile.xp == ScheduleEngine.checkpointXP && profile.streak == 1 && profile.completedOnTime == 1)
+        #expect(profile.xp == ScheduleEngine.checkpointXP && profile.completedOnTime == 1)
         let back = ScheduleEngine.uncomplete(m, profile: profile, now: day(2026, 1, 8))
         #expect(back == ScheduleEngine.checkpointXP)
-        #expect(!m.isDone && profile.xp == 0 && profile.streak == 0 && profile.completedOnTime == 0)
+        #expect(!m.isDone && profile.xp == 0 && profile.completedOnTime == 0)
         // Finishing again pays again.
         ScheduleEngine.complete(m, profile: profile, celebration: nil, now: day(2026, 1, 8))
         #expect(profile.xp == ScheduleEngine.checkpointXP)

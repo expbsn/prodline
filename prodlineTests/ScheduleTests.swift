@@ -43,7 +43,7 @@ struct ScheduleTests {
         #expect(p.phase(on: day(2026, 2, 16)) == .finished)
     }
 
-    @Test func xpStreakAndLevels() throws {
+    @Test func xpAndLevels() throws {
         let ctx = try makeContext()
         let profile = Profile()
         ctx.insert(profile)
@@ -51,15 +51,12 @@ struct ScheduleTests {
 
         let a = Milestone(title: "A", dueDate: today)
         #expect(ScheduleEngine.complete(a, profile: profile, celebration: nil, now: today) == 10)
-        #expect(profile.streak == 1)
 
         let launch = Milestone(title: "Ship", dueDate: today.adding(days: 3), isLaunch: true)
         #expect(ScheduleEngine.complete(launch, profile: profile, celebration: nil, now: today) == 50) // early counts as on time
-        #expect(profile.streak == 2)
 
         let late = Milestone(title: "L", dueDate: today.adding(days: -1))
         #expect(ScheduleEngine.complete(late, profile: profile, celebration: nil, now: today) == 3)
-        #expect(profile.streak == 2) // late doesn't extend or reset
         #expect(profile.xp == 63)
         #expect(profile.completedLate == 1)
         #expect(profile.onTimeRate == 2.0 / 3.0)
@@ -70,25 +67,49 @@ struct ScheduleTests {
         for i in 0..<4 { ScheduleEngine.complete(Milestone(title: "x\(i)", dueDate: today), profile: profile, celebration: nil, now: today) }
         #expect(profile.xp == 103)
         #expect(profile.level == 2)
-        #expect(profile.bestStreak == 6)
     }
 
-    @Test func missedDeadlineResetsStreakOnce() throws {
+    @Test func missedDeadlineIsFlaggedOnce() throws {
         let ctx = try makeContext()
         let profile = Profile()
-        profile.streak = 5
         let p = Project(name: "P", accentHex: 0, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
         ctx.insert(profile); ctx.insert(p)
         let m = Milestone(title: "M", dueDate: day(2026, 1, 9))
         ctx.insert(m); m.project = p
 
         #expect(ScheduleEngine.evaluateMissed(projects: [p], profile: profile, now: day(2026, 1, 9)) == 0) // due today: fine
-        #expect(profile.streak == 5)
         #expect(ScheduleEngine.evaluateMissed(projects: [p], profile: profile, now: day(2026, 1, 10)) == 1)
-        #expect(profile.streak == 0)
-        profile.streak = 2
+        #expect(m.missed)
         #expect(ScheduleEngine.evaluateMissed(projects: [p], profile: profile, now: day(2026, 1, 11)) == 0) // already flagged
-        #expect(profile.streak == 2)
+    }
+
+    @Test func streakCountsDaysWithProgress() throws {
+        let ctx = try makeContext()
+        let profile = Profile()
+        ctx.insert(profile)
+        let p = Project(name: "P", accentHex: 0, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
+        ctx.insert(p)
+        let m = Milestone(title: "M", dueDate: day(2026, 1, 12))
+        ctx.insert(m); m.project = p
+        GoalEngine.addGoals(["a", "b", "c"], source: .manual, to: m, context: ctx)
+        let goals = m.sortedGoals
+        goals[0].setDone(true, at: day(2026, 1, 6).addingTimeInterval(3600 * 10))
+        goals[1].setDone(true, at: day(2026, 1, 7).addingTimeInterval(3600 * 22))
+        p.commitDays = [Momentum.key(day(2026, 1, 8)): 2]          // a commit counts too
+        goals[2].setDone(true, at: day(2026, 1, 10).addingTimeInterval(3600))   // after a gap on the 9th
+
+        // Several things on one day still count once; a missed day breaks the run.
+        Streak.update(profile, projects: [p], now: day(2026, 1, 10).addingTimeInterval(3600 * 12))
+        #expect(profile.streak == 1)
+        #expect(profile.bestStreak == 3)
+        // The next day the streak is still alive until something happens (or the day ends).
+        Streak.update(profile, projects: [p], now: day(2026, 1, 11).addingTimeInterval(3600 * 9))
+        #expect(profile.streak == 1)
+        #expect(!Streak.isActiveToday(profile, now: day(2026, 1, 11).addingTimeInterval(3600 * 9)))
+        // A whole day without progress ends it.
+        Streak.update(profile, projects: [p], now: day(2026, 1, 12).addingTimeInterval(3600 * 9))
+        #expect(profile.streak == 0)
+        #expect(profile.bestStreak == 3)
     }
 
     @Test func nextProjectFollowsCadence() throws {
@@ -164,33 +185,27 @@ struct BacktestTests {
         let others = all.count - launches
         #expect(all.allSatisfy { $0.isDone })
         #expect(all.allSatisfy { !$0.missed })
-        #expect(s.profile.streak == all.count)
         #expect(s.profile.xp == launches * ScheduleEngine.launchXP + others * ScheduleEngine.checkpointXP)
         #expect(s.profile.onTimeRate == 1)
     }
 
-    @Test func oneSlipResetsTheStreakThenItRebuilds() throws {
+    @Test func oneSlipIsFlaggedAndTheRestStaysOnTime() throws {
         let start = day(2026, 1, 5)
         let s = try makeSeason(start: start, weeks: 4)
         let all = s.projects.flatMap { $0.milestones ?? [] }.sorted { $0.dueDate < $1.dueDate }
         let skipped = all[2]
         let end = all.last!.dueDate
         var d = start
-        var streakBeforeSlip = 0
         while d <= end.adding(days: 1) {
-            let missed = ScheduleEngine.evaluateMissed(projects: s.projects, profile: s.profile, now: d)
-            if missed > 0 { #expect(s.profile.streak == 0) }
+            ScheduleEngine.evaluateMissed(projects: s.projects, profile: s.profile, now: d)
             for m in all where m.dueDate == d && m !== skipped {
                 ScheduleEngine.complete(m, profile: s.profile, celebration: nil, now: d)
             }
-            if d == skipped.dueDate { streakBeforeSlip = s.profile.streak }
             d = d.adding(days: 1)
         }
-        #expect(skipped.missed)
-        #expect(streakBeforeSlip >= 2)
-        let doneAfterSlip = all.filter { $0.dueDate > skipped.dueDate && $0.isDone }.count
-        #expect(s.profile.streak == doneAfterSlip)
-        #expect(s.profile.bestStreak == max(streakBeforeSlip, doneAfterSlip))
+        #expect(skipped.missed && !skipped.isDone)
+        #expect(all.filter { $0 !== skipped }.allSatisfy { $0.isDone && !$0.missed })
+        #expect(s.profile.completedOnTime == all.count - 1)
     }
 
     @Test func faster7DayCadenceOverlapsMore() throws {

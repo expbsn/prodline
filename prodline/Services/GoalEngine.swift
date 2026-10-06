@@ -380,6 +380,7 @@ enum GoalEngine {
         // Goal XP first; a checkpoint that completes in the same pass then shows its own (bigger) banner.
         awardGoalXP(projects: projects, profile: profile, celebration: celebration, now: now)
         autoComplete(projects: projects, profile: profile, celebration: celebration, now: now)
+        Streak.update(profile, projects: projects, now: now)
         try? context.save()
     }
 }

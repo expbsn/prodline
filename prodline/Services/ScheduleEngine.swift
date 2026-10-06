@@ -183,8 +183,6 @@ enum ScheduleEngine {
         let gained: Int
         if onTime {
             gained = m.isLaunch ? launchXP : checkpointXP
-            profile.streak += 1
-            profile.bestStreak = max(profile.bestStreak, profile.streak)
             profile.completedOnTime += 1
         } else {
             gained = lateXP
@@ -200,7 +198,7 @@ enum ScheduleEngine {
                               xp: gained, kind: .checkpoint)
         } else if onTime {
             celebration?.fire(title: m.isLaunch ? "Shipped! +\(gained) XP" : "+\(gained) XP",
-                              subtitle: "\(praise()) · \(profile.streak) on time in a row", accent: accent,
+                              subtitle: "\(praise()) · right on time", accent: accent,
                               xp: gained, kind: .checkpoint)
         } else {
             celebration?.fire(title: "+\(gained) XP", subtitle: "Late beats never. Keep going.", accent: accent, confetti: false,
@@ -226,7 +224,6 @@ enum ScheduleEngine {
         profile.xp = max(0, profile.xp - xp)
         if m.countedOnTime {
             profile.completedOnTime = max(0, profile.completedOnTime - 1)
-            profile.streak = max(0, profile.streak - 1)
         } else {
             profile.completedLate = max(0, profile.completedLate - 1)
         }
@@ -237,7 +234,7 @@ enum ScheduleEngine {
         return xp
     }
 
-    /// Flags deadlines that slipped past; resets the streak once per slip.
+    /// Flags deadlines that slipped past (the day streak is separate: see Streak).
     @discardableResult
     static func evaluateMissed(projects: [Project], profile: Profile, now: Date = .now) -> Int {
         var count = 0
@@ -245,7 +242,6 @@ enum ScheduleEngine {
             m.missed = true
             count += 1
         }
-        if count > 0 { profile.streak = 0 }
         return count
     }
 
@@ -294,7 +290,7 @@ enum Notifier {
         add(m.id.uuidString, hour: hour, title: "\(project.name): deadline day",
             body: "\(m.title) is due today.\(goalsText.isEmpty ? " You've got this." : goalsText)")
         add(m.id.uuidString + "-pm", hour: 18, title: "Still time today",
-            body: "\(m.title) · \(project.name).\(goalsText.isEmpty ? " Finish it and keep your streak alive." : goalsText)")
+            body: "\(m.title) · \(project.name).\(goalsText.isEmpty ? " Finish it and keep your streak going." : goalsText)")
         // If it slips, keep nudging for a few days; completing the checkpoint cancels these.
         for day in 1...lateDays {
             var comps = Calendar.current.dateComponents([.year, .month, .day], from: m.dueDate.adding(days: day))

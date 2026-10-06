@@ -107,7 +107,7 @@ extension RootView {
     static let lastBackgroundKey = "app.lastBackgroundAt"
     static let lateReminderKey = "app.lateReminderAt"
 
-    /// On coming back: a slipped deadline resets the streak; any late checkpoint with work left gets a
+    /// On coming back: a slipped deadline or any late checkpoint with work left gets a
     /// reminder banner (at most every 6 hours, so reopening the app doesn't nag).
     func remindAboutLateDeadlines(now: Date = .now) {
         guard let profile = profiles.first, profile.onboarded else { return }
@@ -115,7 +115,7 @@ extension RootView {
         let late = ScheduleEngine.lateReminder(projects: projects, now: now)
         if slipped > 0 {
             celebration.nudge(title: late?.title ?? "A deadline slipped",
-                              subtitle: (late.map { $0.subtitle + " · " } ?? "") + "streak reset")
+                              subtitle: late?.subtitle ?? "Finish it late: it still earns XP.")
             UserDefaults.standard.set(now, forKey: Self.lateReminderKey)
             return
         }
