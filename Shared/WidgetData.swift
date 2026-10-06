@@ -106,6 +106,11 @@ nonisolated struct WidgetMomentum: Codable, Equatable, Sendable {
 nonisolated struct WidgetGoal: Codable, Hashable, Sendable {
     var title: String
     var done: Bool
+    /// Set for goals the user ticks by hand (manual and suggested ones); synced goals follow their source.
+    var id: String? = nil
+    var tickable: Bool? = nil
+
+    var canTick: Bool { id != nil && tickable == true }
 }
 
 nonisolated struct WidgetMetric: Codable, Equatable, Sendable {

@@ -17,11 +17,35 @@ enum WidgetPublisher {
         if coversChanged || dataChanged { WidgetCenter.shared.reloadAllTimelines() }
     }
 
+    /// Goals ticked on the home screen since the app last ran. Returns true if anything changed;
+    /// the usual pass (GoalEngine.afterRefresh) then pays the XP and finishes checkpoints.
+    @discardableResult
+    static func applyWidgetTicks(projects: [Project], profile: Profile?) -> Bool {
+        let ticks = WidgetTicks.take()
+        guard !ticks.isEmpty else { return false }
+        var goals: [String: Goal] = [:]
+        for p in projects {
+            for m in p.milestones ?? [] {
+                for g in m.goals ?? [] { goals[g.id.uuidString] = g }
+            }
+        }
+        var changed = false
+        for tick in ticks {
+            guard let g = goals[tick.goalID], !g.source.isAutomatic, g.isDone != tick.done else { continue }
+            g.setDone(tick.done, at: tick.at)
+            // Same as unticking in the app: a finished checkpoint with an open goal reopens.
+            if !tick.done, let m = g.milestone, m.isDone, let profile { ScheduleEngine.uncomplete(m, profile: profile) }
+            changed = true
+        }
+        return changed
+    }
+
     static func make(_ p: Project, refresher: DataRefresher, now: Date) -> WidgetProject {
         let checkpoints = p.sortedMilestones.map { m in
             let goals = m.sortedGoals
             return WidgetCheckpoint(title: m.title, due: m.dueDate, done: m.isDone, isLaunch: m.isLaunch,
-                                    goals: goals.prefix(5).map { WidgetGoal(title: $0.title, done: $0.isDone) },
+                                    goals: goals.prefix(5).map { WidgetGoal(title: $0.title, done: $0.isDone, id: $0.id.uuidString,
+                                                                              tickable: !$0.source.isAutomatic) },
                                     goalCount: goals.count, goalsDone: goals.filter(\.isDone).count)
         }
         let metrics: [WidgetMetric] = MetricKey.allCases.compactMap { key in

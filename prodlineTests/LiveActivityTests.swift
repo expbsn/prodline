@@ -47,3 +47,29 @@ struct LiveActivityTests {
         #expect(s.goalCount == 4 && s.goalsDone == 1 && s.openCount == 3 && !s.allDone)
     }
 }
+
+@MainActor
+@Suite("Widget ticks", .serialized)
+struct WidgetTickTests {
+    @Test func queuedTicksApplyOnlyToHandGoals() throws {
+        let ctx = try makeContext()
+        let p = Project(name: "Ticks", accentHex: 0x58CC02, startDate: day(2026, 10, 1), buildDays: 14, observeDays: 28)
+        ctx.insert(p)
+        let m = Milestone(title: "C", dueDate: day(2026, 10, 8))
+        ctx.insert(m); m.project = p
+        let manual = Goal(title: "Manual", source: .manual)
+        let synced = Goal(title: "From file", source: .repoFile)
+        for g in [manual, synced] { ctx.insert(g); g.milestone = m }
+
+        _ = WidgetTicks.take()
+        WidgetTicks.record(goalID: manual.id.uuidString, done: true)
+        WidgetTicks.record(goalID: synced.id.uuidString, done: true)
+        #expect(WidgetTicks.pending().count == 2)
+
+        #expect(WidgetPublisher.applyWidgetTicks(projects: [p], profile: nil))
+        #expect(manual.isDone)
+        #expect(!synced.isDone)
+        #expect(WidgetTicks.pending().isEmpty)
+        #expect(!WidgetPublisher.applyWidgetTicks(projects: [p], profile: nil))
+    }
+}

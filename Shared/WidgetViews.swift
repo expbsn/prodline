@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import AppIntents
 
 // Widget layouts. Shared with the app so Me → Widgets can show exactly what lands on the home screen.
 
@@ -180,6 +181,16 @@ private struct GoalLine: View {
     var size: CGFloat = 13
 
     var body: some View {
+        if goal.canTick, let id = goal.id {
+            // Ticks right on the home screen; the app pays the XP the next time it's open.
+            Button(intent: ToggleGoalIntent(goalID: id, done: !goal.done)) { line }
+                .buttonStyle(.plain)
+        } else {
+            line
+        }
+    }
+
+    private var line: some View {
         HStack(spacing: 7) {
             ZStack {
                 Circle().strokeBorder(goal.done ? accent.base : Theme.tertiary, lineWidth: 1.5)

@@ -38,6 +38,14 @@ struct RootView: View {
         }
         // Ticking a goal updates the deadline Live Activity right away, not on the next sync.
         .onChange(of: deadlineSignature) { Task { await LiveActivities.sync(projects) } }
+        // A widget tick that ran in the app's own process: apply it now rather than on the next pass.
+        .onReceive(NotificationCenter.default.publisher(for: WidgetTicks.didRecord)) { _ in
+            guard let profile = profiles.first, profile.onboarded,
+                  WidgetPublisher.applyWidgetTicks(projects: projects, profile: profile) else { return }
+            GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
+                                    celebration: celebration, context: context)
+            WidgetPublisher.publish(projects: projects, profile: profile, refresher: refresher)
+        }
         .onReceive(NotificationCenter.default.publisher(for: LaunchGate.replay)) { _ in showLaunch = true }
         .environment(refresher)
         .environment(github)
@@ -86,6 +94,7 @@ struct RootView: View {
             var firstPass = true
             GitHubService.trace("loop start, \(projects.count) projects")
             while !Task.isCancelled {
+                WidgetPublisher.applyWidgetTicks(projects: projects, profile: profiles.first)
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()
                 if let profile = profiles.first, profile.onboarded {

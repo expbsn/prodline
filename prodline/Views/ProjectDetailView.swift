@@ -465,7 +465,15 @@ struct ProjectDetailView: View {
     private func toggle(_ g: Goal) {
         guard !g.source.isAutomatic else { return }
         Haptics.select()
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { g.setDone(!g.isDone) }
+        withAnimation(.spring(response: 0.25, dampingFraction: 0.75)) { g.setDone(!g.isDone) }
+        // The tick shows this frame; XP, the checkpoint, the streak and saving follow on the next one.
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(30))
+            settleToggle(g)
+        }
+    }
+
+    private func settleToggle(_ g: Goal) {
         if let profile = profiles.first {
             // Pays for a tick, takes it back for an untick.
             GoalEngine.awardGoalXP(projects: [project], profile: profile, celebration: celebration)
@@ -668,12 +676,14 @@ struct MilestoneLine: View {
                     Text(caption).font(.ui(11, .medium)).foregroundStyle(Theme.tertiary)
                 }
             }
-            Spacer(minLength: 0)
-        }
-        .contextMenu {
-            if !g.source.isAutomatic {
-                Button("Delete goal", systemImage: "trash", role: .destructive) { onDeleteGoal(g) }
+            // On the title only: a long-press menu around the checkbox makes every tap wait to see
+            // whether it turns into a long press, which made ticking feel laggy.
+            .contextMenu {
+                if !g.source.isAutomatic {
+                    Button("Delete goal", systemImage: "trash", role: .destructive) { onDeleteGoal(g) }
+                }
             }
+            Spacer(minLength: 0)
         }
     }
 
