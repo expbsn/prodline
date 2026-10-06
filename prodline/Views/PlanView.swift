@@ -6,6 +6,7 @@ struct PlanView: View {
     let profile: Profile
     var onOpen: (Project) -> Void
     var onCreate: () -> Void
+    var onIdeas: () -> Void = {}
 
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(\.modelContext) private var context
@@ -51,6 +52,7 @@ struct PlanView: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.8), value: selectedDay)
 
                 nextProjectCard.padding(.horizontal, 16)
+                IdeaInboxCard(profile: profile, onOpen: onIdeas).padding(.horizontal, 16)
             }
             .padding(.bottom, 24)
         }

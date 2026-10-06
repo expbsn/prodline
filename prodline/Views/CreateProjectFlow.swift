@@ -4,6 +4,8 @@ import SwiftData
 /// Five short steps: basics → look (card + color) → schedule → connections → goals.
 struct CreateProjectFlow: View {
     let profile: Profile
+    /// Started from the idea inbox: name and pitch come prefilled.
+    var idea: Idea? = nil
     var onCreated: (UUID) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -74,6 +76,11 @@ struct CreateProjectFlow: View {
             let used = Set(projects.map(\.accentHex))
             accentHex = Theme.swatches.first { !used.contains($0) } ?? Theme.swatches[projects.count % Theme.swatches.count]
             focus = .name
+            if let idea {
+                name = idea.title
+                details = idea.note
+                startDate = .now.startOfDay
+            }
             #if DEBUG
             let jump = UserDefaults.standard.integer(forKey: "PRODLINE_CREATE_STEP")
             if jump > 0 { name = "Kite"; details = "A kite-surf spot finder."; step = min(jump, steps - 1); focus = nil }
@@ -481,6 +488,11 @@ struct CreateProjectFlow: View {
         try? context.save()
         if profile.remindersEnabled { for m in ms { Notifier.schedule(m, hour: profile.reminderHour) } }
         if profile.remindersEnabled { Task { _ = await Notifier.requestAuth() } }
+        if let idea {
+            idea.startedAt = .now
+            idea.projectID = p.id
+            try? context.save()
+        }
         celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(buildDays.durationText). Let's ship.", accent: p.accent)
         onCreated(p.id)
         dismiss()

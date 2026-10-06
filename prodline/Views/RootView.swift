@@ -107,6 +107,7 @@ struct RootView: View {
                     firstPass = false
                     celebration.endCollecting(awayTitle: away > 15 * 60)
                     remindAboutLateDeadlines()
+                    nudgeAboutFreeSlot()
                     if let profile = profiles.first, profile.remindersEnabled {
                         for p in projects { Notifier.scheduleVerdict(p, hour: profile.reminderHour) }
                     }
@@ -137,6 +138,20 @@ extension RootView {
 
     static let lastBackgroundKey = "app.lastBackgroundAt"
     static let lateReminderKey = "app.lateReminderAt"
+    static let slotNudgeKey = "app.slotNudgeAt"
+
+    /// A build slot is free and ideas are waiting: say so, at most every few days.
+    func nudgeAboutFreeSlot() {
+        guard let profile = profiles.first, profile.onboarded, profile.buildLimit > 0,
+              (ProjectLimit.freeSlots(projects, profile: profile) ?? 0) > 0 else { return }
+        let waiting = ((try? context.fetch(FetchDescriptor<Idea>())) ?? []).filter { $0.startedAt == nil }
+        guard !waiting.isEmpty else { return }
+        let last = UserDefaults.standard.object(forKey: Self.slotNudgeKey) as? Date ?? .distantPast
+        guard Date.now.timeIntervalSince(last) > 3 * 86_400 else { return }
+        UserDefaults.standard.set(Date.now, forKey: Self.slotNudgeKey)
+        celebration.nudge(title: "A build slot is free",
+                          subtitle: waiting.count == 1 ? "\(waiting[0].title) is waiting in your idea inbox." : "\(waiting.count) ideas are waiting in your inbox.")
+    }
 
     /// On coming back: a slipped deadline or any late checkpoint with work left gets a
     /// reminder banner (at most every 6 hours, so reopening the app doesn't nag).
@@ -179,6 +194,10 @@ struct MainShell: View {
     @State private var tab: AppTab = .projects
     @State private var focusedID: UUID?
     @State private var showCreate = false
+    @State private var showLimit = false
+    @State private var showIdeas = false
+    /// The idea the create flow starts from, if any.
+    @State private var startingIdea: Idea?
     @State private var opened: Opened?
     @Namespace private var zoom
 
@@ -202,11 +221,12 @@ struct MainShell: View {
             ZStack {
                 tabPage(.projects) {
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
-                             onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { showCreate = true },
+                             onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { requestCreate() },
                              onStreak: { tab = .me })
                 }
                 tabPage(.plan) {
-                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { showCreate = true })
+                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { requestCreate() },
+                             onIdeas: { showIdeas = true })
                 }
                 tabPage(.insights) { InsightsView() }
                 tabPage(.me) { MeView(profile: profile) }
@@ -229,7 +249,7 @@ struct MainShell: View {
             .ignoresSafeArea()
             .allowsHitTesting(false)
 
-            FloatingTabBar(selection: $tab, onAdd: { showCreate = true })
+            FloatingTabBar(selection: $tab, onAdd: { requestCreate() })
                 .padding(.bottom, 2)
 
             if let o = opened {
@@ -269,11 +289,32 @@ struct MainShell: View {
             }
         }
         #endif
-        .sheet(isPresented: $showCreate) {
-            CreateProjectFlow(profile: profile) { newID in
+        .sheet(isPresented: $showCreate, onDismiss: { startingIdea = nil }) {
+            CreateProjectFlow(profile: profile, idea: startingIdea) { newID in
                 tab = .projects
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { focusedID = newID }
             }
+        }
+        .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile) }
+        .sheet(isPresented: $showIdeas) {
+            IdeaInboxSheet(profile: profile) { idea in
+                showIdeas = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    requestCreate(from: idea)
+                }
+            }
+        }
+    }
+
+    /// New project, unless every build slot is taken: then the idea gets parked instead.
+    private func requestCreate(from idea: Idea? = nil) {
+        if ProjectLimit.isFull(projects, profile: profile) {
+            Haptics.warning()
+            showLimit = true
+        } else {
+            startingIdea = idea
+            showCreate = true
         }
     }
 }

@@ -202,6 +202,16 @@ struct MeView: View {
                     }
                 }
             }
+            optionRow("Builds at once", "Projects in the build phase at the same time. Past the limit, new ideas go to the idea inbox.") {
+                HStack(spacing: 6) {
+                    ForEach(ProjectLimit.choices, id: \.self) { v in
+                        Chip(title: ProjectLimit.label(v), isOn: profile.buildLimit == v) {
+                            profile.buildLimit = v
+                            try? context.save()
+                        }
+                    }
+                }
+            }
             optionRow("GitHub full sync", "Issues, README and prodline.json.") {
                 HStack(spacing: 6) {
                     ForEach([(5, "5m"), (10, "10m"), (30, "30m")], id: \.0) { v, label in

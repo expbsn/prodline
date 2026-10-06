@@ -26,6 +26,8 @@ final class Profile {
     var milestoneWeekdayMask: Int = 34 // Mon + Fri
     var reminderHour: Int = 9
     var remindersEnabled: Bool = true
+    /// Projects allowed in the build phase at once (upcoming ones count too); 0 = no limit.
+    var buildLimit: Int = 2
 
     init() {}
 
@@ -298,5 +300,22 @@ final class MetricSnapshot {
         case .socialViews: socialViews
         case .revenue: revenue
         }
+    }
+}
+
+/// Something to build later. Parked here instead of starting a project while the build slots are full.
+@Model
+final class Idea {
+    var id: UUID = UUID()
+    var title: String = ""
+    var note: String = ""
+    var createdAt: Date = Date.now
+    /// Turned into a project; kept so the inbox can show what came of it.
+    var startedAt: Date? = nil
+    var projectID: UUID? = nil
+
+    init(title: String, note: String = "") {
+        self.title = title
+        self.note = note
     }
 }

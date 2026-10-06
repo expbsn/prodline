@@ -4,7 +4,7 @@ import SwiftData
 
 @MainActor
 func makeContext() throws -> ModelContext {
-    let container = try ModelContainer(for: Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self,
+    let container = try ModelContainer(for: Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self, Idea.self,
                                        configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     return ModelContext(container)
 }
