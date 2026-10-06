@@ -145,6 +145,9 @@ final class Milestone {
     var isLaunch: Bool = false
     /// Renamed by the user; repo-provided names (prodline.json) no longer overwrite it.
     var titleIsCustom: Bool = false
+    /// XP paid when it was completed, and whether it counted as on time; undoing gives exactly this back.
+    var xpEarned: Int = 0
+    var countedOnTime: Bool = false
     var project: Project? = nil
     @Relationship(deleteRule: .cascade, inverse: \Goal.milestone)
     var goals: [Goal]? = []
@@ -224,6 +227,8 @@ final class Goal {
     var order: Int = 0
     /// XP for finishing this goal was handed out (or it arrived already done, which earns none).
     var xpAwarded: Bool = false
+    /// What it actually paid; unticking takes this back and lets a later tick pay again.
+    var xpPaid: Int = 0
     var milestone: Milestone? = nil
 
     init(title: String, source: GoalSource, externalID: String = "", order: Int = 0) {

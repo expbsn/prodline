@@ -191,6 +191,8 @@ enum ScheduleEngine {
             profile.completedLate += 1
         }
         profile.xp += gained
+        m.xpEarned = gained
+        m.countedOnTime = onTime
 
         let accent = m.project?.accent ?? .neutral
         if profile.level > oldLevel {
@@ -205,6 +207,34 @@ enum ScheduleEngine {
                               xp: gained, kind: .checkpoint)
         }
         return gained
+    }
+
+    /// Marks a finished checkpoint as not done and takes back what finishing it paid
+    /// (XP, the on-time count and the streak step). Returns the XP removed.
+    @discardableResult
+    static func uncomplete(_ m: Milestone, profile: Profile, now: Date = .now) -> Int {
+        guard m.isDone else { return 0 }
+        m.completedAt = nil
+        return settleUndone(m, profile: profile, now: now)
+    }
+
+    /// Books back a checkpoint that is no longer done (undone by hand, or reopened by the plan file).
+    @discardableResult
+    static func settleUndone(_ m: Milestone, profile: Profile, now: Date = .now) -> Int {
+        guard !m.isDone, m.xpEarned > 0 else { return 0 }
+        let xp = m.xpEarned
+        profile.xp = max(0, profile.xp - xp)
+        if m.countedOnTime {
+            profile.completedOnTime = max(0, profile.completedOnTime - 1)
+            profile.streak = max(0, profile.streak - 1)
+        } else {
+            profile.completedLate = max(0, profile.completedLate - 1)
+        }
+        m.xpEarned = 0
+        m.countedOnTime = false
+        m.missed = false   // evaluated again; overdue checkpoints get marked missed on the next pass
+        if m.project != nil, profile.remindersEnabled { Notifier.schedule(m, hour: profile.reminderHour) }
+        return xp
     }
 
     /// Flags deadlines that slipped past; resets the streak once per slip.

@@ -438,3 +438,57 @@ struct GoalXPTests {
         #expect(profile.xp == 0)
     }
 }
+
+@MainActor
+@Suite("Undo and XP")
+struct UndoXPTests {
+    private func setup() throws -> (ModelContext, Project, Profile, UserDefaults) {
+        let ctx = try makeContext()
+        let profile = Profile()
+        profile.milestoneWeekdayMask = (1 << 1) | (1 << 5)
+        profile.remindersEnabled = false
+        ctx.insert(profile)
+        let p = Project(name: "P", accentHex: 0x58CC02, startDate: day(2026, 1, 5), buildDays: 14, observeDays: 28)
+        ScheduleEngine.createProject(p, profile: profile, context: ctx)
+        let defaults = UserDefaults(suiteName: "undo-\(UUID().uuidString)")!
+        defaults.set(day(2026, 1, 1), forKey: GoalEngine.goalXPSinceKey)
+        return (ctx, p, profile, defaults)
+    }
+
+    @Test func untickingAGoalGivesItsXPBack() throws {
+        let (ctx, p, profile, defaults) = try setup()
+        GoalEngine.addGoals(["A"], source: .manual, to: p.sortedMilestones[0], context: ctx)
+        let g = p.sortedMilestones[0].sortedGoals[0]
+        g.setDone(true)
+        GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, defaults: defaults)
+        #expect(profile.xp == GoalEngine.xpPerGoal)
+        g.setDone(false)
+        GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, defaults: defaults)
+        #expect(profile.xp == 0)
+        g.setDone(true)
+        GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, defaults: defaults)
+        #expect(profile.xp == GoalEngine.xpPerGoal) // ticking again pays again, once
+    }
+
+    @Test func undoingACheckpointTakesBackXPAndStreak() throws {
+        let (_, p, profile, _) = try setup()
+        let m = p.sortedMilestones[0]
+        ScheduleEngine.complete(m, profile: profile, celebration: nil, now: day(2026, 1, 8))
+        #expect(profile.xp == ScheduleEngine.checkpointXP && profile.streak == 1 && profile.completedOnTime == 1)
+        let back = ScheduleEngine.uncomplete(m, profile: profile, now: day(2026, 1, 8))
+        #expect(back == ScheduleEngine.checkpointXP)
+        #expect(!m.isDone && profile.xp == 0 && profile.streak == 0 && profile.completedOnTime == 0)
+        // Finishing again pays again.
+        ScheduleEngine.complete(m, profile: profile, celebration: nil, now: day(2026, 1, 8))
+        #expect(profile.xp == ScheduleEngine.checkpointXP)
+    }
+
+    @Test func checkpointReopenedByThePlanIsSettled() throws {
+        let (_, p, profile, defaults) = try setup()
+        let m = p.sortedMilestones[0]
+        ScheduleEngine.complete(m, profile: profile, celebration: nil, now: day(2026, 1, 8))
+        m.completedAt = nil   // reopened by a sync
+        GoalEngine.awardGoalXP(projects: [p], profile: profile, celebration: nil, defaults: defaults)
+        #expect(profile.xp == 0 && m.xpEarned == 0)
+    }
+}

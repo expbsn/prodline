@@ -333,11 +333,25 @@ enum GoalEngine {
         }
         var paid: [(goal: Goal, project: Project)] = []
         for p in projects {
-            for g in p.sortedMilestones.flatMap({ $0.goals ?? [] }) where g.isDone && !g.xpAwarded {
-                g.xpAwarded = true
-                if (g.doneAt ?? .distantPast) >= since { paid.append((g, p)) }
+            for g in p.sortedMilestones.flatMap({ $0.goals ?? [] }) {
+                if g.isDone && !g.xpAwarded {
+                    g.xpAwarded = true
+                    if (g.doneAt ?? .distantPast) >= since { paid.append((g, p)) }
+                } else if !g.isDone && g.xpPaid > 0 {
+                    // Unticked (by hand or in the source): give the XP back, and let a later tick pay again.
+                    profile.xp = max(0, profile.xp - g.xpPaid)
+                    g.xpPaid = 0
+                    g.xpAwarded = false
+                } else if !g.isDone && g.xpAwarded {
+                    g.xpAwarded = false
+                }
+            }
+            // Checkpoints reopened since they paid out (e.g. the plan file reopened them).
+            for m in p.sortedMilestones where !m.isDone && m.xpEarned > 0 {
+                ScheduleEngine.settleUndone(m, profile: profile, now: now)
             }
         }
+        for item in paid { item.goal.xpPaid = xpPerGoal }
         guard !paid.isEmpty else { return 0 }
         let xp = paid.count * xpPerGoal
         profile.xp += xp

@@ -24,6 +24,7 @@ struct ProjectDetailView: View {
     @State private var newGoalTitle = ""
     /// Checkpoint being edited; `.some(nil)` adds a new one.
     @State private var checkpointSheet: Milestone?? = nil
+    @State private var undoing: Milestone?
     @Environment(GitHubService.self) private var github
     @State private var revealed = false
     @State private var scrolledAway = false
@@ -364,8 +365,10 @@ struct ProjectDetailView: View {
                               onDone: { complete(m) },
                               onToggleGoal: { toggle($0) },
                               onDeleteGoal: { g in context.delete(g); try? context.save() },
-                              onAddGoal: fromFile ? nil : { newGoalTitle = ""; addingGoalTo = m },
-                              onEdit: fromFile ? nil : { checkpointSheet = .some(m) })
+                              onAddGoal: fromFile ? nil : { checkpointSheet = .some(m) },
+                              onEdit: fromFile ? nil : { checkpointSheet = .some(m) },
+                              onUndo: fromFile && m.hasGoals ? nil : { undoing = m },
+                              canToggle: !(fromFile && m.hasGoals))
                 if m.id != ms.last?.id { Divider().padding(.leading, 44) }
             }
             if fromFile {
@@ -386,6 +389,13 @@ struct ProjectDetailView: View {
             GuideDisclosure(title: "How do goals work?") { GoalsGuideView() }
         }
         .card()
+        .confirmationDialog(undoTitle, isPresented: Binding(get: { undoing != nil }, set: { if !$0 { undoing = nil } }),
+                            titleVisibility: .visible) {
+            if let m = undoing, !(m.hasGoals && m.openGoals.isEmpty) {
+                Button("Mark as not done", role: .destructive) { undo(m) }
+            }
+            Button("Cancel", role: .cancel) { undoing = nil }
+        } message: { Text(undoMessage) }
         .alert("New goal", isPresented: Binding(get: { addingGoalTo != nil }, set: { if !$0 { addingGoalTo = nil } })) {
             TextField("e.g. Ship pricing page", text: $newGoalTitle)
             Button("Add") {
@@ -421,6 +431,26 @@ struct ProjectDetailView: View {
         }
     }
 
+    private var undoTitle: String { undoing.map { "Reopen \($0.title)?" } ?? "" }
+
+    private var undoMessage: String {
+        guard let m = undoing else { return "" }
+        if m.hasGoals && m.openGoals.isEmpty {
+            return "It finished because all its goals are done. Untick a goal to reopen it."
+        }
+        return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned\(m.countedOnTime ? " and a step of your streak" : "")." : "It goes back to open."
+    }
+
+    private func undo(_ m: Milestone) {
+        guard let profile = profiles.first else { return }
+        Haptics.warning()
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) {
+            ScheduleEngine.uncomplete(m, profile: profile)
+        }
+        undoing = nil
+        try? context.save()
+    }
+
     private func complete(_ m: Milestone) {
         guard let profile = profiles.first else { return }
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
@@ -433,9 +463,15 @@ struct ProjectDetailView: View {
         guard !g.source.isAutomatic else { return }
         Haptics.select()
         withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { g.setDone(!g.isDone) }
-        if g.isDone, let profile = profiles.first {
+        if let profile = profiles.first {
+            // Pays for a tick, takes it back for an untick.
             GoalEngine.awardGoalXP(projects: [project], profile: profile, celebration: celebration)
-            GoalEngine.autoComplete(projects: [project], profile: profile, celebration: celebration)
+            if g.isDone {
+                GoalEngine.autoComplete(projects: [project], profile: profile, celebration: celebration)
+            } else if let m = g.milestone, m.isDone {
+                // A finished checkpoint with an open goal isn't finished anymore.
+                withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { ScheduleEngine.uncomplete(m, profile: profile) }
+            }
         }
         try? context.save()
     }
@@ -503,6 +539,10 @@ struct MilestoneLine: View {
     var onDeleteGoal: (Goal) -> Void = { _ in }
     var onAddGoal: (() -> Void)? = {}
     var onEdit: (() -> Void)? = nil
+    /// Tapping a finished checkpoint asks to undo it.
+    var onUndo: (() -> Void)? = nil
+    /// False when the plan file decides (a checkpoint finishes with its goals).
+    var canToggle: Bool = true
     @Environment(\.accent) private var accent
     @Environment(DataRefresher.self) private var refresher
 
@@ -510,8 +550,7 @@ struct MilestoneLine: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 14) {
                 Button {
-                    guard !milestone.isDone else { return }
-                    onDone()
+                    if milestone.isDone { onUndo?() } else { onDone() }
                 } label: {
                     ZStack {
                         if milestone.hasGoals && !milestone.isDone {
@@ -533,8 +572,8 @@ struct MilestoneLine: View {
                     .animation(.spring(response: 0.5, dampingFraction: 0.8), value: progress)
                 }
                 .buttonStyle(PressableStyle(scale: 0.85))
-                .disabled(milestone.isDone)
-                .accessibilityLabel(milestone.isDone ? "Done" : "Mark \(milestone.title) done")
+                .disabled(!canToggle || (milestone.isDone && onUndo == nil))
+                .accessibilityLabel(milestone.isDone ? "Done, tap to undo" : "Mark \(milestone.title) done")
 
                 Button { onEdit?() } label: {
                     HStack {
@@ -562,7 +601,7 @@ struct MilestoneLine: View {
                     ForEach(milestone.sortedGoals) { g in goalRow(g) }
                     if !milestone.isDone, let onAddGoal {
                         Button(action: onAddGoal) {
-                            Label("Add goal", systemImage: "plus")
+                            Label(milestone.hasGoals ? "Edit goals" : "Add goals", systemImage: milestone.hasGoals ? "pencil" : "plus")
                                 .font(.ui(13, .semibold))
                                 .foregroundStyle(Theme.secondary)
                         }
@@ -847,6 +886,21 @@ struct CheckpointSheet: View {
     @State private var name = ""
     @State private var due = Date.now.startOfDay
     @State private var confirmDelete = false
+    @State private var goalRows: [GoalRow] = []
+    @State private var removedGoals: [Goal] = []
+    @State private var newGoal = ""
+    @FocusState private var newGoalFocused: Bool
+
+    /// A goal as edited in the sheet; `goal` is nil for ones added here and not saved yet.
+    struct GoalRow: Identifiable {
+        let id = UUID()
+        var goal: Goal?
+        var title: String
+        var source: GoalSource
+        var isDone: Bool
+        /// Synced goals (GitHub, API, targets, plan file) change at their source.
+        var editable: Bool { source == .manual || source == .ai }
+    }
 
     private var range: ClosedRange<Date> {
         let lo = min(project.startDate, .now.startOfDay)
@@ -875,6 +929,7 @@ struct CheckpointSheet: View {
                             .font(.ui(13)).foregroundStyle(Theme.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
+                    goalsSection
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Due").eyebrow()
                         DatePicker("Due", selection: $due, in: range, displayedComponents: .date)
@@ -903,6 +958,7 @@ struct CheckpointSheet: View {
             if let m = milestone {
                 name = m.titleIsCustom || !ScheduleEngine.isAutoName(m.title) ? m.title : ""
                 due = m.dueDate
+                goalRows = m.sortedGoals.map { GoalRow(goal: $0, title: $0.title, source: $0.source, isDone: $0.isDone) }
             } else {
                 // Default: halfway between today and the next open deadline.
                 let next = project.nextMilestone?.dueDate ?? project.launchDay
@@ -918,14 +974,101 @@ struct CheckpointSheet: View {
         } message: { Text("Its goals are removed too.") }
     }
 
+    private var goalsSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Goals").eyebrow()
+            VStack(spacing: 0) {
+                ForEach($goalRows) { $row in
+                    HStack(spacing: 12) {
+                        Image(systemName: row.isDone ? "checkmark.square.fill" : "square")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(row.isDone ? project.accent.text : Theme.tertiary)
+                        if row.editable {
+                            TextField("Goal", text: $row.title, axis: .vertical)
+                                .font(.ui(16)).foregroundStyle(Theme.ink)
+                            Button {
+                                Haptics.soft()
+                                withAnimation(.snappy) {
+                                    if let g = row.goal { removedGoals.append(g) }
+                                    goalRows.removeAll { $0.id == row.id }
+                                }
+                            } label: {
+                                Image(systemName: "minus.circle.fill").font(.system(size: 20)).foregroundStyle(Theme.danger)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Remove \(row.title)")
+                        } else {
+                            Text(row.title).font(.ui(16)).foregroundStyle(Theme.ink)
+                            Spacer(minLength: 6)
+                            Label(row.source.shortName, systemImage: row.source.symbol)
+                                .font(.ui(11, .semibold)).foregroundStyle(Theme.tertiary)
+                                .labelStyle(.titleAndIcon)
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 12)
+                    Divider().padding(.leading, 44)
+                }
+                HStack(spacing: 12) {
+                    Image(systemName: "plus").font(.system(size: 16, weight: .bold)).foregroundStyle(Theme.secondary)
+                        .frame(width: 18)
+                    TextField("", text: $newGoal, prompt: Text("Add a goal").foregroundStyle(Theme.tertiary))
+                        .font(.ui(16))
+                        .focused($newGoalFocused)
+                        .submitLabel(.done)
+                        .onSubmit(addGoalRow)
+                    if !newGoal.trimmingCharacters(in: .whitespaces).isEmpty {
+                        Button("Add", action: addGoalRow).font(.ui(15, .semibold)).foregroundStyle(project.accent.text)
+                    }
+                }
+                .padding(.horizontal, 14).padding(.vertical, 12)
+            }
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+            Text(goalRows.contains { !$0.editable }
+                 ? "The checkpoint finishes once every goal is done. Synced goals change where they come from."
+                 : "The checkpoint finishes once every goal is done.")
+                .font(.ui(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func addGoalRow() {
+        let title = newGoal.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return }
+        Haptics.tap()
+        withAnimation(.snappy) { goalRows.append(GoalRow(goal: nil, title: title, source: .manual, isDone: false)) }
+        newGoal = ""
+        newGoalFocused = true
+    }
+
+    /// Applies the goal edits to `m`: renamed, removed and added goals, in the order shown.
+    private func applyGoals(to m: Milestone) {
+        for g in removedGoals { context.delete(g) }
+        for (i, row) in goalRows.enumerated() {
+            let title = row.title.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let g = row.goal {
+                guard row.editable else { continue }
+                if title.isEmpty { context.delete(g); continue }
+                g.title = title
+                g.order = i
+            } else if !title.isEmpty {
+                let g = Goal(title: title, source: .manual, order: i)
+                context.insert(g)
+                g.milestone = m
+            }
+        }
+    }
+
     private func save() {
+        addGoalRow()   // a goal typed but not added yet still counts
         if let m = milestone {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
             // Keep a repo-given name unless the user typed something different.
             if trimmed != m.title || m.titleIsCustom { ScheduleEngine.rename(m, to: trimmed) }
             if m.dueDate != due.startOfDay { ScheduleEngine.reschedule(m, to: due, profile: profiles.first) }
+            applyGoals(to: m)
         } else {
-            ScheduleEngine.addCheckpoint(to: project, title: name, due: due, profile: profiles.first, context: context)
+            let m = ScheduleEngine.addCheckpoint(to: project, title: name, due: due, profile: profiles.first, context: context)
+            applyGoals(to: m)
         }
         try? context.save()
         Haptics.success()
