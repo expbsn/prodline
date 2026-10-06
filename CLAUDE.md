@@ -31,7 +31,7 @@ TEST_RUNNER_PRODLINE_MOCK_SERVER=http://127.0.0.1:8787 xcodebuild test -project 
 
 Add `TEST_RUNNER_PRODLINE_REAL_GITHUB=expbsn/prodline` to also run the backtest against this repo on GitHub (it reads this prodline.json).
 
-DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `-PRODLINE_TAB plan|insights|me`, `-PRODLINE_OPEN "Project name"`, `-PRODLINE_CREATE YES`, `-PRODLINE_NOLAUNCH YES` (skip the splash), `-PRODLINE_BANNER YES`, `-PRODLINE_SHEET widgets|connection|verdict|targets|share` (the last four on the project opened with `-PRODLINE_OPEN`), `-PRODLINE_REVIEW YES` (weekly review), `-PRODLINE_LIVE YES` (sample deadline Live Activity), `-PRODLINE_SHIP YES` (the "days early" ship animation).
+DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `-PRODLINE_TAB plan|insights|me`, `-PRODLINE_OPEN "Project name"`, `-PRODLINE_CREATE YES`, `-PRODLINE_NOLAUNCH YES` (skip the splash), `-PRODLINE_BANNER YES`, `-PRODLINE_SHEET widgets|connection|verdict|targets|share` (the last four on the project opened with `-PRODLINE_OPEN`), `-PRODLINE_REVIEW YES` (weekly review), `-PRODLINE_LIVE YES` (sample deadline Live Activity), `-PRODLINE_SHIP YES` (the "days early" ship animation), `-PRODLINE_STREAK YES` (the streak flame lighting up).
 
 ## Conventions
 

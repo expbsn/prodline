@@ -520,7 +520,7 @@ struct ProjectDetailView: View {
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
             ScheduleEngine.complete(m, profile: profile, celebration: celebration)
         }
-        Streak.update(profile, projects: allProjects)
+        Streak.refresh(profile, projects: allProjects, celebration: celebration)
         try? context.save()
     }
 
@@ -545,7 +545,7 @@ struct ProjectDetailView: View {
                 // A finished checkpoint with an open goal isn't finished anymore.
                 withAnimation(.spring(response: 0.35, dampingFraction: 0.8)) { ScheduleEngine.uncomplete(m, profile: profile) }
             }
-            Streak.update(profile, projects: allProjects)
+            Streak.refresh(profile, projects: allProjects, celebration: celebration)
         }
         try? context.save()
     }

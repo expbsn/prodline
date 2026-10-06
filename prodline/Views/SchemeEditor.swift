@@ -377,6 +377,10 @@ struct MeView: View {
                 devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
                     celebration.nudge(title: "A deadline slipped", subtitle: "Finish it today. Late still earns XP.")
                 }
+                devButton("Play the streak flame", "flame.fill") {
+                    celebration.fire(title: "+3 XP", subtitle: "A goal, for the demo", accent: Accent(hex: 0x58CC02), confetti: false)
+                    celebration.lightStreak(max(1, profile.streak))
+                }
                 devButton("Play the ship animation", "paperplane.fill") {
                     let p = projects.first { $0.phase() == .building } ?? projects.first
                     celebration.celebrateShip(.init(daysEarly: 5, plannedDays: 14, project: p?.name ?? "Habit Hero",

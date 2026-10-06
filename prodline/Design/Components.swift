@@ -349,25 +349,67 @@ final class CelebrationCenter {
     var banner: Banner?
     var confetti: (id: UUID, accent: Accent)?
     var ship: ShipMoment?
+    /// Today's first progress: the streak flame lights up in the middle of the screen.
+    var streakLit: StreakMoment?
+    private var pendingStreak: StreakMoment?
+
+    struct StreakMoment: Identifiable, Equatable {
+        let id = UUID()
+        let days: Int
+    }
+
+    /// A full-screen moment is playing; banners wait in line until it's over.
+    private var takeover: Bool { ship != nil || streakLit != nil }
+
+    func lightStreak(_ days: Int) {
+        let moment = StreakMoment(days: days)
+        // Waits for the "while you were away" pass or a ship moment to finish first.
+        if collecting != nil || takeover { pendingStreak = moment; return }
+        holdBanner()
+        withAnimation(.easeOut(duration: 0.35)) { streakLit = moment }
+    }
+
+    func endStreak() {
+        withAnimation(.easeIn(duration: 0.3)) { streakLit = nil }
+        resumeAfterTakeover()
+    }
+
+    /// A banner that's up goes back to the front of the line.
+    private func holdBanner() {
+        guard let b = banner else { return }
+        dismissTask?.cancel()
+        // Instantly: it usually went up this very moment and shouldn't flash before the takeover.
+        var t = Transaction()
+        t.disablesAnimations = true
+        withTransaction(t) { banner = nil; confetti = nil }
+        queue.insert((b, 2.6, false, {}), at: 0)
+    }
+
+    /// Next up after a full-screen moment: a waiting streak flame, else the queued banners.
+    private func resumeAfterTakeover() {
+        Task { [weak self] in
+            try? await Task.sleep(for: .milliseconds(450))
+            guard let self, !self.takeover, self.banner == nil else { return }
+            if let s = self.pendingStreak {
+                self.pendingStreak = nil
+                withAnimation(.easeOut(duration: 0.35)) { self.streakLit = s }
+                return
+            }
+            guard !self.queue.isEmpty else { return }
+            let next = self.queue.removeFirst()
+            self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
+        }
+    }
 
     /// The ship moment owns the screen: a banner that's up goes back in line and waits with the others.
     func celebrateShip(_ moment: ShipMoment) {
-        if let b = banner {
-            dismissTask?.cancel()
-            withAnimation(.easeIn(duration: 0.2)) { banner = nil }
-            queue.insert((b, 2.6, false, {}), at: 0)
-        }
+        holdBanner()
         withAnimation(.easeOut(duration: 0.3)) { ship = moment }
     }
 
     func endShip() {
         withAnimation(.easeIn(duration: 0.3)) { ship = nil }
-        Task { [weak self] in
-            try? await Task.sleep(for: .milliseconds(600))
-            guard let self, self.ship == nil, self.banner == nil, !self.queue.isEmpty else { return }
-            let next = self.queue.removeFirst()
-            self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
-        }
+        resumeAfterTakeover()
     }
     private var dismissTask: Task<Void, Never>?
     /// Banners waiting for the current one to leave (nothing gets overwritten mid-read).
@@ -395,6 +437,11 @@ final class CelebrationCenter {
     func endCollecting(awayTitle: Bool) {
         guard let events = collecting else { return }
         collecting = nil
+        // The flame first; the summary banner follows it.
+        if let s = pendingStreak, !takeover {
+            pendingStreak = nil
+            withAnimation(.easeOut(duration: 0.35)) { streakLit = s }
+        }
         guard !events.isEmpty else { return }
         if events.count == 1, let e = events.first {
             fire(title: e.title, subtitle: e.subtitle, accent: e.accent, confetti: e.confetti)
@@ -414,7 +461,7 @@ final class CelebrationCenter {
     }
 
     private func enqueue(_ b: Banner, seconds: Double, confetti: Bool, haptic: @escaping () -> Void) {
-        if banner == nil && ship == nil {
+        if banner == nil && !takeover {
             present(b, seconds: seconds, confetti: confetti, haptic: haptic)
         } else {
             queue.append((b, seconds, confetti, haptic))
@@ -431,7 +478,7 @@ final class CelebrationCenter {
             guard !Task.isCancelled, let self else { return }
             withAnimation(.easeIn(duration: 0.25)) { self.banner = nil }
             try? await Task.sleep(for: .milliseconds(400))
-            guard !Task.isCancelled, self.ship == nil, !self.queue.isEmpty else { return }
+            guard !Task.isCancelled, !self.takeover, !self.queue.isEmpty else { return }
             let next = self.queue.removeFirst()
             self.present(next.banner, seconds: next.seconds, confetti: next.confetti, haptic: next.haptic)
         }

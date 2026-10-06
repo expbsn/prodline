@@ -191,7 +191,6 @@ enum ScheduleEngine {
     @MainActor
     static func shipNow(_ p: Project, profile: Profile, projects: [Project], celebration: CelebrationCenter, context: ModelContext) {
         let r = ship(p, profile: profile)
-        Streak.update(profile, projects: projects)
         try? context.save()
         if r.daysEarly > 0 {
             celebration.celebrateShip(.init(daysEarly: r.daysEarly, plannedDays: r.plannedDays, project: p.name, accent: p.accent, xp: r.xp))
@@ -199,6 +198,8 @@ enum ScheduleEngine {
             celebration.fire(title: "Shipped! +\(r.xp) XP", subtitle: "\(p.name) is out · right on time", accent: p.accent,
                              xp: r.xp, kind: .checkpoint)
         }
+        // After the ship moment is up, so a freshly lit streak waits its turn.
+        Streak.refresh(profile, projects: projects, celebration: celebration)
     }
 
     /// Launch today. The build phase ends now, the launch checkpoint is done (on time, of course), leftover

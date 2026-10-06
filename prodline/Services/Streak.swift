@@ -53,6 +53,16 @@ enum Streak {
         return today
     }
 
+    /// `update`, plus the moment it matters: today's first progress lights the flame on screen.
+    @MainActor
+    static func refresh(_ profile: Profile, projects: [Project], celebration: CelebrationCenter?, now: Date = .now) {
+        let wasLit = isActiveToday(profile, now: now)
+        update(profile, projects: projects, now: now)
+        if !wasLit, isActiveToday(profile, now: now), profile.streak > 0 {
+            celebration?.lightStreak(profile.streak)
+        }
+    }
+
     static func isActiveToday(_ profile: Profile, now: Date = .now) -> Bool {
         profile.streakActiveToday == now.startOfDay
     }

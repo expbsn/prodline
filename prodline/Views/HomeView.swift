@@ -139,24 +139,28 @@ struct HomeView: View {
     }
 
     private var streakBadgeLabel: some View {
-        VStack(spacing: -6) {
+        // Gray until something today counts; then the whole badge lights up.
+        let lit = Streak.isActiveToday(profile)
+        let tint = lit ? Theme.flame : Theme.tertiary
+        return VStack(spacing: -6) {
             ZStack {
                 Circle().fill(.white)
-                Circle().strokeBorder(Theme.flame.opacity(0.9), lineWidth: 2.5)
+                Circle().strokeBorder(tint.opacity(0.9), lineWidth: 2.5)
                 Image(systemName: "flame.fill")
                     .font(.system(size: 20))
-                    .foregroundStyle(Streak.isActiveToday(profile) ? Theme.flame : Theme.tertiary)
+                    .foregroundStyle(tint)
                     .symbolEffect(.bounce, value: profile.streak)
             }
             .frame(width: 46, height: 46)
             Text("\(profile.streak)")
                 .display(13, 800)
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(lit ? Theme.ink : Theme.secondary)
                 .padding(.horizontal, 10).padding(.vertical, 1)
                 .background(Capsule().fill(.white))
-                .overlay(Capsule().strokeBorder(Theme.flame.opacity(0.9), lineWidth: 2))
+                .overlay(Capsule().strokeBorder(tint.opacity(0.9), lineWidth: 2))
                 .contentTransition(.numericText())
         }
+        .animation(.easeInOut(duration: 0.4), value: lit)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(profile.streak) day streak\(Streak.isActiveToday(profile) ? "" : ", nothing done yet today")")
     }
