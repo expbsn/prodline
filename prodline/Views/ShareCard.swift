@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// One number on a share card.
 enum ShareStat: String, CaseIterable, Identifiable {
@@ -91,28 +92,37 @@ struct ShareCardData {
 }
 
 enum ShareCardStyle: String, CaseIterable, Identifiable {
-    case photo, color, light
+    case photo, color, light, transparent
     var id: String { rawValue }
     var title: String { rawValue.capitalized }
 }
 
-/// The card itself: 360×450 points, rendered at 3× (1080×1350, a 4:5 post). Built like the Dash cards:
-/// artwork on top melting into the accent (color fade plus progressive blur), the numbers on the accent slab.
+/// The card itself, rendered at 3×. Built like the Dash cards: the square artwork fills the full width on
+/// top and melts into the accent (color fade plus progressive blur); the numbers sit on the slab below.
+/// 360×540 points (1080×1620). The transparent style is a sticker for your own photos: just the text.
 struct ShareCardView: View {
-    static let size = CGSize(width: 360, height: 450)
+    static let width: CGFloat = 360
     static let inset: CGFloat = 24
+    static func size(_ style: ShareCardStyle) -> CGSize {
+        CGSize(width: width, height: style == .transparent ? 356 : 540)
+    }
+
     let data: ShareCardData
     let stats: [ShareStat]
     let style: ShareCardStyle
 
-    private var w: CGFloat { Self.size.width }
-    /// Artwork height; its lower part fades into the slab.
-    private var art: CGFloat { 270 }
+    private var w: CGFloat { Self.width }
+    private var h: CGFloat { Self.size(style).height }
+    /// The artwork is square, as wide as the card.
+    private var art: CGFloat { w }
     private var light: Bool { style == .light }
+    private var clear: Bool { style == .transparent }
     /// Text on the slab.
-    private var ink: Color { light ? Theme.ink : data.accent.on }
-    private var soft: Color { light ? Theme.secondary : data.accent.on.opacity(0.75) }
+    private var ink: Color { light ? Theme.ink : clear ? .white : data.accent.on }
+    private var soft: Color { light ? Theme.secondary : clear ? .white.opacity(0.85) : data.accent.on.opacity(0.75) }
     private var showsPhoto: Bool { style == .photo && data.cover != nil }
+    /// Text that can land on a busy background gets a shadow.
+    private var shadowed: Bool { showsPhoto || clear }
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -125,7 +135,7 @@ struct ShareCardView: View {
                     Text(data.days == 1 ? "day spent" : "days spent").font(.ui(18, .bold)).foregroundStyle(ink.opacity(light ? 0.6 : 0.92))
                     Spacer(minLength: 0)
                 }
-                .shadow(color: .black.opacity(showsPhoto ? 0.18 : 0), radius: 8)
+                .shadow(color: .black.opacity(clear ? 0.35 : showsPhoto ? 0.18 : 0), radius: clear ? 6 : 8)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)], spacing: 10) {
                     ForEach(stats) { s in
                         VStack(alignment: .leading, spacing: 2) {
@@ -134,8 +144,8 @@ struct ShareCardView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 12).padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 16, style: .continuous)
-                            .fill(light ? Theme.background : Color.white.opacity(0.18)))
+                        .background(tile)
+                        .shadow(color: .black.opacity(clear ? 0.35 : 0), radius: 4)
                     }
                 }
                 HStack(spacing: 6) {
@@ -145,33 +155,43 @@ struct ShareCardView: View {
                     Text(Date.now.formatted(.dateTime.month(.abbreviated).day().year())).font(.ui(11, .semibold))
                 }
                 .foregroundStyle(soft)
+                .shadow(color: .black.opacity(clear ? 0.35 : 0), radius: 4)
             }
             .padding(.horizontal, Self.inset)
             .padding(.bottom, 20)
-            .frame(width: w, height: Self.size.height, alignment: .bottomLeading)
+            .frame(width: w, height: h, alignment: .bottomLeading)
         }
-        .frame(width: w, height: Self.size.height)
-        .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+        .frame(width: w, height: h)
+        .clipShape(RoundedRectangle(cornerRadius: clear ? 0 : 30, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var tile: some View {
+        let shape = RoundedRectangle(cornerRadius: 16, style: .continuous)
+        if clear {
+            shape.fill(.white.opacity(0.12)).overlay(shape.strokeBorder(.white.opacity(0.7), lineWidth: 1.5))
+        } else {
+            shape.fill(light ? Theme.background : Color.white.opacity(0.18))
+        }
     }
 
     /// Badge, name and status, top left. On photos they get a soft blur behind them and a shadow.
     private var header: some View {
-        let onPhoto = showsPhoto
-        let textColor: Color = onPhoto || style == .color ? .white : Theme.ink
+        let textColor: Color = light ? Theme.ink : style == .color ? data.accent.on : .white
         return HStack(spacing: 10) {
             Text(data.initial).display(19, 800).foregroundStyle(data.accent.on)
                 .frame(width: 38, height: 38)
                 .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(data.accent.base))
                 .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 1.5))
             VStack(alignment: .leading, spacing: 1) {
-                Text(data.name).display(22, 800).foregroundStyle(style == .color ? data.accent.on : textColor)
+                Text(data.name).display(22, 800).foregroundStyle(textColor)
                     .lineLimit(1).minimumScaleFactor(0.6)
                 Text(data.status.uppercased()).font(.ui(10, .bold)).tracking(1.2)
-                    .foregroundStyle((style == .color ? data.accent.on : textColor).opacity(0.8))
+                    .foregroundStyle(textColor.opacity(0.8))
             }
         }
-        .shadow(color: .black.opacity(onPhoto ? 0.45 : 0), radius: 1.5, y: 0.5)
-        .shadow(color: .black.opacity(onPhoto ? 0.3 : 0), radius: 10)
+        .shadow(color: .black.opacity(shadowed ? 0.45 : 0), radius: 1.5, y: 0.5)
+        .shadow(color: .black.opacity(shadowed ? 0.3 : 0), radius: 10)
     }
 
     @ViewBuilder
@@ -183,13 +203,28 @@ struct ShareCardView: View {
                 artwork
             }
         case .color:
-            LinearGradient(colors: [data.accent.base, data.accent.dark], startPoint: .topLeading, endPoint: .bottomTrailing)
-        case .light:
-            ZStack(alignment: .topTrailing) {
-                Color.white
-                Circle().fill(data.accent.base.opacity(0.14)).frame(width: 300).offset(x: 110, y: -130)
+            ZStack(alignment: .top) {
+                LinearGradient(colors: [data.accent.base, data.accent.dark], startPoint: .topLeading, endPoint: .bottomTrailing)
+                letter(data.accent.on.opacity(0.12))
             }
+        case .light:
+            ZStack(alignment: .top) {
+                Color.white
+                LinearGradient(colors: [.white, data.accent.base.opacity(0.12), data.accent.base.opacity(0.22)],
+                               startPoint: .topLeading, endPoint: .bottomTrailing)
+                letter(data.accent.base.opacity(0.12))
+            }
+        case .transparent:
+            Color.clear
         }
+    }
+
+    /// The big faint initial the Dash cards show when there's no photo, filling the square.
+    private func letter(_ color: Color) -> some View {
+        Text(data.initial).display(400, 900).foregroundStyle(color)
+            .frame(width: w, height: art, alignment: .topTrailing)
+            .offset(x: 40, y: -30)
+            .clipped()
     }
 
     /// Same recipe as the Dash card: the photo, a blurred copy revealed toward the bottom, an eased fade
@@ -201,7 +236,7 @@ struct ShareCardView: View {
             photo
                 .overlay {
                     photo.blur(radius: 18)
-                        .mask(LinearGradient(stops: [.init(color: .clear, location: 0.4), .init(color: .black, location: 1)],
+                        .mask(LinearGradient(stops: [.init(color: .clear, location: 0.42), .init(color: .black, location: 1)],
                                              startPoint: .top, endPoint: .bottom))
                 }
                 .overlay {
@@ -211,18 +246,43 @@ struct ShareCardView: View {
                 }
                 .overlay {
                     LinearGradient(stops: [.init(color: data.accent.base.opacity(0), location: 0.42),
-                                           .init(color: data.accent.base.opacity(0.35), location: 0.66),
+                                           .init(color: data.accent.base.opacity(0.35), location: 0.68),
                                            .init(color: data.accent.base.opacity(0.8), location: 0.84),
-                                           .init(color: data.accent.base, location: 0.97)],
+                                           .init(color: data.accent.base, location: 0.96)],
                                    startPoint: .top, endPoint: .bottom)
                 }
                 .overlay(alignment: .top) {
                     LinearGradient(colors: [.black.opacity(0.3), .clear], startPoint: .top, endPoint: .bottom)
                         .frame(height: art * 0.4)
                 }
+                .padding(.bottom, 1)
                 .frame(width: w, height: art)
         } else {
             data.accent.base
+        }
+    }
+}
+
+/// Exports as PNG so the transparent card keeps its transparency.
+struct PNGImage: Transferable {
+    let image: UIImage
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { $0.image.pngData() ?? Data() }
+    }
+}
+
+/// Dark checkerboard: the usual "this is transparent" backdrop, dark so the white sticker stays readable.
+struct Checkerboard: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let cell: CGFloat = 14
+            ctx.fill(Path(CGRect(origin: .zero, size: size)), with: .color(Color(hex: 0x2C2C2E)))
+            for row in 0..<Int(size.height / cell) + 1 {
+                for col in 0..<Int(size.width / cell) + 1 where (row + col) % 2 == 0 {
+                    ctx.fill(Path(CGRect(x: CGFloat(col) * cell, y: CGFloat(row) * cell, width: cell, height: cell)),
+                             with: .color(Color(hex: 0x3A3A3C)))
+                }
+            }
         }
     }
 }
@@ -235,6 +295,8 @@ struct ShareCardSheet: View {
     @State private var picks: [ShareStat] = []
     @State private var style: ShareCardStyle = .photo
     @State private var image: UIImage?
+    /// The card is designed at full size; the preview shows it a little smaller so the options fit.
+    static let previewScale: CGFloat = 0.8
 
     var body: some View {
         VStack(spacing: 0) {
@@ -247,14 +309,16 @@ struct ShareCardSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let data {
-                        GeometryReader { geo in
-                            let scale = min(1, geo.size.width / ShareCardView.size.width)
-                            ShareCardView(data: data, stats: picks, style: style)
-                                .scaleEffect(scale, anchor: .top)
-                                .frame(width: geo.size.width, alignment: .center)
-                                .shadow(color: .black.opacity(0.15), radius: 18, y: 8)
-                        }
-                        .frame(height: ShareCardView.size.height)
+                        let size = ShareCardView.size(style)
+                        ShareCardView(data: data, stats: picks, style: style)
+                            .background {
+                                if style == .transparent { Checkerboard() }
+                            }
+                            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+                            .shadow(color: .black.opacity(0.15), radius: 18, y: 8)
+                            .scaleEffect(Self.previewScale, anchor: .top)
+                            .frame(width: size.width * Self.previewScale, height: size.height * Self.previewScale, alignment: .top)
+                            .frame(maxWidth: .infinity)
                         .animation(.snappy, value: style)
                         .animation(.snappy, value: picks)
 
@@ -277,7 +341,7 @@ struct ShareCardSheet: View {
             }
             .bottomActionBar {
                 if let image {
-                    ShareLink(item: Image(uiImage: image), preview: SharePreview(project.name, image: Image(uiImage: image))) {
+                    ShareLink(item: PNGImage(image: image), preview: SharePreview(project.name, image: Image(uiImage: image))) {
                         Label("Share", systemImage: "square.and.arrow.up")
                     }
                     .buttonStyle(.chunky)
@@ -308,6 +372,7 @@ struct ShareCardSheet: View {
         guard let data else { return }
         let renderer = ImageRenderer(content: ShareCardView(data: data, stats: picks, style: style))
         renderer.scale = 3
+        renderer.isOpaque = false
         image = renderer.uiImage
     }
 }
