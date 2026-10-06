@@ -28,6 +28,8 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: profiles.first?.onboarded)
+        // The ship moment under the banners and confetti, so the confetti falls over it.
+        .overlay { ShipOverlay() }
         .overlay { CelebrationOverlay() }
         .overlay {
             if showLaunch {
@@ -65,6 +67,12 @@ struct RootView: View {
                               profile: profile, context: context)
             }
             if UserDefaults.standard.bool(forKey: "PRODLINE_LIVE") { Task { await LiveActivities.demo() } }
+            if UserDefaults.standard.bool(forKey: "PRODLINE_SHIP") {
+                Task {
+                    try? await Task.sleep(for: .seconds(1))
+                    celebration.celebrateShip(.init(daysEarly: 4, project: "Habit Hero", accent: Accent(hex: 0x58CC02), xp: 70))
+                }
+            }
             if UserDefaults.standard.bool(forKey: "PRODLINE_BANNER") {
                 Task {
                     try? await Task.sleep(for: .seconds(1))

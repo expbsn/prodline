@@ -305,6 +305,10 @@ struct ProjectPanel: View {
     let project: Project
     var onOpen: () -> Void
     @Environment(DataRefresher.self) private var refresher
+    @Environment(CelebrationCenter.self) private var celebration
+    @Environment(\.modelContext) private var context
+    @Query(sort: \Profile.createdAt) private var profiles: [Profile]
+    @Query private var allProjects: [Project]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -314,9 +318,18 @@ struct ProjectPanel: View {
                 .lineLimit(2, reservesSpace: true)
                 .minimumScaleFactor(0.85)
             MetaRow(items: meta)
-            Button("Open project", action: onOpen)
+            if ScheduleEngine.canShip(project) {
+                Button("Let's ship") {
+                    guard let profile = profiles.first else { return }
+                    ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
+                }
                 .buttonStyle(.chunky)
                 .padding(.top, 4)
+            } else {
+                Button("Open project", action: onOpen)
+                    .buttonStyle(.chunky)
+                    .padding(.top, 4)
+            }
         }
     }
 
@@ -325,6 +338,9 @@ struct ProjectPanel: View {
         switch project.phase() {
         case .upcoming:
             return "Kicks off \(project.startDate.shortDay). \(project.buildDays.durationText) of building ahead."
+        case .building where ScheduleEngine.canShip(project):
+            let early = Date.days(from: .now, to: project.launchDay)
+            return early > 0 ? "Every goal is done. Ship today and you're \(early) day\(early == 1 ? "" : "s") early." : "Every goal is done. It's launch day."
         case .building:
             let n = next.map { " Next up: \($0.title) on \($0.dueDate.formatted(.dateTime.weekday(.wide)))." } ?? ""
             return "Day \(project.dayInPhase) of \(project.buildDays) in the build phase.\(n)"

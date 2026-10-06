@@ -172,6 +172,65 @@ enum ScheduleEngine {
     static let launchXP = 50
     static let lateXP = 3
 
+    // MARK: Shipping
+
+    /// Bonus for every day a project ships before its launch day.
+    static let earlyXPPerDay = 5
+    static let earlyXPCap = 50
+
+    /// Building, with goals, and every one of them ticked: time for "Let's ship".
+    static func canShip(_ p: Project, now: Date = .now) -> Bool {
+        guard p.phase(on: now) == .building else { return false }
+        let goals = (p.milestones ?? []).flatMap { $0.goals ?? [] }
+        return !goals.isEmpty && goals.allSatisfy(\.isDone)
+    }
+
+    struct Shipped { let daysEarly: Int; let xp: Int }
+
+    /// The "Let's ship" button: ship, update the streak, save, and celebrate (the big moment when it's early).
+    @MainActor
+    static func shipNow(_ p: Project, profile: Profile, projects: [Project], celebration: CelebrationCenter, context: ModelContext) {
+        let r = ship(p, profile: profile)
+        Streak.update(profile, projects: projects)
+        try? context.save()
+        if r.daysEarly > 0 {
+            celebration.celebrateShip(.init(daysEarly: r.daysEarly, project: p.name, accent: p.accent, xp: r.xp))
+        } else {
+            celebration.fire(title: "Shipped! +\(r.xp) XP", subtitle: "\(p.name) is out · right on time", accent: p.accent,
+                             xp: r.xp, kind: .checkpoint)
+        }
+    }
+
+    /// Launch today. The build phase ends now, the launch checkpoint is done (on time, of course), leftover
+    /// build checkpoints close with it, and the observe phase moves up so it keeps its full length.
+    @discardableResult
+    static func ship(_ p: Project, profile: Profile, now: Date = .now) -> Shipped {
+        let today = now.startOfDay
+        let oldLaunch = p.launchDay
+        let early = max(0, Date.days(from: today, to: oldLaunch))
+        // Sorted out on the old schedule: what belongs to the build and what to the observe phase.
+        let open = p.sortedMilestones.filter { !$0.isDone }
+        let building = open.filter { $0.isLaunch || $0.dueDate <= oldLaunch }
+        let observing = open.filter { !$0.isLaunch && $0.dueDate > oldLaunch }
+
+        var xp = 0
+        if early > 0 {
+            p.buildDays = max(1, Date.days(from: p.startDate, to: today) + 1)
+            for m in observing {
+                m.dueDate = m.dueDate.adding(days: -early)
+                if profile.remindersEnabled { Notifier.cancel(m); Notifier.schedule(m, hour: profile.reminderHour) }
+            }
+            let bonus = min(earlyXPCap, early * earlyXPPerDay)
+            profile.xp += bonus
+            xp += bonus
+        }
+        for m in building {
+            if m.dueDate > today { m.dueDate = today }
+            xp += complete(m, profile: profile, celebration: nil, now: now)
+        }
+        return Shipped(daysEarly: early, xp: xp)
+    }
+
     @discardableResult
     static func complete(_ m: Milestone, profile: Profile, celebration: CelebrationCenter?, now: Date = .now) -> Int {
         guard !m.isDone else { return 0 }

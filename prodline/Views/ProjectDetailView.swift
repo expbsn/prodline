@@ -58,6 +58,7 @@ struct ProjectDetailView: View {
             VStack(spacing: 16) {
                 hero
                 VStack(spacing: 16) {
+                    if ScheduleEngine.canShip(project) { shipCard }
                     if VerdictEngine.isDue(project) {
                         SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
                                     onUndo: undoVerdict)
@@ -468,6 +469,32 @@ struct ProjectDetailView: View {
             return "It finished because all its goals are done. Untick a goal to reopen it."
         }
         return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned." : "It goes back to open."
+    }
+
+    /// Every goal is ticked while still building.
+    private var shipCard: some View {
+        let early = Date.days(from: .now, to: project.launchDay)
+        return VStack(alignment: .leading, spacing: 14) {
+            HStack(spacing: 10) {
+                Image(systemName: "paperplane.fill").font(.system(size: 17, weight: .bold)).foregroundStyle(accent.on)
+                    .frame(width: 38, height: 38)
+                    .background(Circle().fill(accent.base))
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Ready to ship").display(20, 750).foregroundStyle(Theme.ink)
+                    Text(early > 0
+                         ? "Every goal is done. Launch is \(project.launchDay.shortDay); ship today and you're \(early) day\(early == 1 ? "" : "s") early."
+                         : "Every goal is done, and it's launch day.")
+                        .font(.ui(13)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            Button("Let's ship") {
+                guard let profile = profiles.first else { return }
+                ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
+            }
+            .buttonStyle(.chunky(.accent, height: 50))
+        }
+        .card()
     }
 
     private func undoVerdict() {

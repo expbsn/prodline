@@ -294,7 +294,7 @@ struct WeeklyReviewView: View {
         VStack(spacing: 0) {
             Text("WEEKLY REVIEW").eyebrow().focus(1, step, dims: false)
             Spacer(minLength: 0)
-            BigNumber(text: "\(stats.week)", size: 168, accent: tint)
+            ExtrudedText(text: "\(stats.week)", size: 168, accent: tint)
                 .focus(1, step, dims: false)
             Spacer(minLength: 0)
             Text(stats.range).font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
@@ -306,7 +306,7 @@ struct WeeklyReviewView: View {
     // Days: seven blocks on a tilted floor; active ones rise.
     private var daysStage: some View {
         VStack(spacing: 0) {
-            BigNumber(text: "\(stats.activeCount)/7", size: 96, accent: tint)
+            ExtrudedText(text: "\(stats.activeCount)/7", size: 96, accent: tint)
                 .focus(1, step, dims: false)
             Text("active days").font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
                 .padding(.top, 6)
@@ -344,7 +344,7 @@ struct WeeklyReviewView: View {
                 .background(alignment: .bottom) { FloorShadow(width: 110).offset(y: 22) }
                 .focus(1, step, dims: false)
             Spacer(minLength: 0)
-            BigNumber(text: "+\(xp)", size: 96, accent: tint)
+            ExtrudedText(text: "+\(xp)", size: 96, accent: tint)
                 .contentTransition(.numericText(value: Double(xp)))
                 .animation(.easeOut(duration: 0.8), value: xp)
                 .focus(1, step, dims: false)
@@ -360,7 +360,7 @@ struct WeeklyReviewView: View {
         let titles = Array(stats.goalTitles.prefix(4))
         let focused = max(0, min(titles.count - 1, step - 2))
         return VStack(spacing: 0) {
-            BigNumber(text: "\(stats.goalsDone)", size: 96, accent: tint)
+            ExtrudedText(text: "\(stats.goalsDone)", size: 96, accent: tint)
                 .focus(1, step, dims: false)
             Text(stats.goalsDone == 1 ? "goal done" : "goals done").font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
                 .padding(.top, 6)
@@ -394,7 +394,7 @@ struct WeeklyReviewView: View {
     private var commitsStage: some View {
         let peak = max(1, stats.commits.max() ?? 1)
         return VStack(spacing: 0) {
-            BigNumber(text: "\(stats.totalCommits)", size: 96, accent: tint)
+            ExtrudedText(text: "\(stats.totalCommits)", size: 96, accent: tint)
                 .focus(1, step, dims: false)
             Text(stats.totalCommits == 1 ? "commit" : "commits").font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
                 .padding(.top, 6)
@@ -426,14 +426,14 @@ struct WeeklyReviewView: View {
             Spacer(minLength: 0)
             if stats.revenueGained > 0 {
                 VStack(spacing: 6) {
-                    BigNumber(text: "+" + MetricKey.money(stats.revenueGained), size: 80, accent: .sale)
+                    ExtrudedText(text: "+" + MetricKey.money(stats.revenueGained), size: 80, accent: .sale)
                     Text("revenue").font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
                 }
                 .focus(1, step, dims: false)
             }
             if stats.visitsGained > 0 {
                 VStack(spacing: 6) {
-                    BigNumber(text: "+" + MetricKey.count(stats.visitsGained), size: stats.revenueGained > 0 ? 56 : 80, accent: tint)
+                    ExtrudedText(text: "+" + MetricKey.count(stats.visitsGained), size: stats.revenueGained > 0 ? 56 : 80, accent: tint)
                     Text("visits").font(.ui(17, .semibold)).foregroundStyle(Theme.secondary)
                 }
                 .focus(stats.revenueGained > 0 ? 2 : 1, step, dims: false)
@@ -595,29 +595,6 @@ struct WeekSummaryCard: View {
 }
 
 // MARK: - 3D pieces
-
-/// A number cut out of a solid block: the face in the accent, the depth in its darker shade (like the chunky buttons).
-private struct BigNumber: View {
-    let text: String
-    let size: CGFloat
-    let accent: Accent
-    private var depth: Int { max(4, Int(size / 14)) }
-
-    var body: some View {
-        ZStack {
-            ForEach((1...depth).reversed(), id: \.self) { i in
-                face.foregroundStyle(accent.dark).offset(x: CGFloat(i) * 0.45, y: CGFloat(i) * 0.9)
-            }
-            face.foregroundStyle(accent.base)
-        }
-        .padding(.bottom, CGFloat(depth) * 0.9)
-        .drawingGroup()
-    }
-
-    private var face: some View {
-        Text(text).display(size, 850).monospacedDigit().lineLimit(1).minimumScaleFactor(0.5).fixedSize(horizontal: false, vertical: true)
-    }
-}
 
 /// A rounded slab with thickness, content on its face.
 private struct Block<Face: View>: View {

@@ -64,6 +64,7 @@
     {"id": "weekly-review", "title": "Build the weekly review story", "day": 24, "done": true},
     {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": true},
     {"id": "share-cards", "title": "Share cards with days spent and results", "day": 24, "done": true},
+    {"id": "lets-ship", "title": "Ship early with a days-early celebration", "day": 24, "done": true},
 
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},
