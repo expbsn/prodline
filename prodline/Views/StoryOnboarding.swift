@@ -67,14 +67,18 @@ private enum StoryHaptics {
     static func marks(_ s: StoryLayout.State) -> [Int] {
         let b = s.beats
         let numbers = min(1, max(0, (b[4] - 0.1) / 0.7))
+        let v = RhythmBeat.values(b[1])
         return [
+            [b[0] >= 0.75, b[1] >= 0.85, numbers >= 1].filter { $0 }.count, // a scene completes with a burst
             s.pinned,                                                   // a section locks in place
             [0.25, 0.5, 0.75].filter { b[0] >= $0 }.count,             // goals ticked
-            RhythmBeat.values(b[1]).build / 2 + RhythmBeat.values(b[1]).observe / 4, // sliders moving
+            v.build / 2 + v.observe / 4 + v.every / 2,                  // sliders moving
             RhythmBeat.stage(b[1]),                                     // checkpoint days changing
             b[2] >= 0.55 ? 1 : 0,                                       // the flame catches
-            b[3] >= 0.35 ? 1 : 0,                                       // the button sinks in
-            b[3] >= 0.5 ? 1 : 0,                                        // shipped
+            ShipBeat.day(b[3]),                                         // the days ticking up
+            b[3] >= ShipBeat.appears ? 1 : 0,                           // the ship button rises in
+            b[3] >= ShipBeat.press ? 1 : 0,                             // the button sinks in
+            b[3] >= ShipBeat.ships ? 1 : 0,                             // shipped
             Int(numbers * 10),                                          // numbers counting
             (0..<5).filter { b[4] >= 0.3 + Double($0) * 0.1 }.count,    // services popping in
             b[5] < 0.15 ? 0 : b[5] < 0.4 ? 1 : b[5] < 0.65 ? 2 : 3,    // kill, pivot, keep
@@ -86,12 +90,12 @@ private enum StoryHaptics {
         guard old.count == new.count else { return }
         for i in new.indices where new[i] > old[i] {
             switch i {
-            case 0: Haptics.soft()
-            case 4: Haptics.heavy(); Haptics.success()
-            case 5: Haptics.tap()
-            case 6: Haptics.success()
-            case 7, 10: Haptics.soft()
-            case 9 where new[i] == 3: Haptics.heavy()
+            case 0: Haptics.success()
+            case 1, 7, 10, 13: Haptics.soft()
+            case 5, 9: Haptics.heavy(); Haptics.success()
+            case 8: Haptics.tap()
+            case 6: Haptics.tap()
+            case 12 where new[i] == 3: Haptics.heavy(); Haptics.success()
             default: Haptics.select()
             }
             return
@@ -407,8 +411,9 @@ private struct StoryCanvas: View {
                 // The scene floats a little above the page while it's in play.
                 .rotation3DEffect(.degrees(Double(d) * 18), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.6)
         }
-        .padding(.leading, left ? 60 : 24)
-        .padding(.trailing, left ? 24 : 60)
+        // Clear of the line on its side, the usual margin on the other.
+        .padding(.leading, left ? 76 : 24)
+        .padding(.trailing, left ? 24 : 76)
         .frame(width: l.width, alignment: .leading)
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
             if abs(heights[i] - h) > 1 { heights[i] = h }
@@ -416,6 +421,8 @@ private struct StoryCanvas: View {
         // 3D on scroll: lying back as it rises in, flat while it plays, tipping forward as it leaves.
         .rotation3DEffect(.degrees(Double(d) * 32), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.5)
         .scaleEffect(1 - ad * 0.1)
+        // Out of focus away from the middle, sharp while it plays.
+        .blur(radius: max(0, abs(d) - 0.4) * 6)
         .opacity(Double(max(0, 1 - max(0, abs(d) - 0.7) * 1.4)))
         .offset(y: l.tops[i])
     }
@@ -482,8 +489,6 @@ private struct BuildBeat: View {
                     RoundedRectangle(cornerRadius: 30 * 150 / 260, style: .continuous).fill(Color(hex: 0x3E8F02)).offset(y: 8)
                 }
                 .shadow(color: .black.opacity(0.16), radius: 16, y: 14)
-                // It swings round to face you as the scene starts.
-                .rotation3DEffect(.degrees(Double(1 - min(1, p * 4)) * 35), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             VStack(alignment: .leading, spacing: 11) {
                 Text("Checkpoint 2 · \(done.filter { $0 }.count)/3 goals").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
                     .contentTransition(.numericText())
@@ -498,7 +503,7 @@ private struct BuildBeat: View {
                                     .strokeBorder(done[n] ? .clear : Theme.tertiary, lineWidth: 2))
                             if done[n] {
                                 Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
-                                    .transition(.scale.combined(with: .opacity))
+                                    .transition(.blurReplace.combined(with: .scale))
                             }
                         }
                         .frame(width: 20, height: 20)
@@ -509,7 +514,8 @@ private struct BuildBeat: View {
                         Spacer(minLength: 0)
                         Text("+3 XP").font(.display(14, 800)).foregroundStyle(Accent.sale.text)
                             .opacity(done[n] ? 1 : 0)
-                            .offset(y: done[n] ? 0 : 8)
+                            .blur(radius: done[n] ? 0 : 6)
+                            .offset(y: done[n] ? 0 : 10)
                     }
                 }
             }
@@ -517,6 +523,8 @@ private struct BuildBeat: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .chunkySlab(radius: 22)
             .animation(.spring(response: 0.38, dampingFraction: 0.65), value: done)
+            // All three done: the checkpoint pops confetti.
+            .overlay { SectionBurst(fire: done.allSatisfy { $0 }, style: .confetti) }
         }
     }
 }
@@ -555,9 +563,9 @@ struct RhythmBeat: View {
             row("New project every", v.every.durationText) { ChunkySlider(value: .constant(v.every), range: 3...42) }
             VStack(alignment: .leading, spacing: 10) {
                 Text("Checkpoint days").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
-                HStack(spacing: 4) {
+                HStack(spacing: 3) {
                     ForEach(Self.days, id: \.0) { wd, label in
-                        Chip(title: label, isOn: checkpointDays.contains(wd)) {}
+                        DayChip(title: label, isOn: checkpointDays.contains(wd))
                             .frame(maxWidth: .infinity)
                     }
                 }
@@ -565,11 +573,30 @@ struct RhythmBeat: View {
             }
             SchemePreview(build: v.build, observe: v.observe, every: v.every)
         }
-        .padding(16)
+        .padding(14)
         .chunkySlab(radius: 22)
+        .overlay { SectionBurst(fire: p >= 0.85, style: .sparks) }
         .environment(\.accent, .neutral)
         .animation(.spring(response: 0.25, dampingFraction: 0.85), value: v.build * 10_000 + v.observe * 100 + v.every)
         .allowsHitTesting(false)
+    }
+
+    /// The app's weekday chip, a size down so all seven fit beside the line.
+    private struct DayChip: View {
+        let title: String
+        let isOn: Bool
+
+        var body: some View {
+            Text(title)
+                .font(.ui(13, .semibold))
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(isOn ? .white : Theme.inkSoft)
+                .frame(width: 35, height: 35)
+                .background(Circle().fill(isOn ? Theme.ink : .white))
+                .overlay(Circle().strokeBorder(isOn ? .clear : Theme.line, lineWidth: 1.5))
+                .scaleEffect(isOn ? 1.06 : 1)
+        }
     }
 
     private func row<C: View>(_ title: String, _ value: String, @ViewBuilder _ content: () -> C) -> some View {
@@ -594,6 +621,7 @@ private struct StreakBeat: View {
             BurningFlame(grow: lit ? 1 : Double(0.3 + 0.06 * min(1, p / 0.55)), bright: lit ? 1 : 0, width: 110, glow: 0.35)
                 .frame(height: 150, alignment: .bottom)
                 .animation(.spring(response: 0.6, dampingFraction: 0.55), value: lit)
+                .overlay { SectionBurst(fire: lit, style: .sparks, colors: [0xFF9600, 0xFFC800, 0xFF4B1F, 0xFFE04A]) }
             VStack(spacing: 0) {
                 ExtrudedText(text: lit ? "3" : "2", size: 48, accent: lit ? Accent(hex: 0xFF9600) : Accent(hex: 0xC7C7CC))
                     .contentTransition(.numericText())
@@ -604,33 +632,58 @@ private struct StreakBeat: View {
     }
 }
 
-/// The button sinks in, then "4 days early" tips up.
-private struct ShipBeat: View {
+/// The days tick up with the scroll, the number growing each day. On day 7 the ship button rises in and
+/// gets pressed, and the build ships a week early in fireworks and confetti.
+struct ShipBeat: View {
     let p: CGFloat
 
+    static func day(_ p: CGFloat) -> Int { 1 + Int(min(1, max(0, p / 0.55)) * 6) }
+    static let appears: CGFloat = 0.6, press: CGFloat = 0.72, ships: CGFloat = 0.8
+
     var body: some View {
-        let pressed = p >= 0.35 && p < 0.5
-        let shipped = p >= 0.5
+        let day = Self.day(p)
+        let pressed = p >= Self.press && p < Self.ships
+        let shipped = p >= Self.ships
+        let button = p >= Self.appears
         let green = Accent(hex: 0x58CC02)
-        VStack(spacing: 22) {
-            VStack(spacing: 0) {
-                ExtrudedText(text: "4", size: 96, accent: green)
-                ExtrudedText(text: "days early", size: 28, accent: green, weight: 800)
+        let grow = CGFloat(day - 1) / 6
+        VStack(spacing: 16) {
+            VStack(spacing: 4) {
+                ZStack(alignment: .bottom) {
+                    ExtrudedText(text: "\(day)", size: 110, accent: shipped ? green : .neutral)
+                        .id(day)
+                        .transition(.blurReplace.combined(with: .scale(0.7, anchor: .bottom)))
+                }
+                .scaleEffect(0.42 + 0.58 * grow, anchor: .bottom)
+                .frame(height: 132, alignment: .bottom)
+                ZStack {
+                    Text(shipped ? "days early" : "Day \(day) of 14")
+                        .font(.display(22, 800))
+                        .foregroundStyle(shipped ? green.text : Theme.secondary)
+                        .id(shipped ? 0 : day)
+                        .transition(.blurReplace)
+                }
             }
-            .rotation3DEffect(.degrees(shipped ? 0 : 75), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
-            .scaleEffect(shipped ? 1 : 0.6, anchor: .bottom)
-            .opacity(shipped ? 1 : 0)
+            .overlay { SectionBurst(fire: shipped, style: .firework) }
             ZStack {
                 RoundedRectangle(cornerRadius: 18, style: .continuous).fill(green.dark).offset(y: 6)
                 RoundedRectangle(cornerRadius: 18, style: .continuous).fill(green.base)
-                    .overlay(Text("Let's ship").font(.display(18, 700)).tracking(2.4).textCase(.uppercase).foregroundStyle(.white))
+                    .overlay(Text(shipped ? "Shipped" : "Let's ship").font(.display(18, 700)).tracking(2.4).textCase(.uppercase)
+                        .foregroundStyle(.white).contentTransition(.interpolate))
                     .offset(y: pressed ? 6 : 0)
             }
             .frame(width: 230, height: 56)
             .padding(.bottom, 6)
+            .scaleEffect(button ? 1 : 0.7)
+            .blur(radius: button ? 0 : 10)
+            .opacity(button ? 1 : 0)
+            .offset(y: button ? 0 : 24)
+            .overlay { SectionBurst(fire: shipped, style: .confetti) }
         }
-        .animation(.spring(response: 0.5, dampingFraction: 0.6), value: shipped)
-        .animation(.spring(response: 0.2, dampingFraction: 0.7), value: pressed)
+        .animation(.spring(response: 0.35, dampingFraction: 0.6), value: day)
+        .animation(.spring(response: 0.5, dampingFraction: 0.65), value: button)
+        .animation(.spring(response: 0.45, dampingFraction: 0.6), value: shipped)
+        .animation(.spring(response: 0.18, dampingFraction: 0.7), value: pressed)
     }
 }
 
@@ -647,6 +700,8 @@ private struct NumbersBeat: View {
                 stat("$" + MetricKey.count(612 * e), "revenue", 0xFFC800, big: false)
                 stat(MetricKey.count(312 * e), "downloads", 0xA35CFF, big: false)
             }
+            .blur(radius: (1 - min(1, k * 4)) * 6)
+            .overlay { SectionBurst(fire: k >= 1, style: .sparks, colors: [0x58CC02, 0xFFC800, 0xA35CFF]) }
             HStack(spacing: 10) {
                 ForEach(Array([IntegrationKind.appStore, .stripe, .revenueCat, .plausible, .youtube].enumerated()), id: \.offset) { n, kind in
                     let on = p >= 0.3 + Double(n) * 0.1
@@ -654,6 +709,7 @@ private struct NumbersBeat: View {
                         .background(RoundedRectangle(cornerRadius: 11.4, style: .continuous).fill(Color.black.opacity(0.18)).offset(y: 4))
                         .scaleEffect(on ? 1 : 0.4)
                         .rotation3DEffect(.degrees(on ? 0 : 80), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
+                        .blur(radius: on ? 0 : 8)
                         .opacity(on ? 1 : 0)
                         .animation(.spring(response: 0.45, dampingFraction: 0.6), value: on)
                 }
@@ -694,5 +750,115 @@ private struct VerdictBeat: View {
             }
         }
         .animation(.spring(response: 0.38, dampingFraction: 0.6), value: pick)
+        .overlay(alignment: .leading) {
+            // Keep lands on the left tile: confetti from there.
+            GeometryReader { g in
+                SectionBurst(fire: pick == .keep, style: .confetti)
+                    .position(x: (g.size.width - 20) / 6, y: g.size.height / 2)
+            }
+        }
+    }
+}
+
+// MARK: - Finishing bursts
+
+/// A one-shot burst played when a section's scene completes: confetti, sparks, or fireworks. Drawn on a
+/// canvas larger than its host, so it spills out over the page.
+struct SectionBurst: View {
+    enum Style { case confetti, sparks, firework }
+    var fire: Bool
+    var style: Style
+    var colors: [Int] = [0x58CC02, 0xFFC800, 0xFF4B4B, 0x1CB0F6, 0xCE82FF, 0xFF9600]
+    @State private var start: Date?
+
+    private static let life: Double = 2.2
+
+    var body: some View {
+        let running = start.map { Date().timeIntervalSince($0) < Self.life } ?? false
+        TimelineView(.animation(paused: !running)) { tl in
+            Canvas { ctx, size in
+                guard let start else { return }
+                let t = tl.date.timeIntervalSince(start)
+                guard t >= 0, t < Self.life else { return }
+                draw(&ctx, c: CGPoint(x: size.width / 2, y: size.height / 2), t: t)
+            }
+        }
+        .frame(width: 560, height: 640)
+        .allowsHitTesting(false)
+        .onChange(of: fire) { _, on in if on { start = .now } }
+    }
+
+    /// Stable pseudo-random numbers per particle, so every burst looks the same frame to frame.
+    private static func r(_ i: Int, _ k: Int) -> Double {
+        let x = sin(Double(i) * 12.9898 + Double(k) * 78.233) * 43758.5453
+        return x - x.rounded(.down)
+    }
+
+    private func color(_ i: Int) -> Color { Color(hex: colors[i % colors.count]) }
+
+    private func draw(_ ctx: inout GraphicsContext, c: CGPoint, t: Double) {
+        // A quick soft shockwave ring under every burst.
+        if t < 0.4 {
+            let rad = 24 + t * 360
+            var ring = ctx
+            ring.opacity = (1 - t / 0.4) * 0.5
+            ring.addFilter(.blur(radius: 3))
+            ring.stroke(Path(ellipseIn: CGRect(x: c.x - rad, y: c.y - rad, width: rad * 2, height: rad * 2)),
+                        with: .color(color(0)), lineWidth: 6)
+        }
+        switch style {
+        case .confetti:
+            for i in 0..<70 {
+                let a = -Double.pi / 2 + (Self.r(i, 1) - 0.5) * 2.4
+                let v = 360 + Self.r(i, 2) * 520
+                let travel = v * (1 - exp(-2.8 * t)) / 2.8
+                let x = c.x + cos(a) * travel
+                let y = c.y + sin(a) * travel + 140 * t * t
+                var p = ctx
+                p.opacity = max(0, min(1, (Self.life - t) / 0.6))
+                p.translateBy(x: x, y: y)
+                p.rotate(by: .radians((Self.r(i, 3) - 0.5) * 16 * t + Self.r(i, 4) * 6))
+                p.scaleBy(x: cos(t * (5 + Self.r(i, 5) * 8)), y: 1)
+                let w = 7 + Self.r(i, 6) * 5, h = w * 0.55
+                p.fill(Path(roundedRect: CGRect(x: -w / 2, y: -h / 2, width: w, height: h), cornerRadius: 1.5), with: .color(color(i)))
+            }
+        case .sparks:
+            for i in 0..<56 {
+                let a = Self.r(i, 1) * 2 * .pi
+                let v = 200 + Self.r(i, 2) * 380
+                let travel = v * (1 - exp(-3.2 * t)) / 3.2
+                let x = c.x + cos(a) * travel
+                let y = c.y + sin(a) * travel + 90 * t * t
+                let k = max(0, 1 - t / (0.8 + Self.r(i, 3) * 0.6))
+                let rad = (1.6 + Self.r(i, 4) * 3) * k
+                guard rad > 0.2 else { continue }
+                var p = ctx
+                p.opacity = k
+                p.fill(Path(ellipseIn: CGRect(x: x - rad, y: y - rad, width: rad * 2, height: rad * 2)), with: .color(color(i)))
+            }
+        case .firework:
+            let shells: [(CGFloat, CGFloat, Double)] = [(-95, -70, 0), (90, -105, 0.22), (0, -175, 0.44)]
+            for (n, shell) in shells.enumerated() {
+                let tt = t - shell.2
+                guard tt > 0 else { continue }
+                let o = CGPoint(x: c.x + shell.0, y: c.y + shell.1)
+                let fade = max(0, 1 - tt / 1.3)
+                func pos(_ a: Double, _ v: Double, _ s: Double) -> CGPoint {
+                    let s = max(0, s)
+                    let travel = v * (1 - exp(-2.4 * s)) / 2.4
+                    return CGPoint(x: o.x + cos(a) * travel, y: o.y + sin(a) * travel + 70 * s * s)
+                }
+                for i in 0..<26 {
+                    let a = Double(i) / 26 * 2 * .pi + Double(n)
+                    let v = 230 + Self.r(i + n * 40, 2) * 60
+                    var trail = Path()
+                    trail.move(to: pos(a, v, tt - 0.09))
+                    trail.addLine(to: pos(a, v, tt))
+                    var p = ctx
+                    p.opacity = fade
+                    p.stroke(trail, with: .color(color(n * 2 + (i % 2))), style: StrokeStyle(lineWidth: 3.5 * (0.4 + 0.6 * fade), lineCap: .round))
+                }
+            }
+        }
     }
 }
