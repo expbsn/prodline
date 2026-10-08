@@ -67,6 +67,9 @@ struct RootView: View {
                 DemoData.load(baseURL: UserDefaults.standard.string(forKey: "mockServerURL") ?? "http://127.0.0.1:8787",
                               profile: profile, context: context)
             }
+            if UserDefaults.standard.bool(forKey: "PRODLINE_ONBOARDING"), let profile = profiles.first {
+                profile.onboarded = false
+            }
             if UserDefaults.standard.bool(forKey: "PRODLINE_LIVE") { Task { await LiveActivities.demo() } }
             if UserDefaults.standard.bool(forKey: "PRODLINE_STREAK") {
                 Task {

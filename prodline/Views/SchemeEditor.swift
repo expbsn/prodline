@@ -419,6 +419,16 @@ struct OnboardingView: View {
     @State private var fanned = false
 
     var body: some View {
+        if step == 0 {
+            // Selling the idea: the scroll story. The setup steps follow.
+            StoryOnboarding { next() }
+                .transition(.opacity)
+        } else {
+            setup
+        }
+    }
+
+    private var setup: some View {
         VStack(spacing: 0) {
             ChunkyProgressBar(value: Double(step + 1) / 3, color: Theme.ink, height: 12)
                 .padding(.horizontal, 24).padding(.top, 14)
