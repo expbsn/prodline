@@ -1,29 +1,30 @@
 import SwiftUI
 
-/// The first onboarding screen, told on scroll: a point travels down a winding dotted line (the stretch behind
-/// it turns solid), and each part of the app comes alive as the point reaches it — goals ticking, the streak
-/// flame catching, shipping early, numbers coming in, keep / pivot / kill. At the bottom the line loops under
-/// the logo and carves the "p" from the stem up, like the launch animation; the page holds still meanwhile.
+/// The first onboarding screen, told on scroll. A point travels down a winding dotted line (the stretch behind
+/// it turns solid). Each section pins in the middle of the screen while its scene plays out with the scroll —
+/// goals ticking, the rhythm being set, the streak flame catching, shipping early, numbers coming in,
+/// keep / pivot / kill — and the point runs down the lane beside it. Sections tilt back as they rise in and
+/// tip forward as they leave, flat while they play. At the bottom the line runs up into the logo's stem and
+/// carves the "p", like the launch animation.
 struct StoryOnboarding: View {
     var onFinish: () -> Void
     @State private var offset: CGFloat = 0
-    @State private var layout: StoryLayout?
+    /// Measured heights of the sections; the line's lanes are cut to fit them exactly.
+    @State private var heights: [CGFloat] = StoryLayout.estimates
     @State private var carved = false
 
     var body: some View {
         GeometryReader { geo in
-            let l = layout ?? StoryLayout(width: geo.size.width, height: geo.size.height)
-            let state = l.state(offset: offset)
+            let l = StoryLayout(width: geo.size.width, height: geo.size.height, heights: heights)
+            let state = l.state(scroll: offset)
             ScrollView(showsIndicators: false) {
-                StoryCanvas(layout: l, state: state)
-                    .frame(width: l.width, height: l.contentHeight, alignment: .topLeading)
+                StoryCanvas(layout: l, state: state, heights: $heights)
+                    .frame(width: l.width, height: l.scrollHeight, alignment: .topLeading)
             }
             .scrollBounceBehavior(.basedOnSize)
             .onScrollGeometryChange(for: CGFloat.self) { $0.contentOffset.y + $0.contentInsets.top } action: { _, v in
                 offset = v
             }
-            .onAppear { if layout?.size != geo.size { layout = StoryLayout(width: geo.size.width, height: geo.size.height) } }
-            .onChange(of: geo.size) { layout = StoryLayout(width: geo.size.width, height: geo.size.height) }
             .onChange(of: StoryHaptics.marks(state)) { old, new in
                 // Like the weekly wrap: every event has its own feel, played when scrolling forward.
                 StoryHaptics.play(from: old, to: new)
@@ -67,14 +68,16 @@ private enum StoryHaptics {
         let b = s.beats
         let numbers = min(1, max(0, (b[4] - 0.1) / 0.7))
         return [
-            [0.3, 0.5, 0.7].filter { b[0] >= $0 }.count,               // goals ticked
-            b[1] < 0.05 ? 0 : b[1] < 0.3 ? 1 : b[1] < 0.6 ? 2 : 3,     // rhythm changes
-            b[2] >= 0.6 ? 1 : 0,                                        // the flame catches
+            s.pinned,                                                   // a section locks in place
+            [0.25, 0.5, 0.75].filter { b[0] >= $0 }.count,             // goals ticked
+            RhythmBeat.values(b[1]).build / 2 + RhythmBeat.values(b[1]).observe / 4, // sliders moving
+            RhythmBeat.stage(b[1]),                                     // checkpoint days changing
+            b[2] >= 0.55 ? 1 : 0,                                       // the flame catches
             b[3] >= 0.35 ? 1 : 0,                                       // the button sinks in
-            b[3] >= 0.47 ? 1 : 0,                                       // shipped
+            b[3] >= 0.5 ? 1 : 0,                                        // shipped
             Int(numbers * 10),                                          // numbers counting
-            (0..<5).filter { b[4] >= 0.25 + Double($0) * 0.09 }.count,  // services popping in
-            b[5] < 0.2 ? 0 : b[5] < 0.4 ? 1 : b[5] < 0.6 ? 2 : 3,      // kill, pivot, keep
+            (0..<5).filter { b[4] >= 0.3 + Double($0) * 0.1 }.count,    // services popping in
+            b[5] < 0.15 ? 0 : b[5] < 0.4 ? 1 : b[5] < 0.65 ? 2 : 3,    // kill, pivot, keep
             Int(s.carve * 8),                                           // carving the logo
         ]
     }
@@ -83,86 +86,135 @@ private enum StoryHaptics {
         guard old.count == new.count else { return }
         for i in new.indices where new[i] > old[i] {
             switch i {
-            case 2: Haptics.heavy(); Haptics.success()
-            case 3: Haptics.tap()
-            case 4: Haptics.success()
-            case 5, 8: Haptics.soft()
-            case 7 where new[i] == 3: Haptics.heavy()
+            case 0: Haptics.soft()
+            case 4: Haptics.heavy(); Haptics.success()
+            case 5: Haptics.tap()
+            case 6: Haptics.success()
+            case 7, 10: Haptics.soft()
+            case 9 where new[i] == 3: Haptics.heavy()
             default: Haptics.select()
             }
-            return // one at a time, the most recent
+            return
         }
     }
 }
 
-// MARK: - Geometry
+// MARK: - Geometry and timing
 
-/// Where everything sits on the page, the winding path, and how scrolling maps onto it. Built once per size.
-struct StoryLayout: Equatable {
+/// Where everything sits, the line's pieces, and how scrolling maps onto pins, progress and the point.
+struct StoryLayout {
+    static let count = 6
+    static let estimates: [CGFloat] = [520, 470, 330, 330, 300, 250]
+    /// Scroll spent on each section while it's pinned (in screen heights): long enough to watch it play.
+    static let pinFactor: [CGFloat] = [1.1, 1.2, 0.9, 0.9, 0.9, 0.8]
+    static let carveFactor: CGFloat = 0.7
+    static let gapFactor: CGFloat = 0.26
+
     let width: CGFloat
     let height: CGFloat
-    var size: CGSize { CGSize(width: width, height: height) }
-
-    /// Tops of the five beats, and which lane (side) the line runs down beside each.
+    let heights: [CGFloat]
     let tops: [CGFloat]
     let leftLane: [Bool]
-    let beatHeight: CGFloat
     let logoCenter: CGPoint
     let logoScale: CGFloat
-    /// The dotted line (start → beats → under the logo → up to the stem) and the logo stroke.
-    let line: Path
+
+    /// The line in pieces: lead-in, then lane / crossing alternating, then the approach to the logo.
+    struct Segment { let path: Path; let length: CGFloat; let start: CGFloat }
+    let segments: [Segment]
     let logo: Path
-    private let lineSamples: [CGPoint]
-    private let lineOffsets: [CGFloat]
-    private let logoSamples: [CGPoint]
-    let lineEndOffset: CGFloat
-    let carveScroll: CGFloat
-    let contentHeight: CGFloat
-    /// Where on screen the point rides while it travels.
-    static let anchor: CGFloat = 0.55
-    static let beats = 6
 
-    static func == (a: StoryLayout, b: StoryLayout) -> Bool { a.size == b.size }
+    /// Content offset at which each section sits centered (where it pins), and its pin length in scroll.
+    let pinAt: [CGFloat]
+    let pinLength: [CGFloat]
+    let logoAt: CGFloat
+    let carveLength: CGFloat
+    let scrollHeight: CGFloat
 
-    init(width w: CGFloat, height vh: CGFloat) {
+    init(width w: CGFloat, height vh: CGFloat, heights hs: [CGFloat]) {
         width = w
         height = vh
-        beatHeight = vh * 0.66
-        tops = (0..<Self.beats).map { vh * 0.72 + CGFloat($0) * vh * 0.66 }
-        leftLane = (0..<Self.beats).map { $0 % 2 == 0 }
-        let lane = { (left: Bool) -> CGFloat in left ? 32 : w - 32 }
-
-        // The logo, as LogoGeometry draws it (1024-unit icon space), 170 points wide.
+        heights = hs
+        let gap = vh * Self.gapFactor
+        var t: [CGFloat] = []
+        var y = vh * 0.95
+        for h in hs { t.append(y); y += h + gap }
+        tops = t
+        leftLane = (0..<Self.count).map { $0 % 2 == 0 }
         logoScale = 170 / 850
-        let lastBottom = tops[Self.beats - 1] + vh * 0.54
-        logoCenter = CGPoint(x: w / 2 + 6, y: lastBottom + vh * 0.3)
+        let lastBottom = t[Self.count - 1] + hs[Self.count - 1]
+        logoCenter = CGPoint(x: w / 2 + 6, y: lastBottom + gap + vh * 0.3)
         let k = logoScale, c = logoCenter
         func L(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: c.x + (x - 600) * k, y: c.y + (y - 410) * k) }
+        let laneX = { (i: Int) -> CGFloat in i % 2 == 0 ? 32 : w - 32 }
 
-        var p = Path()
-        let start = CGPoint(x: w / 2, y: vh * 0.5)
-        p.move(to: start)
-        var prev = start
-        func curve(to q: CGPoint, bend: CGFloat = 0.72) {
-            let dy = q.y - prev.y
-            p.addCurve(to: q, control1: CGPoint(x: prev.x, y: prev.y + dy * bend), control2: CGPoint(x: q.x, y: q.y - dy * bend))
-            prev = q
+        // The pieces of the line. Lanes run exactly the height of their section; every crossing sits in the
+        // empty gap between two sections, so the line never runs through one.
+        var segs: [Path] = []
+        let rounded = { (a: CGPoint, b: CGPoint) -> Path in
+            var p = Path()
+            p.move(to: a)
+            let dy = b.y - a.y
+            p.addCurve(to: b, control1: CGPoint(x: a.x, y: a.y + dy * 0.9), control2: CGPoint(x: b.x, y: b.y - dy * 0.9))
+            return p
         }
-        for i in 0..<Self.beats {
-            let x = lane(leftLane[i])
-            curve(to: CGPoint(x: x, y: tops[i] + vh * 0.02))
-            // Down the lane with a slight outward bow, so even the straights feel drawn by hand.
-            let bow: CGFloat = leftLane[i] ? -9 : 9
-            let end = CGPoint(x: x, y: tops[i] + vh * 0.54)
-            p.addCurve(to: end, control1: CGPoint(x: x + bow, y: tops[i] + vh * 0.2), control2: CGPoint(x: x + bow, y: tops[i] + vh * 0.36))
-            prev = end
+        segs.append(rounded(CGPoint(x: w / 2, y: vh * 0.56), CGPoint(x: laneX(0), y: t[0] - 12)))
+        for i in 0..<Self.count {
+            let x = laneX(i)
+            let bow: CGFloat = i % 2 == 0 ? -8 : 8
+            var lanePath = Path()
+            let a = CGPoint(x: x, y: t[i] - 12), b = CGPoint(x: x, y: t[i] + hs[i] + 12)
+            lanePath.move(to: a)
+            lanePath.addCurve(to: b, control1: CGPoint(x: x + bow, y: a.y + (b.y - a.y) * 0.33),
+                              control2: CGPoint(x: x + bow, y: a.y + (b.y - a.y) * 0.67))
+            segs.append(lanePath)
+            if i < Self.count - 1 {
+                segs.append(rounded(b, CGPoint(x: laneX(i + 1), y: t[i + 1] - 12)))
+            }
         }
-        // Swing round under the logo and come straight up into the bottom of the stem, as in the launch animation.
+        // Round under the logo and straight up into the bottom of the stem, as in the launch animation.
         let stemBottom = L(490, 630)
-        let below = CGPoint(x: stemBottom.x, y: stemBottom.y + vh * 0.12)
-        p.addCurve(to: below, control1: CGPoint(x: prev.x, y: below.y + vh * 0.06), control2: CGPoint(x: below.x, y: below.y + vh * 0.06))
-        p.addLine(to: stemBottom)
-        line = p
+        var approach = Path()
+        let from = CGPoint(x: laneX(Self.count - 1), y: lastBottom + 12)
+        let below = CGPoint(x: stemBottom.x, y: stemBottom.y + vh * 0.1)
+        approach.move(to: from)
+        approach.addCurve(to: below, control1: CGPoint(x: from.x, y: below.y + vh * 0.04), control2: CGPoint(x: below.x + 60, y: below.y + vh * 0.04))
+        approach.addLine(to: stemBottom)
+        segs.append(approach)
+
+        func length(_ p: Path) -> CGFloat {
+            // Walks the curves directly (cheap enough to redo on every scroll frame), so each piece's dots
+            // continue the rhythm of the one before.
+            var total: CGFloat = 0
+            var cur = CGPoint.zero
+            p.forEach { el in
+                switch el {
+                case .move(let to): cur = to
+                case .line(let to): total += hypot(to.x - cur.x, to.y - cur.y); cur = to
+                case .curve(let to, let c1, let c2):
+                    var prev = cur
+                    for i in 1...60 {
+                        let u = CGFloat(i) / 60, v = 1 - u
+                        let k0: CGFloat = v * v * v, k1: CGFloat = 3 * v * v * u, k2: CGFloat = 3 * v * u * u, k3: CGFloat = u * u * u
+                        let x: CGFloat = k0 * cur.x + k1 * c1.x + k2 * c2.x + k3 * to.x
+                        let y: CGFloat = k0 * cur.y + k1 * c1.y + k2 * c2.y + k3 * to.y
+                        let q = CGPoint(x: x, y: y)
+                        total += hypot(q.x - prev.x, q.y - prev.y)
+                        prev = q
+                    }
+                    cur = to
+                default: break
+                }
+            }
+            return total
+        }
+        var acc: CGFloat = 0
+        var built: [Segment] = []
+        for p in segs {
+            let len = length(p)
+            built.append(Segment(path: p, length: len, start: acc))
+            acc += len
+        }
+        segments = built
 
         var lg = Path()
         lg.move(to: L(490, 630))
@@ -173,66 +225,86 @@ struct StoryLayout: Equatable {
         lg.addLine(to: L(402, 490))
         logo = lg
 
-        // Sample both paths so scrolling can find the point quickly.
-        let n = 600
-        lineSamples = (0...n).map { i in i == 0 ? start : p.trimmedPath(from: 0, to: CGFloat(i) / CGFloat(n)).currentPoint ?? start }
-        logoSamples = (0...200).map { i in i == 0 ? L(490, 630) : lg.trimmedPath(from: 0, to: CGFloat(i) / 200).currentPoint ?? L(490, 630) }
-        // How far the page has to scroll for the point to reach each sample (it rides at `anchor` on screen).
-        var offs: [CGFloat] = []
-        var m = -CGFloat.infinity
-        for s in lineSamples {
-            m = max(m, s.y - vh * Self.anchor)
-            offs.append(m)
-        }
-        lineOffsets = offs
-        lineEndOffset = offs.last ?? 0
-        carveScroll = vh * 0.5
-        contentHeight = lineEndOffset + carveScroll + vh
+        pinAt = (0..<Self.count).map { t[$0] + hs[$0] / 2 - vh * 0.5 }
+        pinLength = Self.pinFactor.map { $0 * vh }
+        logoAt = logoCenter.y + 40 - vh * 0.5
+        carveLength = vh * Self.carveFactor
+        scrollHeight = logoAt + vh + pinLength.reduce(0, +) + carveLength
     }
 
     struct State {
-        /// 0…1 along the dotted line, then 0…1 along the logo.
-        var travel: CGFloat
+        /// How far the content has moved; it stands still while a section is pinned.
+        var content: CGFloat
+        /// Which piece of the line the point is on, and how far along it.
+        var segment: Int
+        var along: CGFloat
         var carve: CGFloat
-        var point: CGPoint
-        /// The page holds still while the logo is carved.
-        var hold: CGFloat
-        /// How far each beat has come (0…1), driven by where the point is.
         var beats: [CGFloat]
-        var beat: Int
-        var heroFade: CGFloat
+        /// How many sections have pinned so far.
+        var pinned: Int
+        var hold: CGFloat
     }
 
-    func state(offset: CGFloat) -> State {
-        let travel: CGFloat
-        let carve: CGFloat
-        let point: CGPoint
-        if offset < lineEndOffset {
-            // The last sample the page has scrolled past, then interpolate to the next.
-            var lo = 0, hi = lineOffsets.count - 1
-            while lo < hi {
-                let mid = (lo + hi + 1) / 2
-                if lineOffsets[mid] <= offset { lo = mid } else { hi = mid - 1 }
+    func state(scroll s: CGFloat) -> State {
+        // The timeline: free scroll, pin, free scroll, pin… then the logo pin that carves.
+        var beats = Array(repeating: CGFloat(0), count: Self.count)
+        var consumed: CGFloat = 0
+        var pinned = 0
+        var content = s
+        var segment = 0
+        var along: CGFloat = 0
+        var carve: CGFloat = 0
+        var located = false
+        var prevEnd: CGFloat = 0
+        for i in 0..<Self.count {
+            let start = pinAt[i] + consumed
+            let end = start + pinLength[i]
+            if !located && s < start {
+                // Between pins: the content scrolls and the point rides the crossing (or the lead-in).
+                segment = i * 2
+                along = min(1, max(0, (s - prevEnd) / max(1, start - prevEnd)))
+                content = s - consumed
+                located = true
+            } else if !located && s < end {
+                // Pinned: the content holds and the point runs down the lane beside the section.
+                beats[i] = (s - start) / pinLength[i]
+                segment = i * 2 + 1
+                along = beats[i]
+                content = pinAt[i]
+                pinned = i + 1
+                located = true
+            } else if s >= end {
+                beats[i] = 1
+                pinned = i + 1
             }
-            let next = min(lo + 1, lineOffsets.count - 1)
-            let span = lineOffsets[next] - lineOffsets[lo]
-            let f = span > 0 ? (offset - lineOffsets[lo]) / span : 0
-            let a = lineSamples[lo], b = lineSamples[next]
-            travel = (CGFloat(lo) + f) / CGFloat(lineSamples.count - 1)
-            point = CGPoint(x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f)
-            carve = 0
-        } else {
-            travel = 1
-            carve = min(1, (offset - lineEndOffset) / carveScroll)
-            let i = Int(carve * CGFloat(logoSamples.count - 1))
-            point = logoSamples[min(i, logoSamples.count - 1)]
+            consumed += pinLength[i]
+            prevEnd = end
         }
-        let ride = offset + height * Self.anchor
-        // Each beat plays out while it's around the middle of the screen.
-        let beats = tops.map { min(1, max(0, (ride - ($0 + height * 0.1)) / (height * 0.36))) }
-        let beat = beats.enumerated().reduce(0) { $0 + ($1.element >= 0.5 ? 1 : 0) } + (carve >= 1 ? 1 : 0)
-        return State(travel: travel, carve: carve, point: point, hold: max(0, offset - lineEndOffset),
-                     beats: beats, beat: beat, heroFade: max(0, 1 - offset / (height * 0.25)))
+        if !located {
+            let start = logoAt + consumed
+            segment = segments.count - 1
+            if s < start {
+                along = min(1, max(0, (s - prevEnd) / max(1, start - prevEnd)))
+                content = s - consumed
+            } else {
+                along = 1
+                carve = min(1, (s - start) / carveLength)
+                content = logoAt
+            }
+        }
+        return State(content: content, segment: segment, along: along, carve: carve, beats: beats, pinned: pinned,
+                     hold: s - content)
+    }
+
+    func point(_ st: State) -> CGPoint {
+        let seg = segments[st.segment]
+        return seg.path.trimmedPath(from: 0, to: max(0.0005, st.along)).currentPoint ?? .zero
+    }
+
+    /// Where a section's middle is on screen: -1 at the top, 0 centered, 1 at the bottom. Drives the 3D tilt.
+    func depth(_ i: Int, _ st: State) -> CGFloat {
+        let mid = tops[i] + heights[i] / 2 - st.content
+        return max(-1.5, min(1.5, (mid - height * 0.5) / (height * 0.5)))
     }
 }
 
@@ -241,42 +313,58 @@ struct StoryLayout: Equatable {
 private struct StoryCanvas: View {
     let layout: StoryLayout
     let state: StoryLayout.State
+    @Binding var heights: [CGFloat]
+
+    private static let dash: [CGFloat] = [0.1, 22]
 
     var body: some View {
         let l = layout
         ZStack(alignment: .topLeading) {
             hero
-            ForEach(0..<StoryLayout.beats, id: \.self) { i in
-                beat(i, progress: state.beats[i])
+            ForEach(0..<StoryLayout.count, id: \.self) { i in
+                beat(i)
             }
-            // The line: dots ahead in light gray, dots behind in ink, the point riding at its head.
-            Group {
-                l.line.stroke(Theme.line, style: StrokeStyle(lineWidth: 9, lineCap: .round, dash: [0.1, 22]))
-                l.line.trimmedPath(from: 0, to: state.travel)
-                    .stroke(Theme.ink, style: StrokeStyle(lineWidth: 9, lineCap: .round, dash: [0.1, 22]))
-            }
-            // Once the "p" is being carved the line has done its job and fades, leaving just the logo.
-            .opacity(Double(1 - min(1, state.carve * 1.6)))
+            line
+                .opacity(Double(1 - min(1, state.carve * 1.6)))
             l.logo.trimmedPath(from: 0, to: state.carve)
                 .stroke(Theme.ink, style: StrokeStyle(lineWidth: 100 * l.logoScale, lineCap: .round, lineJoin: .round))
-            // The point: a glossy bead with a soft contact shadow.
-            Circle()
-                .fill(RadialGradient(colors: [Color(hex: 0x5A5A5E), Theme.ink], center: UnitPoint(x: 0.35, y: 0.3),
-                                     startRadius: 1, endRadius: 12))
-                .overlay(Circle().fill(.white.opacity(0.55)).frame(width: 5, height: 5).offset(x: -3, y: -3).blur(radius: 0.5))
-                .frame(width: 20, height: 20)
-                .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
-                .background(Circle().fill(Theme.ink.opacity(0.1)).frame(width: 38, height: 38))
-                .position(state.point)
+            bead
+                .position(l.point(state))
                 .opacity(state.carve > 0 ? 0 : 1)
             ending
         }
-        // While the logo is carved the page holds still.
+        // Pinned sections and the logo hold still while the scroll drives them.
         .offset(y: state.hold)
     }
 
+    /// Dots ahead in light gray, dots behind in ink. Each piece keeps the dash rhythm of the whole line.
+    private var line: some View {
+        let l = layout
+        return ZStack(alignment: .topLeading) {
+            ForEach(l.segments.indices, id: \.self) { i in
+                let seg = l.segments[i]
+                let style = StrokeStyle(lineWidth: 9, lineCap: .round, dash: Self.dash, dashPhase: seg.start.truncatingRemainder(dividingBy: 22.1))
+                seg.path.stroke(Theme.line, style: style)
+                if i < state.segment || (i == state.segment && state.along > 0) {
+                    seg.path.trimmedPath(from: 0, to: i < state.segment ? 1 : state.along).stroke(Theme.ink, style: style)
+                }
+            }
+        }
+    }
+
+    /// The traveling point: a glossy bead with a soft contact shadow.
+    private var bead: some View {
+        Circle()
+            .fill(RadialGradient(colors: [Color(hex: 0x5A5A5E), Theme.ink], center: UnitPoint(x: 0.35, y: 0.3), startRadius: 1, endRadius: 12))
+            .overlay(Circle().fill(.white.opacity(0.55)).frame(width: 5, height: 5).offset(x: -3, y: -3).blur(radius: 0.5))
+            .frame(width: 20, height: 20)
+            .shadow(color: .black.opacity(0.25), radius: 4, y: 3)
+            .background(Circle().fill(Theme.ink.opacity(0.1)).frame(width: 38, height: 38))
+    }
+
     private var hero: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        let d = max(0, state.content / (layout.height * 0.5))
+        return VStack(alignment: .leading, spacing: 12) {
             Text("Prodline").eyebrow()
             Text("Side projects die in a drawer.").display(44, 800).foregroundStyle(Theme.ink)
                 .fixedSize(horizontal: false, vertical: true)
@@ -286,52 +374,50 @@ private struct StoryCanvas: View {
         }
         .padding(.horizontal, 24)
         .frame(width: layout.width, alignment: .leading)
-        .offset(y: layout.height * 0.14)
-        .overlay(alignment: .top) {
-            Image(systemName: "chevron.down")
-                .font(.system(size: 18, weight: .bold)).foregroundStyle(Theme.tertiary)
-                .offset(y: layout.height * 0.62)
-                .opacity(state.heroFade)
-        }
+        .rotation3DEffect(.degrees(Double(-min(1, d)) * 40), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.45)
+        .opacity(Double(1 - min(1, d * 0.9)))
+        .offset(y: layout.height * 0.16)
     }
 
-    // MARK: Beats
+    // MARK: Sections
 
     private struct Copy { let title: String; let body: String }
     private static let copy = [
         Copy(title: "Build in short bursts", body: "Two weeks per project. Checkpoints and goals keep it moving."),
-        Copy(title: "Set your rhythm", body: "Pick how long you build and which days checkpoints land on."),
+        Copy(title: "Set your rhythm", body: "How long you build, how long you watch, and which days checkpoints land on."),
         Copy(title: "Show up every day", body: "One thing ticked a day keeps the flame burning."),
         Copy(title: "Ship it early", body: "Done before the deadline? Ship it and bank the days."),
         Copy(title: "Watch it land", body: "Visits, revenue and downloads, straight from the tools you use."),
         Copy(title: "Then make the call", body: "Keep it, pivot it or kill it. The numbers help you decide."),
     ]
 
-    private func beat(_ i: Int, progress p: CGFloat) -> some View {
+    private func beat(_ i: Int) -> some View {
         let l = layout
         let left = l.leftLane[i]
-        let appear = min(1, p * 3)
-        return VStack(alignment: .leading, spacing: 24) {
+        let d = l.depth(i, state)
+        let ad = Double(min(1, abs(d)))
+        return VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Self.copy[i].title).display(32, 800).foregroundStyle(Theme.ink)
                 Text(Self.copy[i].body).font(.ui(17)).foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            .opacity(appear)
-            .offset(y: (1 - appear) * 24)
-            visual(i, p: p)
+            visual(i, p: state.beats[i])
                 .frame(maxWidth: .infinity)
-                .background(alignment: .bottom) {
-                    Ellipse().fill(Color.black.opacity(0.1 * appear)).frame(width: 230, height: 24).blur(radius: 14).offset(y: 14)
-                }
-                .rotation3DEffect(.degrees(Double(1 - appear) * 38), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
-                .scaleEffect(0.88 + 0.12 * appear, anchor: .bottom)
-                .opacity(Double(min(1, appear * 1.4)))
+                // The scene floats a little above the page while it's in play.
+                .rotation3DEffect(.degrees(Double(d) * 18), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.6)
         }
-        .padding(.leading, left ? 64 : 24)
-        .padding(.trailing, left ? 24 : 64)
+        .padding(.leading, left ? 60 : 24)
+        .padding(.trailing, left ? 24 : 60)
         .frame(width: l.width, alignment: .leading)
-        .offset(y: l.tops[i] + l.beatHeight * 0.06)
+        .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
+            if abs(heights[i] - h) > 1 { heights[i] = h }
+        }
+        // 3D on scroll: lying back as it rises in, flat while it plays, tipping forward as it leaves.
+        .rotation3DEffect(.degrees(Double(d) * 32), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.5)
+        .scaleEffect(1 - ad * 0.1)
+        .opacity(Double(max(0, 1 - max(0, abs(d) - 0.7) * 1.4)))
+        .offset(y: l.tops[i])
     }
 
     @ViewBuilder
@@ -365,152 +451,155 @@ private struct StoryCanvas: View {
     }
 }
 
-// MARK: - The beats
+// MARK: - The scenes
 
-/// Goals tick as the point passes.
+/// A white card with a solid edge underneath, the chunky 3D look of the app's buttons.
+private extension View {
+    func chunkySlab(radius: CGFloat, edge: Color = Theme.line, depth: CGFloat = 7, pressed: Bool = false) -> some View {
+        background {
+            ZStack {
+                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(edge).offset(y: pressed ? depth / 2 : depth)
+                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Theme.card)
+            }
+        }
+        .padding(.bottom, depth)
+    }
+}
+
+/// The project card and its checkpoint; the goals tick one by one.
 private struct BuildBeat: View {
     let p: CGFloat
     private static let cover = DemoData.projects.first { $0.name == "Habit Hero" }?.cover
 
     var body: some View {
-        let done = [0.3, 0.5, 0.7].map { p >= $0 }
-        VStack(spacing: 16) {
+        let done = [0.25, 0.5, 0.75].map { p >= $0 }
+        VStack(spacing: 20) {
             ProjectCardFace(name: "Habit Hero", initial: "H", accent: Accent(hex: 0x58CC02), cover: Self.cover,
                             cornerLabel: "Day", cornerValue: "12", footnote: "Building · 2d left")
                 .frame(width: 150)
-                .shadow(color: .black.opacity(0.12), radius: 14, y: 8)
-                .scaleEffect(0.85 + 0.15 * min(1, p * 2.5))
+                // The card as a solid object: a thick green edge underneath.
+                .background {
+                    RoundedRectangle(cornerRadius: 30 * 150 / 260, style: .continuous).fill(Color(hex: 0x3E8F02)).offset(y: 8)
+                }
+                .shadow(color: .black.opacity(0.16), radius: 16, y: 14)
+                // It swings round to face you as the scene starts.
+                .rotation3DEffect(.degrees(Double(1 - min(1, p * 4)) * 35), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             VStack(alignment: .leading, spacing: 11) {
                 Text("Checkpoint 2 · \(done.filter { $0 }.count)/3 goals").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
+                    .contentTransition(.numericText())
                 ForEach(Array(["Onboarding flow live", "Shareable streak card", "Push reminders"].enumerated()), id: \.offset) { n, g in
                     HStack(spacing: 10) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .strokeBorder(done[n] ? Color(hex: 0x58CC02) : Theme.tertiary, lineWidth: 2)
+                                .fill(done[n] ? Color(hex: 0x46A302) : Theme.line).offset(y: 2.5)
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(done[n] ? Color(hex: 0x58CC02) : Theme.card)
+                                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .strokeBorder(done[n] ? .clear : Theme.tertiary, lineWidth: 2))
                             if done[n] {
-                                RoundedRectangle(cornerRadius: 6, style: .continuous).fill(Color(hex: 0x58CC02))
                                 Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy)).foregroundStyle(.white)
                                     .transition(.scale.combined(with: .opacity))
                             }
                         }
                         .frame(width: 20, height: 20)
+                        .offset(y: done[n] ? 2 : 0)
                         Text(g).font(.ui(15, .medium))
                             .foregroundStyle(done[n] ? Theme.secondary : Theme.ink)
                             .strikethrough(done[n], color: Theme.secondary)
                         Spacer(minLength: 0)
                         Text("+3 XP").font(.display(14, 800)).foregroundStyle(Accent.sale.text)
                             .opacity(done[n] ? 1 : 0)
-                            .offset(y: done[n] ? 0 : 6)
+                            .offset(y: done[n] ? 0 : 8)
                     }
                 }
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .chunkySlab(radius: 22)
-            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: done)
+            .animation(.spring(response: 0.38, dampingFraction: 0.65), value: done)
         }
     }
 }
 
-/// The schedule settings move with the scroll: build length, checkpoint days, and the bar they make.
-private struct RhythmBeat: View {
+/// The app's own schedule editor, played by the scroll: the sliders slide, the checkpoint days switch,
+/// and the overlap preview reflows with them, exactly like setting it up by hand.
+struct RhythmBeat: View {
     let p: CGFloat
 
+    private static let days: [(Int, String)] = [(2, "Mo"), (3, "Tu"), (4, "We"), (5, "Th"), (6, "Fr"), (7, "Sa"), (1, "Su")]
+
+    /// Build / observe / cadence as the scroll moves, landing on the defaults (2 weeks, 4 weeks, every 2 weeks).
+    static func values(_ p: CGFloat) -> (build: Int, observe: Int, every: Int) {
+        func key(_ stops: [(CGFloat, CGFloat)]) -> Int {
+            if p <= stops[0].0 { return Int(stops[0].1) }
+            for (a, b) in zip(stops, stops.dropFirst()) where p <= b.0 {
+                let f = (p - a.0) / (b.0 - a.0)
+                let e = f < 0.5 ? 2 * f * f : 1 - pow(-2 * f + 2, 2) / 2
+                return Int((a.1 + (b.1 - a.1) * e).rounded())
+            }
+            return Int(stops[stops.count - 1].1)
+        }
+        return (key([(0.05, 14), (0.3, 7), (0.55, 21), (0.8, 14)]),
+                key([(0.2, 28), (0.5, 56), (0.8, 28)]),
+                key([(0.35, 14), (0.6, 7), (0.85, 14)]))
+    }
+
+    static func stage(_ p: CGFloat) -> Int { p < 0.3 ? 0 : p < 0.55 ? 1 : p < 0.8 ? 2 : 3 }
+
     var body: some View {
-        // Lands on the defaults: two weeks, checkpoints Monday and Friday.
-        let stage = p < 0.3 ? 0 : p < 0.6 ? 1 : 2
-        let weeks = [1, 3, 2][stage]
-        let days: Set<Int> = [[1, 4], [2, 4, 6], [0, 4]][stage].reduce(into: []) { $0.insert($1) }
-        let ink = Accent(hex: 0x1C1C1E)
-        VStack(spacing: 16) {
-            HStack(spacing: 8) {
-                ForEach([1, 2, 3], id: \.self) { w in
-                    let on = w == weeks
-                    Text(w == 1 ? "1 week" : "\(w) weeks")
-                        .font(.ui(15, .semibold))
-                        .foregroundStyle(on ? .white : Theme.ink)
-                        .padding(.horizontal, 14).frame(height: 38)
-                        .background {
-                            ZStack {
-                                Capsule().fill(on ? ink.dark : Theme.line).offset(y: on ? 2 : 4)
-                                Capsule().fill(on ? ink.base : Theme.card)
-                            }
-                        }
-                        .offset(y: on ? 2 : 0)
-                }
-            }
-            HStack(spacing: 6) {
-                ForEach(0..<7, id: \.self) { d in
-                    let on = days.contains(d)
-                    VStack(spacing: 4) {
-                        Text(["M", "T", "W", "T", "F", "S", "S"][d]).font(.ui(13, .bold))
-                            .foregroundStyle(on ? .white : Theme.secondary)
-                            .frame(width: 34, height: 40)
-                            .background {
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? Color(hex: 0x46A302) : Theme.line).offset(y: 4)
-                                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(on ? Color(hex: 0x58CC02) : Theme.card)
-                                }
-                            }
-                            .offset(y: on ? -4 : 0)
+        let v = Self.values(p)
+        let checkpointDays: Set<Int> = [[2, 6], [3, 5], [2, 4, 6], [2, 6]][Self.stage(p)].reduce(into: []) { $0.insert($1) }
+        VStack(alignment: .leading, spacing: 16) {
+            row("Build phase", v.build.durationText) { ChunkySlider(value: .constant(v.build), range: 3...42) }
+            row("Observe phase", v.observe.durationText) { ChunkySlider(value: .constant(v.observe), range: 7...90) }
+            row("New project every", v.every.durationText) { ChunkySlider(value: .constant(v.every), range: 3...42) }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Checkpoint days").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                HStack(spacing: 4) {
+                    ForEach(Self.days, id: \.0) { wd, label in
+                        Chip(title: label, isOn: checkpointDays.contains(wd)) {}
+                            .frame(maxWidth: .infinity)
                     }
                 }
+                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: Self.stage(p))
             }
-            // Build and observe as one bar, checkpoints marked on the build part.
-            GeometryReader { geo in
-                let total = CGFloat(weeks + 4)
-                let buildW = geo.size.width * CGFloat(weeks) / total
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.line)
-                    Capsule().fill(Color(hex: 0x58CC02)).frame(width: buildW)
-                    ForEach(0..<(weeks * days.count), id: \.self) { n in
-                        Circle().fill(.white).frame(width: 6, height: 6)
-                            .offset(x: buildW * (CGFloat(n) + 0.5) / CGFloat(weeks * days.count) - 3)
-                    }
-                }
-            }
-            .frame(height: 14)
-            HStack {
-                Text("Build \(weeks) wk\(weeks == 1 ? "" : "s")").font(.ui(13, .semibold)).foregroundStyle(Color(hex: 0x46A302))
-                Spacer()
-                Text("Observe 4 wks").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
-            }
+            SchemePreview(build: v.build, observe: v.observe, every: v.every)
         }
         .padding(16)
         .chunkySlab(radius: 22)
-        .animation(.spring(response: 0.4, dampingFraction: 0.65), value: stage)
+        .environment(\.accent, .neutral)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: v.build * 10_000 + v.observe * 100 + v.every)
+        .allowsHitTesting(false)
     }
-}
 
-/// A white card with a solid edge underneath, the chunky 3D look of the app's buttons.
-private extension View {
-    func chunkySlab(radius: CGFloat, edge: Color = Theme.line, pressed: Bool = false) -> some View {
-        background {
-            ZStack {
-                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(edge).offset(y: pressed ? 3 : 6)
-                RoundedRectangle(cornerRadius: radius, style: .continuous).fill(Theme.card)
+    private func row<C: View>(_ title: String, _ value: String, @ViewBuilder _ content: () -> C) -> some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                Text(value).display(19, 700).foregroundStyle(Theme.ink).contentTransition(.numericText())
             }
+            content()
         }
-        .padding(.bottom, 6)
     }
 }
 
-/// The flame grows as the point comes down and catches halfway.
+/// The flame grows as the scene plays and catches halfway.
 private struct StreakBeat: View {
     let p: CGFloat
 
     var body: some View {
-        let lit = p >= 0.6
+        let lit = p >= 0.55
         VStack(spacing: 14) {
-            BurningFlame(grow: lit ? 1 : Double(0.3 + 0.06 * min(1, p / 0.6)), bright: lit ? 1 : 0, width: 110, glow: 0.35)
+            BurningFlame(grow: lit ? 1 : Double(0.3 + 0.06 * min(1, p / 0.55)), bright: lit ? 1 : 0, width: 110, glow: 0.35)
                 .frame(height: 150, alignment: .bottom)
                 .animation(.spring(response: 0.6, dampingFraction: 0.55), value: lit)
             VStack(spacing: 0) {
-                Text(lit ? "3" : "2").display(44, 850).foregroundStyle(lit ? Theme.flame : Theme.tertiary)
+                ExtrudedText(text: lit ? "3" : "2", size: 48, accent: lit ? Accent(hex: 0xFF9600) : Accent(hex: 0xC7C7CC))
                     .contentTransition(.numericText())
                 Text("DAY STREAK").font(.ui(12, .bold)).tracking(2).foregroundStyle(Theme.secondary)
             }
-            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: lit)
+            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: lit)
         }
     }
 }
@@ -520,32 +609,32 @@ private struct ShipBeat: View {
     let p: CGFloat
 
     var body: some View {
-        let pressed = p >= 0.35 && p < 0.47
-        let shipped = p >= 0.47
+        let pressed = p >= 0.35 && p < 0.5
+        let shipped = p >= 0.5
         let green = Accent(hex: 0x58CC02)
         VStack(spacing: 22) {
             VStack(spacing: 0) {
                 ExtrudedText(text: "4", size: 96, accent: green)
                 ExtrudedText(text: "days early", size: 28, accent: green, weight: 800)
             }
-            .rotation3DEffect(.degrees(shipped ? 0 : 70), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
+            .rotation3DEffect(.degrees(shipped ? 0 : 75), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
             .scaleEffect(shipped ? 1 : 0.6, anchor: .bottom)
             .opacity(shipped ? 1 : 0)
             ZStack {
-                RoundedRectangle(cornerRadius: 18, style: .continuous).fill(green.dark).offset(y: 5)
+                RoundedRectangle(cornerRadius: 18, style: .continuous).fill(green.dark).offset(y: 6)
                 RoundedRectangle(cornerRadius: 18, style: .continuous).fill(green.base)
                     .overlay(Text("Let's ship").font(.display(18, 700)).tracking(2.4).textCase(.uppercase).foregroundStyle(.white))
-                    .offset(y: pressed ? 5 : 0)
+                    .offset(y: pressed ? 6 : 0)
             }
             .frame(width: 230, height: 56)
-            .padding(.bottom, 5)
+            .padding(.bottom, 6)
         }
-        .animation(.spring(response: 0.45, dampingFraction: 0.65), value: shipped)
+        .animation(.spring(response: 0.5, dampingFraction: 0.6), value: shipped)
         .animation(.spring(response: 0.2, dampingFraction: 0.7), value: pressed)
     }
 }
 
-/// Numbers count up with the scroll; the services they come from line up underneath.
+/// Numbers count up with the scroll; the services they come from pop in underneath.
 private struct NumbersBeat: View {
     let p: CGFloat
 
@@ -560,11 +649,13 @@ private struct NumbersBeat: View {
             }
             HStack(spacing: 10) {
                 ForEach(Array([IntegrationKind.appStore, .stripe, .revenueCat, .plausible, .youtube].enumerated()), id: \.offset) { n, kind in
-                    let on = p >= 0.25 + Double(n) * 0.09
+                    let on = p >= 0.3 + Double(n) * 0.1
                     IntegrationIcon(kind: kind, size: 38)
+                        .background(RoundedRectangle(cornerRadius: 11.4, style: .continuous).fill(Color.black.opacity(0.18)).offset(y: 4))
                         .scaleEffect(on ? 1 : 0.4)
+                        .rotation3DEffect(.degrees(on ? 0 : 80), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
                         .opacity(on ? 1 : 0)
-                        .animation(.spring(response: 0.4, dampingFraction: 0.6), value: on)
+                        .animation(.spring(response: 0.45, dampingFraction: 0.6), value: on)
                 }
             }
         }
@@ -583,7 +674,7 @@ private struct VerdictBeat: View {
     let p: CGFloat
 
     var body: some View {
-        let pick: Verdict? = p < 0.2 ? nil : p < 0.4 ? .kill : p < 0.6 ? .pivot : .keep
+        let pick: Verdict? = p < 0.15 ? nil : p < 0.4 ? .kill : p < 0.65 ? .pivot : .keep
         HStack(spacing: 10) {
             ForEach([Verdict.keep, .pivot, .kill]) { v in
                 let on = pick == v
@@ -597,10 +688,11 @@ private struct VerdictBeat: View {
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 14)
-                .chunkySlab(radius: 20, edge: on ? a.base : Theme.line, pressed: on)
-                .scaleEffect(on && v == .keep ? 1.06 : on ? 1.02 : 1)
+                .chunkySlab(radius: 20, edge: on ? a.dark : Theme.line, pressed: on)
+                .offset(y: on ? 3 : 0)
+                .scaleEffect(on && v == .keep ? 1.06 : 1)
             }
         }
-        .animation(.spring(response: 0.35, dampingFraction: 0.65), value: pick)
+        .animation(.spring(response: 0.38, dampingFraction: 0.6), value: pick)
     }
 }
