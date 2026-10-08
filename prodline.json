@@ -36,6 +36,7 @@
     {"id": "data-charts", "title": "Trend charts in the Data tab", "day": 8, "done": true},
     {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": false},
     {"id": "instant-goal-ticks", "title": "Make goal ticks respond instantly", "day": 8, "done": true},
+    {"id": "first-launch-intro", "title": "Play a motion intro on first launch", "day": 8, "done": false},
 
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},
     {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": false},
