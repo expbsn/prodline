@@ -69,7 +69,7 @@ private enum StoryHaptics {
         let numbers = min(1, max(0, (b[4] - 0.1) / 0.7))
         let v = RhythmBeat.values(b[1])
         return [
-            [b[0] >= 0.75, b[1] >= 0.85, numbers >= 1].filter { $0 }.count, // a scene completes with a burst
+            numbers >= 1 ? 1 : 0,                                       // the numbers land with a burst
             s.pinned,                                                   // a section locks in place
             [0.25, 0.5, 0.75].filter { b[0] >= $0 }.count,             // goals ticked
             v.build / 2 + v.observe / 4 + v.every / 2,                  // sliders moving
@@ -524,7 +524,11 @@ private struct BuildBeat: View {
             .chunkySlab(radius: 22)
             .animation(.spring(response: 0.38, dampingFraction: 0.65), value: done)
             // All three done: the checkpoint pops confetti.
-            .overlay { SectionBurst(fire: done.allSatisfy { $0 }, style: .confetti) }
+        }
+        // All three done: "+10 XP" spells itself out over the bottom of the scene.
+        .overlay(alignment: .bottom) {
+            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: done.allSatisfy { $0 })
+                .offset(y: -24)
         }
     }
 }
@@ -575,7 +579,11 @@ struct RhythmBeat: View {
         }
         .padding(14)
         .chunkySlab(radius: 22)
-        .overlay { SectionBurst(fire: p >= 0.85, style: .sparks) }
+        // Settled on the defaults: "Dialed in!" spells itself out over the bottom of the editor.
+        .overlay(alignment: .bottom) {
+            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x1CB0F6), size: 54, on: p >= 0.85)
+                .offset(y: -30)
+        }
         .environment(\.accent, .neutral)
         .animation(.spring(response: 0.25, dampingFraction: 0.85), value: v.build * 10_000 + v.observe * 100 + v.every)
         .allowsHitTesting(false)
@@ -761,6 +769,53 @@ private struct VerdictBeat: View {
 }
 
 // MARK: - Finishing bursts
+
+/// A scene's finished state: big angled 3D lettering that types itself out letter by letter, each letter
+/// dropping in out of a blur, with a white drop shadow so it reads over the scene. Confetti once it's spelled.
+private struct SpelledStamp: View {
+    let text: String
+    let accent: Accent
+    var size: CGFloat = 64
+    let on: Bool
+    @State private var shown = 0
+    @State private var typing: Task<Void, Never>?
+
+    var body: some View {
+        let letters = Array(text)
+        HStack(spacing: 0) {
+            ForEach(letters.indices, id: \.self) { i in
+                let visible = i < shown
+                ExtrudedText(text: String(letters[i]), size: size, accent: accent)
+                    .opacity(visible ? 1 : 0)
+                    .scaleEffect(visible ? 1 : 1.9)
+                    .blur(radius: visible ? 0 : 10)
+                    .offset(y: visible ? 0 : -24)
+                    .animation(.spring(response: 0.32, dampingFraction: 0.55), value: visible)
+            }
+        }
+        .fixedSize()
+        .shadow(color: .white, radius: 0, y: 5)
+        .shadow(color: .white, radius: 10, y: 6)
+        .shadow(color: .white, radius: 22, y: 10)
+        .rotation3DEffect(.degrees(24), axis: (x: 1, y: -0.45, z: 0), perspective: 0.5)
+        .rotationEffect(.degrees(-8))
+        .overlay { SectionBurst(fire: shown == letters.count, style: .confetti) }
+        .allowsHitTesting(false)
+        .onChange(of: on, initial: true) { _, on in
+            typing?.cancel()
+            guard on else { shown = 0; return }
+            typing = Task { @MainActor in
+                for i in 1...letters.count {
+                    try? await Task.sleep(for: .milliseconds(75))
+                    if Task.isCancelled { return }
+                    shown = i
+                    if letters[i - 1] != " " { Haptics.select() }
+                }
+                Haptics.success()
+            }
+        }
+    }
+}
 
 /// A one-shot burst played when a section's scene completes: confetti, sparks, or fireworks. Drawn on a
 /// canvas larger than its host, so it spills out over the page.
