@@ -6,7 +6,7 @@ import { Accent, display, theme, ui } from "./theme";
 /// the accent with a color fade and a blur, the letter badge top left, the corner stat top right, the name below.
 export const ProjectCard: React.FC<{
   name: string;
-  cover: string;
+  cover?: string;
   accent: Accent;
   cornerLabel: string;
   cornerValue: string;
@@ -15,7 +15,7 @@ export const ProjectCard: React.FC<{
 }> = ({ name, cover, accent, cornerLabel, cornerValue, footnote, width = 200 }) => {
   const s = width / 260;
   const h = (width * 7) / 5;
-  const src = staticFile(cover);
+  const src = cover ? staticFile(cover) : undefined;
   const fade = `linear-gradient(to bottom, ${accent.base}00 42%, ${accent.base}59 68%, ${accent.base}CC 84%, ${accent.base} 96%)`;
   return (
     <div
@@ -29,7 +29,16 @@ export const ProjectCard: React.FC<{
         boxShadow: `inset 0 0 0 1.5px rgba(255,255,255,0.7)`,
       }}
     >
-      <div style={{ position: "absolute", top: 0, left: 0, width, height: width, overflow: "hidden" }}>
+      {!src && (
+        // No photo: the tinted letter artwork, like a Dash card without a cover.
+        <div style={{ position: "absolute", top: 0, left: 0, width, height: width, overflow: "hidden",
+          background: `linear-gradient(135deg, #FFFFFF, ${accent.base}1F, ${accent.base}47)` }}>
+          <div style={{ position: "absolute", right: -30 * s, top: -40 * s, fontFamily: display, fontWeight: 900,
+            fontSize: 300 * s, color: `${accent.base}1F`, lineHeight: 1 }}>{name[0]}</div>
+          <div style={{ position: "absolute", inset: 0, background: `linear-gradient(to bottom, ${accent.base}00 42%, ${accent.base}59 68%, ${accent.base}CC 84%, ${accent.base} 96%)` }} />
+        </div>
+      )}
+      {src && <div style={{ position: "absolute", top: 0, left: 0, width, height: width, overflow: "hidden" }}>
         <Img src={src} style={{ width, height: width, objectFit: "cover" }} />
         <Img
           src={src}
@@ -46,7 +55,7 @@ export const ProjectCard: React.FC<{
         />
         <div style={{ position: "absolute", inset: 0, background: fade }} />
         <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: width * 0.4, background: "linear-gradient(rgba(0,0,0,0.32), transparent)" }} />
-      </div>
+      </div>}
       {/* Badge and corner stat */}
       <div style={{ position: "absolute", left: 20 * s, top: 20 * s, right: 20 * s, display: "flex", justifyContent: "space-between" }}>
         <div
@@ -271,6 +280,23 @@ export const Flame: React.FC<{ time: number; grow: number; bright: number; width
           );
         })}
       </svg>
+    </div>
+  );
+};
+
+/// The "New project" card at the end of the Dash carousel (CreateProjectCardFace).
+export const CreateCard: React.FC<{ width?: number }> = ({ width = 200 }) => {
+  const s = width / 260;
+  const h = (width * 7) / 5;
+  return (
+    <div style={{ width, height: h, borderRadius: 30 * s, background: "white", position: "relative", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 8 * s, borderRadius: 24 * s, border: `${2}px dashed ${theme.tertiary}` }} />
+      <div style={{ position: "absolute", left: 24 * s, top: 24 * s, width: 64 * s, height: 64 * s, borderRadius: "50%", background: theme.ink,
+        display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 40 * s, fontWeight: 700, fontFamily: ui }}>+</div>
+      <div style={{ position: "absolute", left: 24 * s, bottom: 24 * s, right: 24 * s }}>
+        <div style={{ fontFamily: display, fontWeight: 800, fontSize: 48 * s, lineHeight: 0.95, color: theme.ink }}>New<br />project</div>
+        <div style={{ fontFamily: ui, fontWeight: 500, fontSize: 14 * s, color: theme.secondary, marginTop: 10 * s }}>Pick a cover, set the clock.</div>
+      </div>
     </div>
   );
 };
