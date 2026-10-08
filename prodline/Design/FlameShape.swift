@@ -122,6 +122,8 @@ struct BurningFlame: View {
     var width: CGFloat = 150
     /// When it started burning; the flicker eases in over a moment from then.
     var alive: Date = .distantPast
+    /// How strong the halo is once lit (1 = the full streak-moment glow).
+    var glow: Double = 1
 
     private var h: CGFloat { width * 1.3 }
 
@@ -164,9 +166,9 @@ struct BurningFlame: View {
             .brightness(-0.28 * (1 - bright))
         }
         // No glow until it actually catches.
-        .shadow(color: Color(hex: 0xFF9600).opacity(0.9 * bright), radius: 16 * s)
-        .shadow(color: Color(hex: 0xFF9600).opacity(0.6 * bright), radius: 42 * s)
-        .shadow(color: Color(hex: 0xFF4B00).opacity(0.4 * bright), radius: 90 * s)
+        .shadow(color: Color(hex: 0xFF9600).opacity(0.9 * bright * glow), radius: 16 * s)
+        .shadow(color: Color(hex: 0xFF9600).opacity(0.6 * bright * glow), radius: 42 * s)
+        .shadow(color: Color(hex: 0xFF4B00).opacity(0.4 * bright * glow), radius: 90 * s)
     }
 }
 
