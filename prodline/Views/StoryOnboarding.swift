@@ -92,7 +92,7 @@ private enum StoryHaptics {
         return [
             numbers >= 1 ? 1 : 0,                                       // the numbers land with a burst
             s.pinned,                                                   // a section locks in place
-            [0.25, 0.5, 0.75].filter { b[0] >= $0 }.count,             // goals ticked
+            [0.15, 0.3, 0.45].filter { b[0] >= $0 }.count,             // goals ticked
             v.build / 2 + v.observe / 4 + v.every / 2,                  // sliders moving
             RhythmBeat.stage(b[1]),                                     // checkpoint days changing
             b[2] >= 0.55 ? 1 : 0,                                       // the flame catches
@@ -349,6 +349,16 @@ private struct StoryCanvas: View {
             ForEach(0..<StoryLayout.count, id: \.self) { i in
                 beat(i)
             }
+            // The finish stamps hold still in the middle of the screen, over everything, and fade out of
+            // focus as their section moves on rather than sliding away with it.
+            ForEach(0..<2, id: \.self) { i in
+                let d = l.depth(i, state)
+                stamp(i)
+                    .opacity(Double(max(0, 1 - max(0, abs(d) - 0.2) * 3)))
+                    .blur(radius: max(0, abs(d) - 0.12) * 24)
+                    .position(x: l.width / 2, y: state.content + l.height * 0.5)
+                    .allowsHitTesting(false)
+            }
             line
                 .opacity(Double(1 - min(1, state.carve * 1.6)))
             l.logo.trimmedPath(from: 0, to: state.carve)
@@ -450,12 +460,6 @@ private struct StoryCanvas: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
             if abs(heights[i] - h) > 1 { heights[i] = h }
         }
-        // The finish stamp stays centered on the screen and fades out of focus instead of sliding away.
-        .overlay(alignment: .bottom) {
-            stamp(i)
-                .opacity(Double(max(0, 1 - max(0, abs(d) - 0.08) * 4)))
-                .blur(radius: max(0, abs(d) - 0.04) * 30)
-        }
         .scaleEffect(1 - ad * 0.08)
         // Out of focus away from the middle, sharp while it plays.
         .blur(radius: max(0, abs(d) - 0.4) * 6)
@@ -469,13 +473,11 @@ private struct StoryCanvas: View {
         let p = state.beats[i]
         switch i {
         case 0:
-            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: p >= 0.75,
+            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: p >= 0.5,
                          confetti: [0xFFC800, 0xFFD94D, 0xE5A500, 0xFFF0A0])
-                .offset(y: -40)
         case 1:
-            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x58CC02), size: 68, on: p >= 0.85,
+            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x58CC02), size: 68, on: p >= 0.62,
                          confetti: [0x58CC02, 0x89E219, 0x46A302, 0xB8F28B])
-                .offset(y: -90)
         default:
             EmptyView()
         }
@@ -533,7 +535,7 @@ private struct BuildBeat: View {
     private static let cover = DemoData.projects.first { $0.name == "Side Shop" }?.cover
 
     var body: some View {
-        let done = [0.25, 0.5, 0.75].map { p >= $0 }
+        let done = [0.15, 0.3, 0.45].map { p >= $0 }
         VStack(spacing: 20) {
             ProjectCardFace(name: "Side Shop", initial: "S", accent: Accent(hex: 0x3A3A3C), cover: Self.cover,
                             cornerLabel: "Day", cornerValue: "12", footnote: "Building · 2d left")
@@ -599,12 +601,12 @@ struct RhythmBeat: View {
             }
             return Int(stops[stops.count - 1].1)
         }
-        return (key([(0.05, 14), (0.3, 7), (0.55, 21), (0.8, 14)]),
-                key([(0.2, 28), (0.5, 56), (0.8, 28)]),
-                key([(0.35, 14), (0.6, 7), (0.85, 14)]))
+        return (key([(0.04, 14), (0.2, 7), (0.38, 21), (0.56, 14)]),
+                key([(0.12, 28), (0.32, 56), (0.56, 28)]),
+                key([(0.22, 14), (0.4, 7), (0.58, 14)]))
     }
 
-    static func stage(_ p: CGFloat) -> Int { p < 0.3 ? 0 : p < 0.55 ? 1 : p < 0.8 ? 2 : 3 }
+    static func stage(_ p: CGFloat) -> Int { p < 0.2 ? 0 : p < 0.38 ? 1 : p < 0.56 ? 2 : 3 }
 
     var body: some View {
         let v = Self.values(p)
