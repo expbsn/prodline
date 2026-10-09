@@ -49,6 +49,13 @@ struct StoryOnboarding: View {
                     .ignoresSafeArea(edges: .top)
                     .allowsHitTesting(false)
             }
+            .overlay(alignment: .bottom) {
+                // Before the first scroll: a nudge at the bottom of the screen, gone once you start.
+                ScrollHint()
+                    .padding(.bottom, 12)
+                    .opacity(Double(max(0, 1 - offset / 80)))
+                    .allowsHitTesting(false)
+            }
             .overlay(alignment: .topTrailing) {
                 Button("Skip", action: onFinish)
                     .font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
@@ -57,6 +64,20 @@ struct StoryOnboarding: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
+    }
+}
+
+/// "Scroll" with a chevron that keeps nudging downward.
+private struct ScrollHint: View {
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("Scroll").font(.ui(13, .semibold)).foregroundStyle(Theme.tertiary)
+            Image(systemName: "chevron.down")
+                .font(.system(size: 18, weight: .heavy)).foregroundStyle(Theme.tertiary)
+                .phaseAnimator([0, 1]) { v, phase in
+                    v.offset(y: phase * 8).opacity(1 - phase * 0.4)
+                } animation: { _ in .easeInOut(duration: 0.7) }
+        }
     }
 }
 
@@ -75,6 +96,7 @@ private enum StoryHaptics {
             v.build / 2 + v.observe / 4 + v.every / 2,                  // sliders moving
             RhythmBeat.stage(b[1]),                                     // checkpoint days changing
             b[2] >= 0.55 ? 1 : 0,                                       // the flame catches
+            StreakBeat.arrived(b[2]),                                   // sparks landing on the ember
             ShipBeat.day(b[3]),                                         // the days ticking up
             b[3] >= ShipBeat.appears ? 1 : 0,                           // the ship button rises in
             b[3] >= ShipBeat.press ? 1 : 0,                             // the button sinks in
@@ -91,11 +113,10 @@ private enum StoryHaptics {
         for i in new.indices where new[i] > old[i] {
             switch i {
             case 0: Haptics.success()
-            case 1, 7, 10, 13: Haptics.soft()
-            case 5, 9: Haptics.heavy(); Haptics.success()
-            case 8: Haptics.tap()
-            case 6: Haptics.tap()
-            case 12 where new[i] == 3: Haptics.heavy(); Haptics.success()
+            case 1, 6, 8, 11, 14: Haptics.soft()
+            case 5, 10: Haptics.heavy(); Haptics.success()
+            case 7, 9: Haptics.tap()
+            case 13 where new[i] == 3: Haptics.heavy(); Haptics.success()
             default: Haptics.select()
             }
             return
@@ -378,7 +399,8 @@ private struct StoryCanvas: View {
         }
         .padding(.horizontal, 24)
         .frame(width: layout.width, alignment: .leading)
-        .rotation3DEffect(.degrees(Double(-min(1, d)) * 40), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.45)
+        .offset(x: -min(1, d) * min(1, d) * layout.width)
+        .blur(radius: min(1, d) * 6)
         .opacity(Double(1 - min(1, d * 0.9)))
         .offset(y: layout.height * 0.16)
     }
@@ -387,12 +409,12 @@ private struct StoryCanvas: View {
 
     private struct Copy { let title: String; let body: String }
     private static let copy = [
-        Copy(title: "Build in short bursts", body: "Two weeks per project. Checkpoints and goals keep it moving."),
-        Copy(title: "Set your rhythm", body: "How long you build, how long you watch, and which days checkpoints land on."),
-        Copy(title: "Show up every day", body: "One thing ticked a day keeps the flame burning."),
-        Copy(title: "Ship it early", body: "Done before the deadline? Ship it and bank the days."),
-        Copy(title: "Watch it land", body: "Visits, revenue and downloads, straight from the tools you use."),
-        Copy(title: "Then make the call", body: "Keep it, pivot it or kill it. The numbers help you decide."),
+        Copy(title: "Build in short bursts", body: "Two-week sprints with checkpoints that keep you honest. Goodbye, \u{201C}I'll get to it this weekend.\u{201D}"),
+        Copy(title: "Set your rhythm", body: "You pick the pace. Prodline does the nagging, so future you can't weasel out of it."),
+        Copy(title: "Show up every day", body: "Tick off one thing a day and the flame stays lit. Letting it go out will feel worse than doing the work."),
+        Copy(title: "You'll finish early", body: "Building gets so much fun the deadline starts to feel optional. Ship when it's done and bank the days."),
+        Copy(title: "Watch it land", body: "Visits, revenue and downloads roll in on their own. No spreadsheets, no twelve open tabs."),
+        Copy(title: "Then make the call", body: "Keep it, pivot it or kill it, guilt-free. The numbers already did the arguing."),
     ]
 
     private func beat(_ i: Int) -> some View {
@@ -400,16 +422,26 @@ private struct StoryCanvas: View {
         let left = l.leftLane[i]
         let d = l.depth(i, state)
         let ad = Double(min(1, abs(d)))
+        // Sections slide in and out on the side away from the line, so they never cross it.
+        let side: CGFloat = left ? 1 : -1
+        let slide = { (k: CGFloat) -> CGFloat in
+            let t = min(1, max(0, k))
+            return t * t * l.width * 1.1
+        }
         return VStack(alignment: .leading, spacing: 22) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(Self.copy[i].title).display(32, 800).foregroundStyle(Theme.ink)
                 Text(Self.copy[i].body).font(.ui(17)).foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            .offset(x: side * slide(abs(d) - 0.15))
+            .rotation3DEffect(.degrees(Double(side * min(1, max(0, abs(d) - 0.15)) * 30)), axis: (x: 0, y: 1, z: 0), perspective: 0.5)
             visual(i, p: state.beats[i])
                 .frame(maxWidth: .infinity)
-                // The scene floats a little above the page while it's in play.
-                .rotation3DEffect(.degrees(Double(d) * 18), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.6)
+                // The scene trails the copy: in a beat later, out a beat later.
+                .offset(x: side * slide(d > 0 ? abs(d) - 0.02 : abs(d) - 0.32))
+                .rotation3DEffect(.degrees(Double(side * min(1, max(0, d > 0 ? abs(d) - 0.02 : abs(d) - 0.32)) * 30)),
+                                  axis: (x: 0, y: 1, z: 0), perspective: 0.5)
         }
         // Clear of the line on its side, the usual margin on the other.
         .padding(.leading, left ? 76 : 24)
@@ -418,9 +450,7 @@ private struct StoryCanvas: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
             if abs(heights[i] - h) > 1 { heights[i] = h }
         }
-        // 3D on scroll: lying back as it rises in, flat while it plays, tipping forward as it leaves.
-        .rotation3DEffect(.degrees(Double(d) * 32), axis: (x: 1, y: 0, z: 0), anchor: .center, perspective: 0.5)
-        .scaleEffect(1 - ad * 0.1)
+        .scaleEffect(1 - ad * 0.08)
         // Out of focus away from the middle, sharp while it plays.
         .blur(radius: max(0, abs(d) - 0.4) * 6)
         .opacity(Double(max(0, 1 - max(0, abs(d) - 0.7) * 1.4)))
@@ -476,23 +506,26 @@ private extension View {
 /// The project card and its checkpoint; the goals tick one by one.
 private struct BuildBeat: View {
     let p: CGFloat
-    private static let cover = DemoData.projects.first { $0.name == "Habit Hero" }?.cover
+    private static let cover = DemoData.projects.first { $0.name == "Side Shop" }?.cover
 
     var body: some View {
         let done = [0.25, 0.5, 0.75].map { p >= $0 }
         VStack(spacing: 20) {
-            ProjectCardFace(name: "Habit Hero", initial: "H", accent: Accent(hex: 0x58CC02), cover: Self.cover,
+            ProjectCardFace(name: "Side Shop", initial: "S", accent: Accent(hex: 0x3A3A3C), cover: Self.cover,
                             cornerLabel: "Day", cornerValue: "12", footnote: "Building · 2d left")
                 .frame(width: 150)
                 // The card as a solid object: a thick green edge underneath.
                 .background {
-                    RoundedRectangle(cornerRadius: 30 * 150 / 260, style: .continuous).fill(Color(hex: 0x3E8F02)).offset(y: 8)
+                    RoundedRectangle(cornerRadius: 30 * 150 / 260, style: .continuous).fill(Color(hex: 0x161618)).offset(y: 8)
                 }
-                .shadow(color: .black.opacity(0.16), radius: 16, y: 14)
+                .shadow(color: .black.opacity(0.18), radius: 16, y: 14)
+                // Card and checkpoint lean toward each other, like two panels of a fold.
+                .rotation3DEffect(.degrees(-11), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
+                .padding(.top, 14)
             VStack(alignment: .leading, spacing: 11) {
                 Text("Checkpoint 2 · \(done.filter { $0 }.count)/3 goals").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
                     .contentTransition(.numericText())
-                ForEach(Array(["Onboarding flow live", "Shareable streak card", "Push reminders"].enumerated()), id: \.offset) { n, g in
+                ForEach(Array(["Stripe checkout live", "Product photo grid", "Launch email drafted"].enumerated()), id: \.offset) { n, g in
                     HStack(spacing: 10) {
                         ZStack {
                             RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -523,11 +556,13 @@ private struct BuildBeat: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .chunkySlab(radius: 22)
             .animation(.spring(response: 0.38, dampingFraction: 0.65), value: done)
+            .rotation3DEffect(.degrees(11), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.5)
             // All three done: the checkpoint pops confetti.
         }
         // All three done: "+10 XP" spells itself out over the bottom of the scene.
         .overlay(alignment: .bottom) {
-            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: done.allSatisfy { $0 })
+            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: done.allSatisfy { $0 },
+                         confetti: [0xFFC800, 0xFFD94D, 0xE5A500, 0xFFF0A0])
                 .offset(y: -24)
         }
     }
@@ -581,8 +616,10 @@ struct RhythmBeat: View {
         .chunkySlab(radius: 22)
         // Settled on the defaults: "Dialed in!" spells itself out over the bottom of the editor.
         .overlay(alignment: .bottom) {
-            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x1CB0F6), size: 54, on: p >= 0.85)
-                .offset(y: -30)
+            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x58CC02), size: 68, on: p >= 0.85,
+                         confetti: [0x58CC02, 0x89E219, 0x46A302, 0xB8F28B])
+                // Centered on the screen rather than the editor, which sits left of the line.
+                .offset(x: 26, y: -70)
         }
         .environment(\.accent, .neutral)
         .animation(.spring(response: 0.25, dampingFraction: 0.85), value: v.build * 10_000 + v.observe * 100 + v.every)
@@ -619,16 +656,28 @@ struct RhythmBeat: View {
     }
 }
 
-/// The flame grows as the scene plays and catches halfway.
+/// Sparks fly in and feed the ember, which swells a little with each; with the last one it catches.
 private struct StreakBeat: View {
     let p: CGFloat
 
+    static let sparks = 14
+    /// When spark `i` sets off and lands (as scene progress), all landing before the flame catches at 0.55.
+    static func window(_ i: Int) -> (CGFloat, CGFloat) {
+        let start = 0.02 + CGFloat(i) / CGFloat(sparks) * 0.36
+        return (start, start + 0.16)
+    }
+    static func arrived(_ p: CGFloat) -> Int { (0..<sparks).filter { p >= window($0).1 }.count }
+
     var body: some View {
         let lit = p >= 0.55
+        let fed = Double(Self.arrived(p)) / Double(Self.sparks)
         VStack(spacing: 14) {
-            BurningFlame(grow: lit ? 1 : Double(0.3 + 0.06 * min(1, p / 0.55)), bright: lit ? 1 : 0, width: 110, glow: 0.35)
+            BurningFlame(grow: lit ? 1 : 0.3 + 0.12 * fed, bright: lit ? 1 : 0.15 * fed, width: 110, glow: 0.35)
                 .frame(height: 150, alignment: .bottom)
                 .animation(.spring(response: 0.6, dampingFraction: 0.55), value: lit)
+                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: fed)
+                // Sparks drift in from all sides and feed the ember until it catches.
+                .background { IgniteSparks(p: p).allowsHitTesting(false) }
                 .overlay { SectionBurst(fire: lit, style: .sparks, colors: [0xFF9600, 0xFFC800, 0xFF4B1F, 0xFFE04A]) }
             VStack(spacing: 0) {
                 ExtrudedText(text: lit ? "3" : "2", size: 48, accent: lit ? Accent(hex: 0xFF9600) : Accent(hex: 0xC7C7CC))
@@ -636,6 +685,65 @@ private struct StreakBeat: View {
                 Text("DAY STREAK").font(.ui(12, .bold)).tracking(2).foregroundStyle(Theme.secondary)
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: lit)
+        }
+    }
+}
+
+/// The sparks that light the streak flame, placed by the scroll: each one fades in out at the edge, then
+/// curves in to the base of the flame trailing a short tail. They twinkle on their own while you hold still.
+private struct IgniteSparks: View {
+    let p: CGFloat
+
+    private static func r(_ i: Int, _ k: Int) -> Double {
+        let x = sin(Double(i) * 41.37 + Double(k) * 12.91) * 43758.5453
+        return x - x.rounded(.down)
+    }
+
+    var body: some View {
+        TimelineView(.animation(paused: p <= 0 || p >= 0.6)) { tl in
+            let time = tl.date.timeIntervalSinceReferenceDate
+            Canvas { ctx, size in draw(ctx, size: size, time: time) }
+        }
+        .frame(width: 420, height: 320)
+    }
+
+    private func draw(_ ctx: GraphicsContext, size: CGSize, time: Double) {
+        let target = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
+        for i in 0..<StreakBeat.sparks {
+            let (a, b) = StreakBeat.window(i)
+            let u = (p - a) / (b - a)
+            guard u > -0.15, u < 1 else { continue }
+            // From the left and right, level with the flame or a little below, never from above (the copy).
+            let ang = (i % 2 == 0 ? Double.pi : 0) + (i % 2 == 0 ? -1 : 1) * (Self.r(i, 1) - 0.25) * 0.9
+            let dist = 140 + Self.r(i, 2) * 50
+            let from = CGPoint(x: target.x + cos(ang) * dist, y: target.y + sin(ang) * dist * 0.6)
+            let ctrl = CGPoint(x: (from.x + target.x) / 2, y: from.y - 30 - Self.r(i, 3) * 40)
+            func at(_ k: CGFloat) -> CGPoint {
+                let t = min(1, max(0, k))
+                let e = t * t
+                let v = 1 - e
+                let x: CGFloat = v * v * from.x + 2 * v * e * ctrl.x + e * e * target.x
+                let y: CGFloat = v * v * from.y + 2 * v * e * ctrl.y + e * e * target.y
+                return CGPoint(x: x, y: y)
+            }
+            let twinkle = 0.75 + 0.25 * sin(time * 14 + Double(i))
+            let head = at(u)
+            var g = ctx
+            // Fading in at the edge before setting off.
+            g.opacity = u < 0 ? (u + 0.15) / 0.15 : 1
+            if u > 0 {
+                var tail = Path()
+                tail.move(to: at(u - 0.14))
+                tail.addLine(to: head)
+                g.stroke(tail, with: .color(Color(hex: 0xFFB000).opacity(0.7)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+            }
+            let rad = 4 * twinkle
+            var glow = g
+            glow.addFilter(.blur(radius: 5))
+            glow.fill(Path(ellipseIn: CGRect(x: head.x - rad * 2.2, y: head.y - rad * 2.2, width: rad * 4.4, height: rad * 4.4)),
+                      with: .color(Color(hex: 0xFF9600).opacity(0.6)))
+            g.fill(Path(ellipseIn: CGRect(x: head.x - rad, y: head.y - rad, width: rad * 2, height: rad * 2)),
+                   with: .color(Color(hex: 0xFFE04A)))
         }
     }
 }
@@ -771,12 +879,13 @@ private struct VerdictBeat: View {
 // MARK: - Finishing bursts
 
 /// A scene's finished state: big angled 3D lettering that types itself out letter by letter, each letter
-/// dropping in out of a blur, with a white drop shadow so it reads over the scene. Confetti once it's spelled.
+/// dropping in out of a blur, with a dark drop shadow lifting it off the scene. Confetti once it's spelled.
 private struct SpelledStamp: View {
     let text: String
     let accent: Accent
     var size: CGFloat = 64
     let on: Bool
+    var confetti: [Int]
     @State private var shown = 0
     @State private var typing: Task<Void, Never>?
 
@@ -785,7 +894,7 @@ private struct SpelledStamp: View {
         HStack(spacing: 0) {
             ForEach(letters.indices, id: \.self) { i in
                 let visible = i < shown
-                ExtrudedText(text: String(letters[i]), size: size, accent: accent)
+                StampLetter(text: String(letters[i]), size: size, accent: accent)
                     .opacity(visible ? 1 : 0)
                     .scaleEffect(visible ? 1 : 1.9)
                     .blur(radius: visible ? 0 : 10)
@@ -794,12 +903,12 @@ private struct SpelledStamp: View {
             }
         }
         .fixedSize()
-        .shadow(color: .white, radius: 0, y: 5)
-        .shadow(color: .white, radius: 10, y: 6)
-        .shadow(color: .white, radius: 22, y: 10)
-        .rotation3DEffect(.degrees(24), axis: (x: 1, y: -0.45, z: 0), perspective: 0.5)
+        // A dark drop shadow lifts it off the page.
+        .shadow(color: .black.opacity(0.35), radius: 1, x: 2, y: 4)
+        .shadow(color: .black.opacity(0.25), radius: 12, x: 6, y: 16)
+        .rotation3DEffect(.degrees(26), axis: (x: 1, y: -0.45, z: 0), perspective: 0.5)
         .rotationEffect(.degrees(-8))
-        .overlay { SectionBurst(fire: shown == letters.count, style: .confetti) }
+        .overlay { SectionBurst(fire: shown == letters.count, style: .confetti, colors: confetti) }
         .allowsHitTesting(false)
         .onChange(of: on, initial: true) { _, on in
             typing?.cancel()
@@ -814,6 +923,39 @@ private struct SpelledStamp: View {
                 Haptics.success()
             }
         }
+    }
+}
+
+/// One letter of a stamp as a solid object: a deep extruded side shading darker toward the back, a face
+/// that's lighter at the top, and a glossy highlight across its upper half, like the chunky buttons.
+private struct StampLetter: View {
+    let text: String
+    let size: CGFloat
+    let accent: Accent
+
+    private var depth: Int { max(6, Int(size / 7)) }
+
+    var body: some View {
+        ZStack {
+            ForEach((1...depth).reversed(), id: \.self) { i in
+                face.foregroundStyle(accent.dark)
+                    .brightness(-0.18 * Double(i) / Double(depth))
+                    .offset(x: CGFloat(i) * 0.5, y: CGFloat(i) * 1.0)
+            }
+            face.foregroundStyle(LinearGradient(colors: [accent.base.mix(with: .white, by: 0.35), accent.base],
+                                                startPoint: .top, endPoint: .bottom))
+            // Gloss on the top half of the face.
+            face.foregroundStyle(LinearGradient(stops: [.init(color: .white.opacity(0.55), location: 0),
+                                                        .init(color: .white.opacity(0.15), location: 0.45),
+                                                        .init(color: .clear, location: 0.5)],
+                                                startPoint: .top, endPoint: .bottom))
+        }
+        .padding(.bottom, CGFloat(depth))
+        .drawingGroup()
+    }
+
+    private var face: some View {
+        Text(text).display(size, 900).lineLimit(1).fixedSize()
     }
 }
 
