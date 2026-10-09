@@ -650,12 +650,13 @@ struct OnboardingView: View {
     /// Only services whose official logo we're allowed to show (design/IMAGE_CREDITS.md), the ones that
     /// fit the picked win first. The rest are in the project settings.
     private var onboardingKinds: [IntegrationKind] {
-        let withLogo = IntegrationKind.allCases.filter { $0.logo != nil }
+        // Vercel keeps its generic triangle (its real logo needs written permission), but deploys matter.
+        let withLogo = IntegrationKind.allCases.filter { $0.logo != nil } + [.vercel]
         let first: [IntegrationKind] = switch profile.successFocus {
         case .money: [.stripe, .revenueCat]
         case .users: [.revenueCat, .stripe]
         case .audience: [.youtube, .bluesky]
-        case .ship, nil: []
+        case .ship, nil: [.vercel]
         }
         return first.filter(withLogo.contains) + withLogo.filter { !first.contains($0) }
     }
@@ -665,7 +666,7 @@ struct OnboardingView: View {
             header("Your numbers", "Plug in your numbers",
                    "Revenue, visitors, downloads: straight from the tools you already use. No spreadsheets, no copy-paste.")
             integrationList("Connect now", onboardingKinds)
-            Text("Lots more in the project settings later: App Store Connect, Shopify, Plausible, Vercel, npm and others.")
+            Text("Lots more in the project settings later: App Store Connect, Shopify, Plausible, Netlify, npm and others.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

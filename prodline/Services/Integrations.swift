@@ -94,7 +94,26 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         switch self {
         case .revenueCat: ("Logo-revenuecat", true)
         case .stripe: ("Logo-stripe", false)
+        case .youtube: ("Logo-youtube", false)
+        case .bluesky: ("Logo-bluesky", false)
         default: nil
+        }
+    }
+
+    /// The tile behind a wordmark or icon. YouTube's icon keeps its own red, so it sits on white.
+    var logoBackgroundHex: Int { self == .youtube ? 0xFFFFFF : colorHex }
+
+    /// Where a YouTube or Bluesky mark links to, as their guidelines ask.
+    func profileURL(_ i: Integration?) -> URL? {
+        switch self {
+        case .youtube:
+            let c = i?.field("channel") ?? ""
+            let path = c.isEmpty ? "" : (c.hasPrefix("UC") && !c.hasPrefix("@") ? "channel/" + c : (c.hasPrefix("@") ? c : "@" + c))
+            return URL(string: "https://www.youtube.com/" + path)
+        case .bluesky:
+            let h = (i?.field("handle") ?? "").trimmingCharacters(in: CharacterSet(charactersIn: "@"))
+            return URL(string: h.isEmpty ? "https://bsky.app" : "https://bsky.app/profile/" + h)
+        default: return nil
         }
     }
 
@@ -364,6 +383,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             "No key needed: npm's download counts are public.",
             "Type the package name as published, e.g. left-pad or @scope/package.",
             "npm publishes counts a day later.",
+            "npm is a registered trademark of npm, Inc.",
         ]
         case .hackerNews: [
             "No key needed: posts come from Hacker News search.",

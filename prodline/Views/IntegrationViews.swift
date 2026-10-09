@@ -83,10 +83,15 @@ struct IntegrationIcon: View {
                 .frame(width: size, height: size)
         } else {
             RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-                .fill(accent.base)
+                .fill(kind.logo == nil ? accent.base : Color(hex: kind.logoBackgroundHex))
+                .overlay {
+                    if kind.logoBackgroundHex == 0xFFFFFF {
+                        RoundedRectangle(cornerRadius: size * 0.3, style: .continuous).strokeBorder(Theme.line, lineWidth: 1)
+                    }
+                }
                 .overlay {
                     if let logo = kind.logo {
-                        Image(logo.asset).resizable().scaledToFit().frame(width: size * 0.7)
+                        Image(logo.asset).resizable().scaledToFit().frame(width: size * (kind == .youtube ? 0.62 : 0.7))
                     } else {
                         Image(systemName: kind.symbol).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(accent.on)
                     }
@@ -186,7 +191,12 @@ struct IntegrationEditor: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
-                IntegrationIcon(kind: kind, size: 36)
+                // YouTube's and Bluesky's marks link to the channel or profile, as their guidelines ask.
+                if let url = kind.profileURL(integration) {
+                    Link(destination: url) { IntegrationIcon(kind: kind, size: 36) }
+                } else {
+                    IntegrationIcon(kind: kind, size: 36)
+                }
                 Text(kind.title).display(24, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer()
                 CircleIconButton(systemName: "xmark") { dismiss() }
