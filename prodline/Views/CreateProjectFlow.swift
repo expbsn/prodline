@@ -469,6 +469,7 @@ struct CreateProjectFlow: View {
                         buildDays: buildDays, observeDays: profile.observeDays)
         p.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
         p.coverImage = imageData
+        p.criteria = profile.defaultCriteria
         p.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
         Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: p.id.uuidString)
         p.githubRepo = GitHubRepoRef(repo)?.slug ?? ""

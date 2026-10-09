@@ -415,8 +415,18 @@ struct OnboardingView: View {
     @Bindable var profile: Profile
     @Environment(\.modelContext) private var context
     @Environment(CelebrationCenter.self) private var celebration
+    /// 0 story, 1 first project, 2 what counts as a win, 3 rhythm, 4 reminders.
     @State private var step = 0
-    @State private var fanned = false
+    @State private var name = ""
+    @State private var imageData: Data?
+    @State private var photoHex: Int?
+    @State private var lockedToPhoto = false
+    @State private var accentHex = Theme.swatches[0]
+    @State private var skippedProject = false
+    @FocusState private var nameFocused: Bool
+
+    private let lastStep = 4
+    private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
     var body: some View {
         if step == 0 {
@@ -430,113 +440,209 @@ struct OnboardingView: View {
 
     private var setup: some View {
         VStack(spacing: 0) {
-            ChunkyProgressBar(value: Double(step + 1) / 3, color: Theme.ink, height: 12)
-                .padding(.horizontal, 24).padding(.top, 14)
+            HStack(spacing: 14) {
+                if step > 1 {
+                Button {
+                    Haptics.soft()
+                    nameFocused = false
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step -= 1 }
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.secondary)
+                        .frame(width: 36, height: 36)
+                }
+                .transition(.move(edge: .leading).combined(with: .opacity))
+                }
+                ChunkyProgressBar(value: Double(step) / Double(lastStep), color: Theme.ink, height: 12)
+            }
+            .padding(.horizontal, 20).padding(.top, 14)
+            .frame(height: 50)
+            .animation(.spring(response: 0.4, dampingFraction: 0.8), value: step > 1)
 
             ScrollView(showsIndicators: false) {
                 Group {
                     switch step {
-                    case 0: welcome
-                    case 1: scheme
+                    case 1: firstProject
+                    case 2: success
+                    case 3: scheme
                     default: reminders
                     }
                 }
-                .padding(.horizontal, 24).padding(.top, 20)
+                .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 20)
                 .id(step)
                 .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
                                         removal: .move(edge: .leading).combined(with: .opacity)))
             }
             .scrollBounceBehavior(.basedOnSize)
-            .bottomActionBar {
-                Button(step == 2 ? "Turn on reminders" : (step == 0 ? "Get started" : "Continue"), action: next)
-                    .buttonStyle(.chunky)
-                if step == 2 {
-                    Button("Not now") { profile.remindersEnabled = false; finish() }
-                        .font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
-                        .frame(height: 32)
-                        .padding(.horizontal, 4)
-                }
-            }
+            .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar { bottomBar }
         }
         .background(Theme.background.ignoresSafeArea())
     }
 
-    private var welcome: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            ZStack {
-                ForEach(Array(Self.sampleCards.enumerated()), id: \.offset) { i, c in
-                    ProjectCardFace(name: c.name, initial: String(c.name.prefix(1)), accent: c.accent, cover: c.cover,
-                                    cornerLabel: "Day", cornerValue: "\(c.day)", footnote: c.phase)
-                        .frame(width: 200)
-                        .rotationEffect(.degrees(fanned ? Double(i - 1) * 7 : 0), anchor: .bottom)
-                        .offset(x: fanned ? CGFloat(i - 1) * 30 : 0, y: fanned ? abs(CGFloat(i - 1)) * 10 : 0)
-                        .shadow(color: .black.opacity(0.12), radius: 16, y: 10)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .frame(height: 340)
-            .padding(.top, 8)
-            .onAppear {
-                withAnimation(.spring(response: 0.8, dampingFraction: 0.7).delay(0.15)) { fanned = true }
-            }
+    @ViewBuilder
+    private var bottomBar: some View {
+        switch step {
+        case 1:
+            Button("Continue") { skippedProject = false; next() }
+                .buttonStyle(.chunky)
+                .disabled(trimmedName.isEmpty)
+            secondary("I'll do it later") { skippedProject = true; next() }
+        case 2:
+            Button("Continue", action: next)
+                .buttonStyle(.chunky)
+                .disabled(profile.successFocus == nil)
+        case lastStep:
+            Button("Turn on reminders", action: next)
+                .buttonStyle(.chunky)
+            secondary("Not now") { profile.remindersEnabled = false; finish() }
+        default:
+            Button("Continue", action: next)
+                .buttonStyle(.chunky)
+        }
+    }
 
-            Text("Welcome to").eyebrow()
-            Text("Prodline").display(60, 800).foregroundStyle(Theme.ink)
-            Text("Ship a project every cycle, watch its numbers come in, and keep the streak going.")
-                .font(.ui(19)).foregroundStyle(Theme.inkSoft)
+    private func secondary(_ title: String, _ action: @escaping () -> Void) -> some View {
+        Button(title, action: action)
+            .font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 32)
+    }
+
+    private func header(_ eyebrow: String, _ title: String, _ sub: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(eyebrow).eyebrow()
+            Text(title).display(34, 750).foregroundStyle(Theme.ink)
+                .fixedSize(horizontal: false, vertical: true)
+            Text(sub).font(.ui(17)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    private struct SampleCard { let name: String; let cover: UIImage?; let accent: Accent; let day: Int; let phase: String }
-    /// The demo projects' photos, colored the same way a real cover would be.
-    private static let sampleCards: [SampleCard] = [("Habit Hero", 12, "Building"), ("Pixel Quest", 5, "Building"), ("Side Shop", 9, "Observing")]
-        .map { name, day, phase in
-            let spec = DemoData.projects.first { $0.name == name }
-            let cover = spec?.cover
-            let hex = cover.flatMap(ImageTools.dominantAccentHex) ?? spec?.accent ?? 0x1C1C1E
-            return SampleCard(name: name, cover: cover, accent: Accent(hex: hex), day: day, phase: phase)
+    // MARK: Steps
+
+    private var firstProject: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            header("Your first project", "What are you building?",
+                   "Name it and give it a face. You can change all of it later, nobody's grading this.")
+            TextField("", text: $name, prompt: Text("e.g. Side Shop").foregroundStyle(Theme.tertiary))
+                .focused($nameFocused)
+                .submitLabel(.done)
+                .inputField(focused: nameFocused)
+            AccentSlider(accentHex: $accentHex, locked: $lockedToPhoto, photoHex: photoHex)
+            CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
+                            accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                            footnote: "Building · \(profile.buildDays)d")
+                .frame(width: 210)
+                .frame(maxWidth: .infinity)
         }
+        .environment(\.accent, Accent(hex: accentHex))
+    }
+
+    private var success: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            header("Your finish line", "How will you know it worked?",
+                   "Pick what counts as a win. It's what Prodline checks when it's time to keep, pivot or kill.")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                ForEach(SuccessFocus.allCases) { f in
+                    focusTile(f)
+                }
+            }
+            if let f = profile.successFocus, !f.presets.isEmpty, let key = f.key {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Call it a win at").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                    HStack(spacing: 8) {
+                        ForEach(f.presets, id: \.self) { v in
+                            let n = Int(v).formatted()
+                            Chip(title: key == MetricKey.revenue.rawValue ? "$" + n : n,
+                                 isOn: profile.successTarget == v) { profile.successTarget = v }
+                        }
+                        if key != MetricKey.revenue.rawValue {
+                            Text(VerdictEngine.title(key).lowercased()).font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                    Text("Counted over the observe phase. Change it per project anytime.")
+                        .font(.ui(14)).foregroundStyle(Theme.secondary)
+                }
+                .environment(\.accent, Accent(hex: f.hex))
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: profile.successFocusRaw)
+    }
+
+    private func focusTile(_ f: SuccessFocus) -> some View {
+        let on = profile.successFocus == f
+        let a = Accent(hex: f.hex)
+        return Button {
+            Haptics.select()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
+                profile.successFocus = f
+                profile.successTarget = f.defaultTarget
+            }
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: f.symbol).font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(on ? a.on : a.text)
+                    .frame(width: 44, height: 44)
+                    .background(Circle().fill(on ? a.base : a.tint))
+                Text(f.title).font(.display(18, 750)).foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(f.blurb).font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, minHeight: 176, alignment: .topLeading)
+            .background {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? a.dark : Theme.line).offset(y: on ? 3 : 6)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.card)
+                    RoundedRectangle(cornerRadius: 22, style: .continuous).strokeBorder(on ? a.base : .clear, lineWidth: 2.5)
+                }
+            }
+            .offset(y: on ? 3 : 0)
+            .padding(.bottom, 6)
+        }
+        .buttonStyle(.plain)
+    }
 
     private var scheme: some View {
         VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Your rhythm").eyebrow()
-                Text("How do you like to build?").display(34, 750).foregroundStyle(Theme.ink)
-            }
+            header("Your rhythm", "How do you like to build?",
+                   "Sprinters, marathoners, weekend warriors: all welcome. Tweak it later if your life changes.")
             SchemeEditor(profile: profile).card()
         }
     }
 
     private var reminders: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Stay on time").eyebrow()
-                Text("A nudge on deadline days").display(34, 750).foregroundStyle(Theme.ink)
-            }
-            // Notification preview.
+        let shown = skippedProject || trimmedName.isEmpty ? "Side Shop" : trimmedName
+        return VStack(alignment: .leading, spacing: 18) {
+            header("Stay on time", "A nudge on deadline days",
+                   "We remind you in the morning and again at 6 pm if it's still open. Nothing else, promise.")
+            // Notification preview, with your project when you made one.
             HStack(alignment: .top, spacing: 12) {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: 0x58CC02))
+                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: skippedProject ? 0x3A3A3C : accentHex))
                     .frame(width: 38, height: 38)
-                    .overlay(Text("H").display(20, 800).foregroundStyle(.white))
+                    .overlay(Text(String(shown.prefix(1)).uppercased()).display(20, 800).foregroundStyle(.white))
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
-                        Text("Habit Hero: deadline day").font(.ui(15, .semibold))
+                        Text("\(shown): deadline day").font(.ui(15, .semibold)).lineLimit(1)
                         Spacer()
                         Text("9:00").font(.ui(13)).foregroundStyle(Theme.secondary)
                     }
-                    Text("Checkpoint 2 is due today. You've got this.").font(.ui(15)).foregroundStyle(Theme.inkSoft)
+                    Text("Checkpoint 1 is due today. You've got this.").font(.ui(15)).foregroundStyle(Theme.inkSoft)
                 }
             }
             .card(padding: 14, radius: 22)
-            Text("We remind you in the morning and again at 6 pm if it's still open. Nothing else.")
-                .font(.ui(17)).foregroundStyle(Theme.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
+    // MARK: Flow
+
     private func next() {
-        if step < 2 {
+        nameFocused = false
+        if step < lastStep {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += 1 }
         } else {
             Task { profile.remindersEnabled = await Notifier.requestAuth(); finish() }
@@ -545,7 +651,17 @@ struct OnboardingView: View {
 
     private func finish() {
         profile.onboarded = true
-        try? context.save()
-        celebration.fire(title: "You're set", subtitle: "Create your first project to begin.")
+        if !skippedProject && !trimmedName.isEmpty {
+            let p = Project(name: trimmedName, accentHex: accentHex, startDate: .now.startOfDay,
+                            buildDays: profile.buildDays, observeDays: profile.observeDays)
+            p.coverImage = imageData
+            p.criteria = profile.defaultCriteria
+            ScheduleEngine.createProject(p, profile: profile, context: context)
+            try? context.save()
+            celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(profile.buildDays.durationText). Let's ship.", accent: p.accent)
+        } else {
+            try? context.save()
+            celebration.fire(title: "You're set", subtitle: "Create your first project to begin.")
+        }
     }
 }

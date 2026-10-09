@@ -28,6 +28,9 @@ final class Profile {
     var remindersEnabled: Bool = true
     /// Projects allowed in the build phase at once (upcoming ones count too); 0 = no limit.
     var buildLimit: Int = 2
+    /// What counts as a win (SuccessFocus raw value) and the target for it; new projects start with it.
+    var successFocusRaw: String = ""
+    var successTarget: Double = 0
 
     init() {}
 
