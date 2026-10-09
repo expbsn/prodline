@@ -5,7 +5,9 @@ import Charts
 struct InsightsView: View {
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
-    @State private var metric: MetricKey = .visits
+    @State private var metric = ""
+    /// The numbers picked for the tiles (comma-separated keys), when there are more than three.
+    @AppStorage("insightsMetrics") private var pickedRaw = ""
     @State private var range: TrendRange = .week
     @State private var scrub: Date?
     /// 0…1 left-to-right wipe; a new range or metric starts from an empty chart instead of morphing.
@@ -37,8 +39,15 @@ struct InsightsView: View {
         }
     }
 
-    private func total(_ key: MetricKey) -> Double {
-        projects.compactMap { refresher.value(key, for: $0) }.reduce(0, +)
+    /// Every number any project gets, the tiles shown, and the one charted.
+    private var available: [String] { Stat.sorted(Set(projects.flatMap { refresher.availableMetrics(for: $0) })) }
+    private var shown: [String] { Stat.shown(available: available, picked: pickedRaw.split(separator: ",").map(String.init)) }
+    private var current: String { shown.contains(metric) ? metric : (shown.first ?? MetricKey.visits.rawValue) }
+
+    private func total(_ key: String) -> Double {
+        let values = projects.compactMap { refresher.value(key, for: $0) }
+        guard Stat.isAverage(key) else { return values.reduce(0, +) }
+        return values.isEmpty ? 0 : values.reduce(0, +) / Double(values.count)
     }
 
     var body: some View {
@@ -66,66 +75,87 @@ struct InsightsView: View {
         }
     }
 
-    /// The three totals double as the switch for every chart below.
+    /// The totals double as the switch for every chart below. Hold one to swap it for another number.
     private var totals: some View {
-        HStack(spacing: 10) {
-            ForEach(MetricKey.allCases) { k in
-                let on = metric == k
-                Button {
-                    guard !on else { return }
-                    Haptics.select()
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) { metric = k; scrub = nil }
-                    replayChart()
-                } label: {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Image(systemName: k.symbol).font(.system(size: 16, weight: .semibold))
-                        Text(k.format(total(k))).display(22, 750)
-                            .lineLimit(1).minimumScaleFactor(0.6).contentTransition(.numericText())
-                        Text(k.title).font(.ui(12, .medium)).opacity(on ? 0.75 : 1)
-                            .foregroundStyle(on ? Color.white : Theme.secondary)
-                    }
-                    .foregroundStyle(on ? Color.white : Theme.ink)
-                    .padding(14)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Theme.ink : Theme.card))
-                    .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color.black : Theme.line).offset(y: 4))
-                    .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+        let shown = shown, available = available, current = current
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 10) {
+                ForEach(shown, id: \.self) { k in
+                    totalTile(k, on: current == k, shown: shown, available: available)
                 }
-                .buttonStyle(PressableStyle(scale: 0.96))
-                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+            .animation(.spring(response: 0.4, dampingFraction: 0.82), value: shown)
+            if available.count > shown.count {
+                MetricSwapHint().padding(.leading, 4)
             }
         }
         .padding(.bottom, 4)
+    }
+
+    private func totalTile(_ k: String, on: Bool, shown: [String], available: [String]) -> some View {
+        Button {
+            guard !on else { return }
+            Haptics.select()
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) { metric = k; scrub = nil }
+            replayChart()
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: Stat.symbol(k)).font(.system(size: 16, weight: .semibold))
+                Text(Stat.format(k, total(k))).display(22, 750)
+                    .lineLimit(1).minimumScaleFactor(0.6).contentTransition(.numericText())
+                Text(Stat.title(k)).font(.ui(12, .medium)).opacity(on ? 0.75 : 1)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .foregroundStyle(on ? Color.white : Theme.secondary)
+            }
+            .foregroundStyle(on ? Color.white : Theme.ink)
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Theme.ink : Theme.card))
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color.black : Theme.line).offset(y: 4))
+            .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+            .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        }
+        .buttonStyle(PressableStyle(scale: 0.96))
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .contextMenu {
+            MetricSwapMenu(key: k, shown: shown, available: available, value: { total($0) }) { new in
+                pickedRaw = Stat.swap(k, for: new, shown: shown).joined(separator: ",")
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.82)) { metric = new; scrub = nil }
+                replayChart()
+            }
+        }
     }
 
     // MARK: Trend
 
     /// Each project's value at the end of every bucket, carried forward between snapshots.
     private var trendPoints: [Point] {
+        let key = current
         let now = Date.now
         let start = now.addingTimeInterval(-range.span)
         let ticks = stride(from: start.timeIntervalSince1970, to: now.timeIntervalSince1970 - 1, by: range.step)
             .map { Date(timeIntervalSince1970: $0) } + [now]
         return projects.flatMap { p -> [Point] in
             let snaps = p.sortedSnapshots
-            guard !snaps.isEmpty || refresher.value(metric, for: p) != nil else { return [] }
+            guard !snaps.isEmpty || refresher.value(key, for: p) != nil else { return [] }
             var i = 0
             var last: Double?
             return ticks.map { t in
-                while i < snaps.count, snaps[i].date <= t { last = snaps[i].value(metric); i += 1 }
-                let v = t == now ? (refresher.value(metric, for: p) ?? last ?? 0) : (last ?? 0)
+                while i < snaps.count, snaps[i].date <= t { last = snaps[i].value(key); i += 1 }
+                let v = t == now ? (refresher.value(key, for: p) ?? last ?? 0) : (last ?? 0)
                 return Point(date: t, project: p.name, value: v)
             }
         }
     }
 
     private var trend: some View {
+        let key = current
         let points = trendPoints
         let names = projects.map(\.name)
         let byDate = Dictionary(grouping: points, by: \.date).mapValues { $0.reduce(0) { $0 + $1.value } }
         let dates = byDate.keys.sorted()
         let first = dates.first.flatMap { byDate[$0] } ?? 0
-        let latest = dates.last.flatMap { byDate[$0] } ?? total(metric)
+        let latest = dates.last.flatMap { byDate[$0] } ?? total(key)
         let shownDate = scrub.flatMap { s in dates.min { abs($0.timeIntervalSince(s)) < abs($1.timeIntervalSince(s)) } }
         let shown = shownDate.flatMap { byDate[$0] } ?? latest
         let delta = latest - first
@@ -133,14 +163,14 @@ struct InsightsView: View {
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(metric.title).eyebrow()
-                    Text(metric.format(shown)).display(34, 800).foregroundStyle(Theme.ink)
+                    Text(Stat.title(key)).eyebrow()
+                    Text(Stat.format(key, shown)).display(34, 800).foregroundStyle(Theme.ink)
                         .contentTransition(.numericText())
                     Group {
                         if let d = shownDate {
                             Text(d.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour()))
                         } else {
-                            Text("\(delta >= 0 ? "+" : "−")\(metric.format(abs(delta))) \(range.label)")
+                            Text("\(delta >= 0 ? "+" : "−")\(Stat.format(key, abs(delta))) \(range.label)")
                                 .foregroundStyle(delta > 0 ? Theme.success : Theme.secondary)
                         }
                     }
@@ -164,7 +194,7 @@ struct InsightsView: View {
             } else {
                 Chart {
                     ForEach(points) { pt in
-                        AreaMark(x: .value("Time", pt.date), y: .value(metric.title, pt.value), stacking: .standard)
+                        AreaMark(x: .value("Time", pt.date), y: .value(Stat.title(key), pt.value), stacking: .standard)
                             .foregroundStyle(by: .value("Project", pt.project))
                             .interpolationMethod(.monotone)
                             .opacity(0.85)
@@ -180,7 +210,7 @@ struct InsightsView: View {
                 .chartXSelection(value: $scrub)
                 .chartYAxis { AxisMarks(position: .trailing, values: .automatic(desiredCount: 3)) { v in
                     AxisGridLine().foregroundStyle(Theme.line)
-                    AxisValueLabel { if let d = v.as(Double.self) { Text(metric.format(d)) } }
+                    AxisValueLabel { if let d = v.as(Double.self) { Text(Stat.format(key, d)) } }
                 } }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in
                     AxisValueLabel(format: range == .day ? .dateTime.hour() : .dateTime.month(.abbreviated).day())
@@ -190,7 +220,7 @@ struct InsightsView: View {
                 .padding(.top, 10)
                 // Never interpolate between two different data sets: swap instantly, then wipe in.
                 .transaction { $0.animation = nil }
-                .id("\(range.rawValue)-\(metric.rawValue)")
+                .id("\(range.rawValue)-\(key)")
                 .mask(alignment: .leading) {
                     GeometryReader { geo in
                         Rectangle().frame(width: geo.size.width * reveal)
@@ -226,19 +256,20 @@ struct InsightsView: View {
     }
 
     private var traction: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SectionTitle("By project", trailing: metric.title)
+        let key = current
+        return VStack(alignment: .leading, spacing: 14) {
+            SectionTitle("By project", trailing: Stat.title(key))
             Chart(projects) { p in
-                BarMark(x: .value("Project", p.name), y: .value(metric.title, refresher.value(metric, for: p) ?? 0))
+                BarMark(x: .value("Project", p.name), y: .value(Stat.title(key), refresher.value(key, for: p) ?? 0))
                     .foregroundStyle(p.accent.base)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .annotation(position: .top) {
-                        Text(metric.format(refresher.value(metric, for: p) ?? 0)).font(.ui(11, .semibold)).foregroundStyle(Theme.secondary)
+                        Text(Stat.format(key, refresher.value(key, for: p) ?? 0)).font(.ui(11, .semibold)).foregroundStyle(Theme.secondary)
                     }
             }
             .chartYAxis(.hidden)
             .frame(height: 200)
-            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: metric)
+            .animation(.spring(response: 0.5, dampingFraction: 0.8), value: key)
         }
         .card()
     }

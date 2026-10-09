@@ -75,6 +75,8 @@ final class Project {
     var verdictNote: String = ""
     /// Connected services (App Store Connect, RevenueCat, Plausible…), without their keys (those are in the Keychain).
     var integrationsData: Data? = nil
+    /// The numbers picked for the Traction tiles (comma-separated keys), when there are more than three.
+    var trackedMetricsRaw: String = ""
     var createdAt: Date = Date.now
 
     @Relationship(deleteRule: .cascade, inverse: \Milestone.project)

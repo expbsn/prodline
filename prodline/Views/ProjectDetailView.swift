@@ -15,7 +15,8 @@ struct ProjectDetailView: View {
     @Query private var profiles: [Profile]
     @Query private var allProjects: [Project]
 
-    @State private var metric: MetricKey = .visits
+    /// The selected tile's key; falls back to the first shown one.
+    @State private var metric = ""
     @State private var showEdit = false
     @State private var showConnection = false
     @State private var showCriteria = false
@@ -260,38 +261,27 @@ struct ProjectDetailView: View {
 
     private var metricsCard: some View {
         let points = project.sortedSnapshots
-        let extras = refresher.extras(for: project)
+        let available = refresher.availableMetrics(for: project)
+        let shown = refresher.shownMetrics(for: project)
+        let current = shown.contains(metric) ? metric : (shown.first ?? MetricKey.visits.rawValue)
+        let extras = refresher.extras(for: project).filter { !shown.contains($0.key) }
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Traction").display(24, 700).foregroundStyle(Theme.ink)
                 Spacer()
                 statusLabel
             }
-            HStack(spacing: 8) {
-                ForEach(MetricKey.allCases) { key in
-                    let selected = metric == key
-                    Button {
-                        Haptics.select()
-                        withAnimation(.snappy) { metric = key }
-                    } label: {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Image(systemName: key.symbol).font(.system(size: 15, weight: .semibold))
-                            Text(refresher.value(key, for: project).map(key.format) ?? "–")
-                                .display(22, 700)
-                                .lineLimit(1).minimumScaleFactor(0.6)
-                                .contentTransition(.numericText())
-                            Text(key.title).font(.ui(11, .semibold)).opacity(0.75).lineLimit(1)
-                        }
-                        .foregroundStyle(selected ? accent.on : Theme.ink)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(12)
-                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(selected ? accent.base : Theme.background))
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 8) {
+                    ForEach(shown, id: \.self) { key in
+                        metricTile(key, selected: current == key, shown: shown, available: available)
                     }
-                    .buttonStyle(PressableStyle(scale: 0.95))
+                }
+                .animation(.snappy, value: shown)
+                if available.count > shown.count {
+                    MetricSwapHint()
                 }
             }
-            .animation(.snappy, value: refresher.value(.visits, for: project))
 
             if points.count < 2 {
                 VStack(spacing: 6) {
@@ -301,11 +291,11 @@ struct ProjectDetailView: View {
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
                 Chart(points, id: \.persistentModelID) { s in
-                    AreaMark(x: .value("Time", s.date), y: .value(metric.title, s.value(metric)))
+                    AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value(current)))
                         .interpolationMethod(.monotone)
                         .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
                                                         startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("Time", s.date), y: .value(metric.title, s.value(metric)))
+                    LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value(current)))
                         .interpolationMethod(.monotone)
                         .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round))
                         .foregroundStyle(accent.base)
@@ -314,13 +304,13 @@ struct ProjectDetailView: View {
                     AxisMarks(position: .trailing) { v in
                         AxisGridLine().foregroundStyle(Theme.line)
                         AxisValueLabel {
-                            if let d = v.as(Double.self) { Text(metric == .revenue ? MetricKey.money(d) : MetricKey.count(d)) }
+                            if let d = v.as(Double.self) { Text(Stat.format(current, d)) }
                         }
                     }
                 }
                 .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
                 .frame(height: 190)
-                .animation(.easeInOut, value: metric)
+                .animation(.easeInOut, value: current)
             }
 
             if !extras.isEmpty {
@@ -338,6 +328,37 @@ struct ProjectDetailView: View {
             }
         }
         .card()
+    }
+
+    /// One number; tap to chart it, hold to swap it for another one the project gets.
+    private func metricTile(_ key: String, selected: Bool, shown: [String], available: [String]) -> some View {
+        Button {
+            Haptics.select()
+            withAnimation(.snappy) { metric = key }
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                Image(systemName: Stat.symbol(key)).font(.system(size: 15, weight: .semibold))
+                Text(refresher.value(key, for: project).map { Stat.format(key, $0) } ?? "–")
+                    .display(22, 700)
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                    .contentTransition(.numericText())
+                Text(Stat.title(key)).font(.ui(11, .semibold)).opacity(0.75).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            .foregroundStyle(selected ? accent.on : Theme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(selected ? accent.base : Theme.background))
+            .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(PressableStyle(scale: 0.95))
+        .contextMenu {
+            MetricSwapMenu(key: key, shown: shown, available: available, value: { refresher.value($0, for: project) }) { new in
+                project.pickedMetrics = Stat.swap(key, for: new, shown: shown)
+                try? context.save()
+                withAnimation(.snappy) { metric = new }
+            }
+        }
     }
 
     @ViewBuilder
