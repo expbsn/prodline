@@ -36,7 +36,7 @@
     {"id": "launch-animation", "title": "Launch animation with haptics", "day": 8, "done": true},
     {"id": "checkpoint-editing", "title": "Rename, move and add checkpoints", "day": 8, "done": true},
     {"id": "data-charts", "title": "Trend charts in the Data tab", "day": 8, "done": true},
-    {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": false},
+    {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": true},
     {"id": "instant-goal-ticks", "title": "Make goal ticks respond instantly", "day": 8, "done": true},
     {"id": "first-launch-intro", "title": "Tell the story as a scroll animation in onboarding", "day": 8, "done": true},
 
