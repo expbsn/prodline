@@ -41,7 +41,7 @@ enum ScheduleEngine {
         m.missed = false
         if let p = m.project { renumber(p) }
         Notifier.cancel(m)
-        if let profile, profile.remindersEnabled, !m.isDone { Notifier.schedule(m, hour: profile.reminderHour) }
+        if let profile, profile.remindersEnabled, !m.isDone { Notifier.schedule(m, profile: profile) }
     }
 
     @discardableResult
@@ -52,7 +52,7 @@ enum ScheduleEngine {
         context.insert(m)
         m.project = p
         renumber(p)
-        if let profile, profile.remindersEnabled { Notifier.schedule(m, hour: profile.reminderHour) }
+        if let profile, profile.remindersEnabled { Notifier.schedule(m, profile: profile) }
         return m
     }
 
@@ -80,7 +80,7 @@ enum ScheduleEngine {
             if let profile, profile.remindersEnabled {
                 for m in p.sortedMilestones where !m.isDone {
                     Notifier.cancel(m)
-                    Notifier.schedule(m, hour: profile.reminderHour)
+                    Notifier.schedule(m, profile: profile)
                 }
             }
             return
@@ -127,7 +127,7 @@ enum ScheduleEngine {
         if let profile, profile.remindersEnabled {
             for m in p.sortedMilestones where !m.isDone {
                 Notifier.cancel(m)
-                Notifier.schedule(m, hour: profile.reminderHour)
+                Notifier.schedule(m, profile: profile)
             }
         }
     }
@@ -150,7 +150,7 @@ enum ScheduleEngine {
         for m in makeMilestones(for: p, weekdayMask: profile.milestoneWeekdayMask) {
             context.insert(m)
             m.project = p
-            if profile.remindersEnabled { Notifier.schedule(m, hour: profile.reminderHour) }
+            if profile.remindersEnabled { Notifier.schedule(m, profile: profile) }
         }
         try? context.save()
     }
@@ -220,7 +220,7 @@ enum ScheduleEngine {
             p.buildDays = max(1, Date.days(from: p.startDate, to: today) + 1)
             for m in observing {
                 m.dueDate = m.dueDate.adding(days: -early)
-                if profile.remindersEnabled { Notifier.cancel(m); Notifier.schedule(m, hour: profile.reminderHour) }
+                if profile.remindersEnabled { Notifier.cancel(m); Notifier.schedule(m, profile: profile) }
             }
             let bonus = min(earlyXPCap, early * earlyXPPerDay)
             profile.xp += bonus
@@ -291,7 +291,7 @@ enum ScheduleEngine {
         m.xpEarned = 0
         m.countedOnTime = false
         m.missed = false   // evaluated again; overdue checkpoints get marked missed on the next pass
-        if m.project != nil, profile.remindersEnabled { Notifier.schedule(m, hour: profile.reminderHour) }
+        if m.project != nil, profile.remindersEnabled { Notifier.schedule(m, profile: profile) }
         return xp
     }
 
@@ -332,7 +332,11 @@ enum Notifier {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
-    static func schedule(_ m: Milestone, hour: Int) {
+    static func schedule(_ m: Milestone, profile: Profile) {
+        schedule(m, hour: profile.reminderHour, nudge: profile.nudgeHour)
+    }
+
+    static func schedule(_ m: Milestone, hour: Int, nudge: Int = 18) {
         guard let project = m.project else { return }
         let center = UNUserNotificationCenter.current()
         func add(_ id: String, hour: Int, title: String, body: String) {
@@ -350,7 +354,7 @@ enum Notifier {
         let goalsText = open.isEmpty ? "" : " Left: " + open.prefix(2).joined(separator: ", ") + (open.count > 2 ? " +\(open.count - 2)" : "") + "."
         add(m.id.uuidString, hour: hour, title: "\(project.name): deadline day",
             body: "\(m.title) is due today.\(goalsText.isEmpty ? " You've got this." : goalsText)")
-        add(m.id.uuidString + "-pm", hour: 18, title: "Still time today",
+        add(m.id.uuidString + "-pm", hour: max(nudge, hour + 1), title: "Still time today",
             body: "\(m.title) · \(project.name).\(goalsText.isEmpty ? " Finish it and keep your streak going." : goalsText)")
         // If it slips, keep nudging for a few days; completing the checkpoint cancels these.
         for day in 1...lateDays {
@@ -418,9 +422,11 @@ enum Notifier {
         center.removeAllPendingNotificationRequests()
         guard profile.remindersEnabled else { return }
         for m in projects.flatMap({ $0.milestones ?? [] }) where !m.isDone {
-            schedule(m, hour: profile.reminderHour)
+            schedule(m, profile: profile)
         }
         for p in projects { scheduleVerdict(p, hour: profile.reminderHour) }
+        StreakNudge.schedule(profile)
+        WeeklyReview.scheduleNotification(enabled: true)
     }
 
     /// The morning after the observe phase ends: time for keep, pivot or kill. Re-adding replaces it,

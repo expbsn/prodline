@@ -53,7 +53,11 @@ struct WeekStats {
 }
 
 enum WeeklyReview {
-    static let hour = 18
+    /// The wrap's hour on Sunday, from the work style (per device).
+    static var hour: Int {
+        get { UserDefaults.standard.object(forKey: "review.hour") as? Int ?? 18 }
+        set { UserDefaults.standard.set(newValue, forKey: "review.hour") }
+    }
     static let weekday = 1 // Sunday
     static let notificationID = "weekly-review"
     static let watchedKey = "review.watched"
@@ -158,7 +162,7 @@ enum WeeklyReview {
                          visitsGained: visits, revenueGained: revenue, projectOfWeek: best, upcoming: next, streak: profile.streak)
     }
 
-    /// Every Sunday at 18:00.
+    /// Every Sunday at the wrap hour.
     static func scheduleNotification(enabled: Bool) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [notificationID])

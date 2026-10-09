@@ -487,7 +487,7 @@ struct CreateProjectFlow: View {
         }
         if let snap = githubSnapshot { GoalEngine.syncGitHub(snap, project: p, context: context) }
         try? context.save()
-        if profile.remindersEnabled { for m in ms { Notifier.schedule(m, hour: profile.reminderHour) } }
+        if profile.remindersEnabled { for m in ms { Notifier.schedule(m, profile: profile) } }
         if profile.remindersEnabled { Task { _ = await Notifier.requestAuth() } }
         if let idea {
             idea.startedAt = .now

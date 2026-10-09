@@ -25,6 +25,10 @@ final class Profile {
     /// Bit (weekday - 1) set => checkpoint on that weekday (Calendar weekday, Sunday = 1).
     var milestoneWeekdayMask: Int = 34 // Mon + Fri
     var reminderHour: Int = 9
+    /// The "still time today" and streak nudge hour.
+    var nudgeHour: Int = 18
+    /// WorkStyle raw value; empty until picked.
+    var workStyleRaw: String = ""
     var remindersEnabled: Bool = true
     /// Projects allowed in the build phase at once (upcoming ones count too); 0 = no limit.
     var buildLimit: Int = 2

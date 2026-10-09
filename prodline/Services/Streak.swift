@@ -60,6 +60,7 @@ enum Streak {
         update(profile, projects: projects, now: now)
         if !wasLit, isActiveToday(profile, now: now), profile.streak > 0 {
             celebration?.lightStreak(profile.streak)
+            StreakNudge.schedule(profile, now: now)
         }
     }
 

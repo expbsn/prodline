@@ -155,13 +155,21 @@ struct MeView: View {
                         }
                     }
                     if profile.remindersEnabled {
-                        HStack {
-                            Text("Morning reminder").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                            Spacer()
-                            Text(String(format: "%02d:00", profile.reminderHour)).display(20, 700).foregroundStyle(Theme.ink)
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("When you work").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                            HStack(spacing: 6) {
+                                ForEach(WorkStyle.allCases) { w in
+                                    Chip(title: w.title.components(separatedBy: " ").last ?? w.title, isOn: profile.workStyle == w) {
+                                        profile.apply(w)
+                                        Notifier.rescheduleAll(projects: projects, profile: profile)
+                                    }
+                                }
+                            }
                         }
-                        ChunkySlider(value: $profile.reminderHour, range: 5...12)
+                        HourPicker(title: "Deadline reminder", hour: $profile.reminderHour)
                             .onChange(of: profile.reminderHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
+                        HourPicker(title: "Last call", hour: $profile.nudgeHour)
+                            .onChange(of: profile.nudgeHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
                     }
                 }
                 .card()
@@ -416,7 +424,7 @@ struct OnboardingView: View {
     @Environment(\.modelContext) private var context
     @Environment(CelebrationCenter.self) private var celebration
     @Environment(DataRefresher.self) private var refresher
-    /// 0 story, 1 first project, 2 what counts as a win, 3 integrations, 4 rhythm, 5 reminders.
+    /// 0 story, 1 first project, 2 what counts as a win, 3 integrations, 4 work hours + reminders, 5 rhythm.
     @State private var step = 0
     @State private var name = ""
     @State private var imageData: Data?
@@ -429,7 +437,7 @@ struct OnboardingView: View {
     @State private var editing: Integration?
     @FocusState private var nameFocused: Bool
 
-    /// 1 project, 2 win, 3 integrations (only with a project), 4 rhythm, 5 reminders.
+    /// 1 project, 2 win, 3 integrations (only with a project), 4 work hours, 5 rhythm.
     private let lastStep = 5
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
@@ -472,8 +480,8 @@ struct OnboardingView: View {
                     case 1: firstProject
                     case 2: success
                     case 3: integrations
-                    case 4: scheme
-                    default: reminders
+                    case 4: workHours
+                    default: scheme
                     }
                 }
                 .padding(.horizontal, 24).padding(.top, 20).padding(.bottom, 20)
@@ -511,10 +519,17 @@ struct OnboardingView: View {
             if (draft?.integrations ?? []).isEmpty {
                 secondary("I'll connect them later", next)
             }
+        case 4:
+            Button("Turn on reminders") {
+                Task { profile.remindersEnabled = await Notifier.requestAuth(); next() }
+            }
+            .buttonStyle(.chunky)
+            .disabled(profile.workStyle == nil)
+            secondary("Not now") { profile.remindersEnabled = false; next() }
+                .disabled(profile.workStyle == nil)
         case lastStep:
-            Button("Turn on reminders", action: next)
+            Button("Let's go", action: next)
                 .buttonStyle(.chunky)
-            secondary("Not now") { profile.remindersEnabled = false; finish() }
         default:
             Button("Continue", action: next)
                 .buttonStyle(.chunky)
@@ -591,23 +606,27 @@ struct OnboardingView: View {
     }
 
     private func focusTile(_ f: SuccessFocus) -> some View {
-        let on = profile.successFocus == f
-        let a = Accent(hex: f.hex)
+        choiceTile(title: f.title, blurb: f.blurb, symbol: f.symbol, hex: f.hex, on: profile.successFocus == f) {
+            profile.successFocus = f
+            profile.successTarget = f.defaultTarget
+        }
+    }
+
+    /// A big chunky choice: icon, title and a line, with a colored edge when picked.
+    private func choiceTile(title: String, blurb: String, symbol: String, hex: Int, on: Bool, pick: @escaping () -> Void) -> some View {
+        let a = Accent(hex: hex)
         return Button {
             Haptics.select()
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) {
-                profile.successFocus = f
-                profile.successTarget = f.defaultTarget
-            }
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.65)) { pick() }
         } label: {
             VStack(alignment: .leading, spacing: 10) {
-                Image(systemName: f.symbol).font(.system(size: 20, weight: .bold))
+                Image(systemName: symbol).font(.system(size: 20, weight: .bold))
                     .foregroundStyle(on ? a.on : a.text)
                     .frame(width: 44, height: 44)
                     .background(Circle().fill(on ? a.base : a.tint))
-                Text(f.title).font(.display(18, 750)).foregroundStyle(Theme.ink)
+                Text(title).font(.display(18, 750)).foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)
-                Text(f.blurb).font(.ui(13)).foregroundStyle(Theme.secondary)
+                Text(blurb).font(.ui(13)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 0)
             }
@@ -709,27 +728,48 @@ struct OnboardingView: View {
         }
     }
 
-    private var reminders: some View {
+    // MARK: Work hours
+
+    private var workHours: some View {
         let shown = skippedProject || trimmedName.isEmpty ? "Side Shop" : trimmedName
+        let style = profile.workStyle
         return VStack(alignment: .leading, spacing: 18) {
-            header("Stay on time", "A nudge on deadline days",
-                   "We remind you in the morning and again at 6 pm if it's still open. Nothing else, promise.")
-            // Notification preview, with your project when you made one.
-            HStack(alignment: .top, spacing: 12) {
-                RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: skippedProject ? 0x3A3A3C : accentHex))
-                    .frame(width: 38, height: 38)
-                    .overlay(Text(String(shown.prefix(1)).uppercased()).display(20, 800).foregroundStyle(.white))
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text("\(shown): deadline day").font(.ui(15, .semibold)).lineLimit(1)
-                        Spacer()
-                        Text("9:00").font(.ui(13)).foregroundStyle(Theme.secondary)
+            header("Your hours", "When do you actually work on this?",
+                   "Be honest. We won't tell your boss. Reminders and your weekly wrap show up when it suits you.")
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                ForEach(WorkStyle.allCases) { w in
+                    choiceTile(title: w.title, blurb: w.blurb, symbol: w.symbol, hex: w.hex, on: style == w) {
+                        profile.apply(w)
                     }
-                    Text("Checkpoint 1 is due today. You've got this.").font(.ui(15)).foregroundStyle(Theme.inkSoft)
                 }
             }
-            .card(padding: 14, radius: 22)
+            if style != nil {
+                // Notification preview at the picked time, with your project when you made one.
+                HStack(alignment: .top, spacing: 12) {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color(hex: skippedProject ? 0x3A3A3C : accentHex))
+                        .frame(width: 38, height: 38)
+                        .overlay(Text(String(shown.prefix(1)).uppercased()).display(20, 800).foregroundStyle(.white))
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("\(shown): deadline day").font(.ui(15, .semibold)).lineLimit(1)
+                            Spacer()
+                            Text(String(format: "%d:00", profile.reminderHour)).font(.ui(13)).foregroundStyle(Theme.secondary)
+                                .contentTransition(.numericText())
+                        }
+                        Text("Checkpoint 1 is due today. You've got this.").font(.ui(15)).foregroundStyle(Theme.inkSoft)
+                    }
+                }
+                .card(padding: 14, radius: 22)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                HourPicker(title: "Pick an exact time", hour: $profile.reminderHour)
+                Text("Deadline days at \(profile.reminderHour):00, a last call at \(profile.nudgeHour):00 if it's still open, "
+                     + "and your weekly wrap on Sunday at \(WeeklyReview.hour):00. Nothing else, promise.")
+                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: profile.workStyleRaw)
+        .animation(.snappy, value: profile.reminderHour)
     }
 
     // MARK: Flow
@@ -742,12 +782,13 @@ struct OnboardingView: View {
             if step == 2 && !skip { ensureDraft() }
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += skip ? 2 : 1 }
         } else {
-            Task { profile.remindersEnabled = await Notifier.requestAuth(); finish() }
+            finish()
         }
     }
 
     private func finish() {
         profile.onboarded = true
+        if profile.remindersEnabled { WeeklyReview.scheduleNotification(enabled: true) }
         if !skippedProject && !trimmedName.isEmpty {
             let p = draft ?? Project(name: trimmedName, accentHex: accentHex, startDate: .now.startOfDay,
                                      buildDays: profile.buildDays, observeDays: profile.observeDays)
@@ -766,6 +807,33 @@ struct OnboardingView: View {
         } else {
             try? context.save()
             celebration.fire(title: "You're set", subtitle: "Create your first project to begin.")
+        }
+    }
+}
+
+/// An hour from 5:00 to 23:00, as a menu.
+struct HourPicker: View {
+    let title: String
+    @Binding var hour: Int
+
+    var body: some View {
+        HStack {
+            Text(title).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+            Spacer()
+            Menu {
+                Picker(title, selection: $hour) {
+                    ForEach(5...23, id: \.self) { h in Text(String(format: "%02d:00", h)).tag(h) }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text(String(format: "%02d:00", hour)).display(18, 700).contentTransition(.numericText())
+                    Image(systemName: "chevron.up.chevron.down").font(.system(size: 12, weight: .bold))
+                }
+                .foregroundStyle(Theme.ink)
+                .padding(.horizontal, 14).padding(.vertical, 9)
+                .background(Capsule().fill(Theme.card))
+                .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 1.5))
+            }
         }
     }
 }

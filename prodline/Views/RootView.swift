@@ -130,6 +130,7 @@ struct RootView: View {
                     remindAboutLateDeadlines()
                     nudgeAboutFreeSlot()
                     WeeklyReview.scheduleNotification(enabled: profiles.first?.remindersEnabled ?? false)
+                    if let profile = profiles.first { StreakNudge.schedule(profile) }
                     if let profile = profiles.first, profile.remindersEnabled {
                         for p in projects { Notifier.scheduleVerdict(p, hour: profile.reminderHour) }
                     }
@@ -203,7 +204,7 @@ extension RootView {
             if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }
             if profile.remindersEnabled {
                 Notifier.staleRepoNudge(project: p, hour: profile.reminderHour)
-                for m in p.sortedMilestones where !m.isDone { Notifier.schedule(m, hour: profile.reminderHour) }
+                for m in p.sortedMilestones where !m.isDone { Notifier.schedule(m, profile: profile) }
             }
         }
     }
