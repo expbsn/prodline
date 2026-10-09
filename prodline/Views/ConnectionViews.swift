@@ -615,3 +615,70 @@ struct GoalsGuideView: View {
         }
     }
 }
+
+/// Instant updates for a linked repo: the webhook address and secret to paste into GitHub, step by step.
+struct InstantUpdatesSection: View {
+    let project: Project
+    let repo: String
+    @State private var copied: String?
+
+    var body: some View {
+        let hook = Relay.hook(for: project)
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Instant updates").eyebrow()
+                Text("Push to \(repo) and goals tick within seconds, even with the app closed. Add this webhook to the repo once.")
+                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                step(1, "On GitHub open \(repo) → Settings → Webhooks → Add webhook.")
+                step(2, "Paste the payload URL and the secret below. Content type: application/json.")
+                step(3, "Leave \"Just the push event\" selected and click Add webhook. GitHub sends a test ping right away.")
+            }
+            .card(padding: 16, radius: 20)
+            if let url = Relay.webhookURL(hook) {
+                copyRow("Payload URL", url.absoluteString)
+            }
+            copyRow("Secret", hook.secret)
+            if let url = URL(string: "https://github.com/\(repo)/settings/hooks/new") {
+                Link(destination: url) {
+                    Label("Open the repo's webhook settings", systemImage: "arrow.up.right.square")
+                        .font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                }
+            }
+        }
+    }
+
+    private func step(_ n: Int, _ text: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text("\(n)").font(.ui(12, .bold)).foregroundStyle(Theme.secondary)
+                .frame(width: 22, height: 22)
+                .background(Circle().fill(Theme.background))
+            Text(text).font(.ui(14)).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func copyRow(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(label).eyebrow()
+            Button {
+                UIPasteboard.general.string = value
+                Haptics.success()
+                withAnimation(.snappy) { copied = label }
+            } label: {
+                HStack(spacing: 10) {
+                    Text(value).font(.system(size: 13, design: .monospaced)).foregroundStyle(Theme.ink)
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Image(systemName: copied == label ? "checkmark" : "doc.on.doc")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(copied == label ? Theme.success : Theme.secondary)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+                .inputField()
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}

@@ -9,6 +9,7 @@ enum AppSettings {
         static let suggestions = "config.suggestions"
         static let sampleData = "config.sampleData"
         static let haptics = "config.haptics"
+        static let relayURL = "config.relayURL"
     }
 
     nonisolated private static func int(_ key: String, _ fallback: Int) -> Int {
@@ -29,4 +30,9 @@ enum AppSettings {
     /// Sample numbers for projects without an endpoint.
     nonisolated static var sampleData: Bool { bool(Key.sampleData, true) }
     nonisolated static var haptics: Bool { bool(Key.haptics, true) }
+    /// The deployed relay (relay/ in the repo) for instant updates; empty turns the feature off.
+    nonisolated static var relayURL: URL? {
+        let s = (UserDefaults.standard.string(forKey: Key.relayURL) ?? "").trimmingCharacters(in: .whitespaces)
+        return s.isEmpty ? nil : URL(string: s.hasSuffix("/") ? String(s.dropLast()) : s)
+    }
 }

@@ -50,6 +50,18 @@ struct RootView: View {
             WidgetPublisher.publish(projects: projects, profile: profile, refresher: refresher)
         }
         .onReceive(NotificationCenter.default.publisher(for: LaunchGate.replay)) { _ in showLaunch = true }
+        // The relay says a repo changed: sync that project now instead of on the next pass.
+        .onReceive(NotificationCenter.default.publisher(for: Relay.pushed)) { note in
+            guard let hook = note.object as? String, let p = Relay.project(forHook: hook, in: projects) else { return }
+            Task {
+                await syncGitHub(only: [p], force: true)
+                if let profile = profiles.first, profile.onboarded {
+                    GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
+                                            celebration: celebration, context: context)
+                }
+                WidgetPublisher.publish(projects: projects, profile: profiles.first, refresher: refresher)
+            }
+        }
         .environment(refresher)
         .environment(github)
         .environment(celebration)
@@ -195,9 +207,10 @@ extension RootView {
         celebration.nudge(title: late.title, subtitle: late.subtitle)
     }
 
-    /// GitHub issues → goals, plus the "repo has gone quiet" nudge.
-    func syncGitHub() async {
-        let changed = await github.refresh(projects: projects)
+    /// GitHub issues → goals, plus the "repo has gone quiet" nudge. `only` with `force` syncs those
+    /// projects right away (a push from the relay).
+    func syncGitHub(only: [Project]? = nil, force: Bool = false) async {
+        let changed = await github.refresh(projects: only ?? projects, force: force)
         GitHubService.trace("sync: \(projects.count) projects, \(changed.count) changed")
         guard let profile = profiles.first else { return }
         for p in changed {

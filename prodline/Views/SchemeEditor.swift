@@ -108,6 +108,7 @@ struct MeView: View {
     @AppStorage(AppSettings.Key.suggestions) private var suggestions = true
     @AppStorage(AppSettings.Key.sampleData) private var sampleData = true
     @AppStorage(AppSettings.Key.haptics) private var haptics = true
+    @AppStorage(AppSettings.Key.relayURL) private var relayURL = ""
     @AppStorage(LiveActivities.enabledKey) private var liveActivity = true
     @State private var confirm: Confirm?
 
@@ -233,6 +234,16 @@ struct MeView: View {
                       : "Needs Apple Intelligence on this iPhone.", $suggestions)
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
             toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
+            optionRow("Relay for instant updates", "Your deployed relay (relay/ in the repo). Pushes to linked repos then sync within seconds.") {
+                TextField("https://prodline-relay.you.workers.dev", text: $relayURL)
+                    .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                    .font(.ui(15))
+                    .inputField()
+                    .onSubmit {
+                        guard AppSettings.relayURL != nil else { return }
+                        UIApplication.shared.registerForRemoteNotifications()
+                    }
+            }
             toggleRow("Deadline Live Activity", "On the Lock Screen and in the Dynamic Island when a checkpoint is due today and still has open goals.", $liveActivity)
                 .onChange(of: liveActivity) { Task { await LiveActivities.sync(projects) } }
         }

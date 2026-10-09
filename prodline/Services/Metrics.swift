@@ -270,11 +270,12 @@ enum Keychain {
          kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
     }
 
-    static func set(_ value: String, for account: String) {
+    /// `synced: false` keeps the item on this device (e.g. the relay's per-device secret).
+    static func set(_ value: String, for account: String, synced: Bool = true) {
         delete(account)
         guard !value.isEmpty else { return }
         var q = base(account)
-        q[kSecAttrSynchronizable as String] = true // iCloud Keychain
+        q[kSecAttrSynchronizable as String] = synced // iCloud Keychain
         q[kSecValueData as String] = Data(value.utf8)
         q[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock // background refresh
         SecItemAdd(q as CFDictionary, nil)

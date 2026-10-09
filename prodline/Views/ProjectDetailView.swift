@@ -952,6 +952,9 @@ struct ConnectionSheet: View {
                     ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
                     Divider()
                     GitHubFields(repo: $repo, token: $token, check: $repoCheck)
+                    if Relay.isEnabled, GitHubRepoRef(repo) != nil {
+                        InstantUpdatesSection(project: project, repo: GitHubRepoRef(repo)?.slug ?? "")
+                    }
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
@@ -967,6 +970,7 @@ struct ConnectionSheet: View {
                 try? context.save()
                 Haptics.success()
                 Task {
+                    if !project.githubRepo.isEmpty { await Relay.follow(project) }
                     await refresher.refresh(projects: [project], context: context, force: true)
                     if let snap = (await github.refresh(projects: [project], force: true)).isEmpty ? nil : github.snapshots[project.id] {
                         GoalEngine.syncGitHub(snap, project: project, context: context)

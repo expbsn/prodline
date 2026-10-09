@@ -6,7 +6,44 @@ import UserNotifications
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        // Instant updates: the relay needs this device's push token.
+        if Relay.isEnabled { application.registerForRemoteNotifications() }
+        #if DEBUG
+        // -PRODLINE_RELAY_TOKEN <hex>: pretend APNs handed out this token (simulators often get none).
+        if let hex = UserDefaults.standard.string(forKey: "PRODLINE_RELAY_TOKEN"), Relay.isEnabled {
+            let bytes = stride(from: 0, to: hex.count - 1, by: 2).compactMap { i -> UInt8? in
+                let s = hex.index(hex.startIndex, offsetBy: i)
+                return UInt8(hex[s...hex.index(after: s)], radix: 16)
+            }
+            self.application(application, didRegisterForRemoteNotificationsWithDeviceToken: Data(bytes))
+        }
+        #endif
         return true
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("Relay: no push token (\(error.localizedDescription))")
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        Task { @MainActor in
+            let context = ModelContext(prodlineApp.sharedContainer)
+            let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
+            await Relay.register(token: deviceToken, projects: projects)
+        }
+    }
+
+    /// A silent push from the relay: a repo changed. Open: the running sync picks it up. Closed or in the
+    /// background: sync that project here, within the few seconds iOS allows.
+    @MainActor
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
+        guard let info = userInfo["prodline"] as? [String: Any], let hook = info["hook"] as? String else { return .noData }
+        GitHubService.trace("relay push for \(hook), app \(application.applicationState == .active ? "open" : "in background")")
+        if application.applicationState == .active {
+            NotificationCenter.default.post(name: Relay.pushed, object: hook)
+            return .newData
+        }
+        return await Relay.handleInBackground(hookID: hook, container: prodlineApp.sharedContainer) ? .newData : .noData
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
@@ -25,7 +62,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 @main
 struct prodlineApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    let container: ModelContainer = {
+    var container: ModelContainer { Self.sharedContainer }
+
+    /// One store for the app and for background work started by pushes.
+    static let sharedContainer: ModelContainer = {
         let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self, Idea.self])
         // Unit tests get a throwaway in-memory store.
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {

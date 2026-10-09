@@ -1,0 +1,11 @@
+name = "prodline-relay"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+APNS_TOPIC = "expbsn.app.prodline"
+
+# Created with: npx wrangler kv namespace create RELAY  (paste the id it prints)
+[[kv_namespaces]]
+binding = "RELAY"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
