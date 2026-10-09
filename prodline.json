@@ -42,7 +42,7 @@
 
     {"id": "onboarding-first-project", "title": "Create the first project during onboarding", "day": 10, "done": true},
     {"id": "onboarding-success-goal", "title": "Pick what counts as a win and default success targets", "day": 10, "done": true},
-    {"id": "onboarding-integrations", "title": "Suggest integrations based on the win you picked", "day": 10, "done": false},
+    {"id": "onboarding-integrations", "title": "Suggest integrations based on the win you picked", "day": 10, "done": true},
     {"id": "onboarding-work-time", "title": "Ask when you work to time reminders and the weekly wrap", "day": 10, "done": false},
 
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},

@@ -415,7 +415,8 @@ struct OnboardingView: View {
     @Bindable var profile: Profile
     @Environment(\.modelContext) private var context
     @Environment(CelebrationCenter.self) private var celebration
-    /// 0 story, 1 first project, 2 what counts as a win, 3 rhythm, 4 reminders.
+    @Environment(DataRefresher.self) private var refresher
+    /// 0 story, 1 first project, 2 what counts as a win, 3 integrations, 4 rhythm, 5 reminders.
     @State private var step = 0
     @State private var name = ""
     @State private var imageData: Data?
@@ -423,9 +424,13 @@ struct OnboardingView: View {
     @State private var lockedToPhoto = false
     @State private var accentHex = Theme.swatches[0]
     @State private var skippedProject = false
+    /// The first project while onboarding runs: integrations attach to it before it's created at the end.
+    @State private var draft: Project?
+    @State private var editing: Integration?
     @FocusState private var nameFocused: Bool
 
-    private let lastStep = 4
+    /// 1 project, 2 win, 3 integrations (only with a project), 4 rhythm, 5 reminders.
+    private let lastStep = 5
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
     var body: some View {
@@ -445,7 +450,9 @@ struct OnboardingView: View {
                 Button {
                     Haptics.soft()
                     nameFocused = false
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step -= 1 }
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                        step -= (step == 4 && skippedProject) ? 2 : 1
+                    }
                 } label: {
                     Image(systemName: "chevron.left")
                         .font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.secondary)
@@ -464,7 +471,8 @@ struct OnboardingView: View {
                     switch step {
                     case 1: firstProject
                     case 2: success
-                    case 3: scheme
+                    case 3: integrations
+                    case 4: scheme
                     default: reminders
                     }
                 }
@@ -478,6 +486,11 @@ struct OnboardingView: View {
             .bottomActionBar { bottomBar }
         }
         .background(Theme.background.ignoresSafeArea())
+        .sheet(item: $editing) { i in
+            if let draft {
+                IntegrationEditor(project: draft, integration: i, isNew: !draft.integrations.contains { $0.id == i.id }, live: false)
+            }
+        }
     }
 
     @ViewBuilder
@@ -492,6 +505,12 @@ struct OnboardingView: View {
             Button("Continue", action: next)
                 .buttonStyle(.chunky)
                 .disabled(profile.successFocus == nil)
+        case 3:
+            Button("Continue", action: next)
+                .buttonStyle(.chunky)
+            if (draft?.integrations ?? []).isEmpty {
+                secondary("I'll connect them later", next)
+            }
         case lastStep:
             Button("Turn on reminders", action: next)
                 .buttonStyle(.chunky)
@@ -607,6 +626,81 @@ struct OnboardingView: View {
         .buttonStyle(.plain)
     }
 
+    // MARK: Integrations
+
+    /// The services worth showing first for the win that was picked, then the other popular ones.
+    private var suggestedKinds: [IntegrationKind] {
+        switch profile.successFocus {
+        case .money: [.stripe, .revenueCat, .appStore, .shopify]
+        case .users: [.appStore, .revenueCat, .posthog, .npm]
+        case .audience: [.plausible, .youtube, .posthog, .bluesky]
+        case .ship, nil: [.vercel, .netlify, .appStore, .plausible]
+        }
+    }
+
+    private static let popular: [IntegrationKind] = [
+        .appStore, .stripe, .revenueCat, .shopify, .lemonSqueezy, .plausible, .posthog, .vercel, .youtube, .npm,
+    ]
+
+    private var integrations: some View {
+        let suggested = suggestedKinds
+        let more = Self.popular.filter { !suggested.contains($0) }
+        return VStack(alignment: .leading, spacing: 20) {
+            header("Your numbers", "Plug in your numbers",
+                   "Revenue, visitors, downloads: straight from the tools you already use. No spreadsheets, no copy-paste.")
+            integrationList("Suggested for you", suggested)
+            integrationList("Also popular", more)
+            Text("Lots more in the project settings later: Paddle, Polar, Fathom, newsletters, Product Hunt and others.")
+                .font(.ui(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func integrationList(_ title: String, _ kinds: [IntegrationKind]) -> some View {
+        let connected = Set((draft?.integrations ?? []).map(\.kind))
+        return VStack(alignment: .leading, spacing: 10) {
+            Text(title).eyebrow()
+            VStack(spacing: 0) {
+                ForEach(kinds) { kind in
+                    Button {
+                        Haptics.select()
+                        if let existing = draft?.integrations.first(where: { $0.kind == kind }) {
+                            editing = existing
+                        } else {
+                            editing = Integration(kind: kind)
+                        }
+                    } label: {
+                        HStack(spacing: 0) {
+                            IntegrationRow(kind: kind, caption: kind.provides)
+                            if connected.contains(kind) {
+                                Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
+                                    .transition(.scale.combined(with: .opacity))
+                            } else {
+                                Text("Connect").font(.ui(14, .semibold)).foregroundStyle(Theme.ink)
+                                    .padding(.horizontal, 12).padding(.vertical, 7)
+                                    .background(Capsule().fill(Theme.background))
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    if kind != kinds.last { Divider().padding(.leading, 52) }
+                }
+            }
+            .card(padding: 14, radius: 20)
+            .animation(.spring(response: 0.35, dampingFraction: 0.7), value: connected)
+        }
+    }
+
+    /// The project as typed so far; integrations attach to it before it's created.
+    private func ensureDraft() {
+        if draft == nil {
+            draft = Project(name: trimmedName, accentHex: accentHex, startDate: .now.startOfDay,
+                            buildDays: profile.buildDays, observeDays: profile.observeDays)
+        }
+        draft?.name = trimmedName
+        draft?.accentHex = accentHex
+    }
+
     private var scheme: some View {
         VStack(alignment: .leading, spacing: 18) {
             header("Your rhythm", "How do you like to build?",
@@ -643,7 +737,10 @@ struct OnboardingView: View {
     private func next() {
         nameFocused = false
         if step < lastStep {
-            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += 1 }
+            // Without a project there's nothing to connect integrations to.
+            let skip = step == 2 && skippedProject
+            if step == 2 && !skip { ensureDraft() }
+            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += skip ? 2 : 1 }
         } else {
             Task { profile.remindersEnabled = await Notifier.requestAuth(); finish() }
         }
@@ -652,12 +749,19 @@ struct OnboardingView: View {
     private func finish() {
         profile.onboarded = true
         if !skippedProject && !trimmedName.isEmpty {
-            let p = Project(name: trimmedName, accentHex: accentHex, startDate: .now.startOfDay,
-                            buildDays: profile.buildDays, observeDays: profile.observeDays)
+            let p = draft ?? Project(name: trimmedName, accentHex: accentHex, startDate: .now.startOfDay,
+                                     buildDays: profile.buildDays, observeDays: profile.observeDays)
+            // The rhythm may have changed after the draft was made.
+            p.name = trimmedName
+            p.accentHex = accentHex
+            p.startDate = .now.startOfDay
+            p.buildDays = profile.buildDays
+            p.observeDays = profile.observeDays
             p.coverImage = imageData
             p.criteria = profile.defaultCriteria
             ScheduleEngine.createProject(p, profile: profile, context: context)
             try? context.save()
+            if !p.integrations.isEmpty { Task { await refresher.refresh(projects: [p], context: context, force: true) } }
             celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(profile.buildDays.durationText). Let's ship.", accent: p.accent)
         } else {
             try? context.save()

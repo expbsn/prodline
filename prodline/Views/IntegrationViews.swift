@@ -145,6 +145,8 @@ struct IntegrationPicker: View {
 struct IntegrationEditor: View {
     @Bindable var project: Project
     let isNew: Bool
+    /// Off for a project that doesn't exist yet (onboarding): nothing to save or refresh until it's created.
+    var live = true
     @State private var integration: Integration
     @State private var secret: String
     @State private var test: TestState = .idle
@@ -170,9 +172,10 @@ struct IntegrationEditor: View {
         }
     }
 
-    init(project: Project, integration: Integration, isNew: Bool) {
+    init(project: Project, integration: Integration, isNew: Bool, live: Bool = true) {
         self.project = project
         self.isNew = isNew
+        self.live = live
         _integration = State(initialValue: integration)
         _secret = State(initialValue: Keychain.get(integration.keychainAccount) ?? "")
     }
@@ -366,10 +369,12 @@ struct IntegrationEditor: View {
         if let n = all.firstIndex(where: { $0.id == integration.id }) { all[n] = integration } else { all.append(integration) }
         project.integrations = all
         Keychain.set(secret.trimmingCharacters(in: .whitespacesAndNewlines), for: integration.keychainAccount)
-        try? context.save()
         Haptics.success()
-        let p = project
-        Task { await refresher.refresh(projects: [p], context: context, force: true) }
+        if live {
+            try? context.save()
+            let p = project
+            Task { await refresher.refresh(projects: [p], context: context, force: true) }
+        }
         dismiss()
     }
 
@@ -378,7 +383,7 @@ struct IntegrationEditor: View {
         Keychain.delete(integration.keychainAccount)
         let i = integration
         Task { await IntegrationCache.shared.forget(i) }
-        try? context.save()
+        if live { try? context.save() }
         dismiss()
     }
 }
