@@ -6,6 +6,7 @@
     {"day": 8, "title": "Polish"},
     {"day": 10, "title": "Personal onboarding"},
     {"day": 12, "title": "TestFlight"},
+    {"day": 13, "title": "First testers"},
     {"day": 15, "title": "Tester feedback"},
     {"day": 19, "title": "Widgets"},
     {"day": 22, "title": "Instant sync"},
@@ -37,6 +38,7 @@
     {"id": "checkpoint-editing", "title": "Rename, move and add checkpoints", "day": 8, "done": true},
     {"id": "data-charts", "title": "Trend charts in the Data tab", "day": 8, "done": true},
     {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": true},
+    {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 8, "done": false},
     {"id": "instant-goal-ticks", "title": "Make goal ticks respond instantly", "day": 8, "done": true},
     {"id": "first-launch-intro", "title": "Tell the story as a scroll animation in onboarding", "day": 8, "done": true},
 
@@ -45,15 +47,18 @@
     {"id": "onboarding-integrations", "title": "Suggest integrations based on the win you picked", "day": 10, "done": true},
     {"id": "onboarding-work-time", "title": "Ask when you work to time reminders and the weekly wrap", "day": 10, "done": true},
 
+    {"id": "landing-page", "title": "Build the landing page with tester waitlist", "day": 12, "done": false},
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},
     {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": false},
     {"id": "testflight-build", "title": "Upload first TestFlight build", "day": 12, "done": false},
-    {"id": "mac-prototype", "title": "Prototype the macOS layout", "day": 12, "done": false},
 
-    {"id": "testers", "title": "Invite first TestFlight testers", "day": 13, "done": false},
+    {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": false},
+    {"id": "testers", "title": "Invite the first wave of testers from the waitlist", "day": 13, "done": false},
+    {"id": "waitlist-50", "title": "Reach 50 waitlist signups", "day": 13, "done": false, "metric": {"key": "signups", "target": 50}},
 
     {"id": "feedback-triage", "title": "Triage first tester feedback into goals", "day": 15, "done": false},
     {"id": "crash-fixes", "title": "Fix crashes reported in TestFlight", "day": 15, "done": false},
+    {"id": "mac-prototype", "title": "Prototype the macOS layout", "day": 15, "done": false},
 
     {"id": "home-widget", "title": "Home Screen widgets: project, traction and all projects", "day": 19, "done": true},
     {"id": "live-activity", "title": "Live Activity on deadline days", "day": 19, "done": true},
@@ -85,7 +90,6 @@
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},
 
-    {"id": "landing-page", "title": "Build the landing page with waitlist", "day": 29, "done": false},
     {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": false},
     {"id": "app-preview-video", "title": "Record the App Store preview video", "day": 29, "done": false},
     {"id": "press-kit", "title": "Put together a press kit with screenshots and logo", "day": 29, "done": false},
