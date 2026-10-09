@@ -409,12 +409,12 @@ private struct StoryCanvas: View {
 
     private struct Copy { let title: String; let body: String }
     private static let copy = [
-        Copy(title: "Build in short bursts", body: "Two-week sprints with checkpoints that keep you honest. Goodbye, \u{201C}I'll get to it this weekend.\u{201D}"),
-        Copy(title: "Set your rhythm", body: "You pick the pace. Prodline does the nagging, so future you can't weasel out of it."),
-        Copy(title: "Show up every day", body: "Tick off one thing a day and the flame stays lit. Letting it go out will feel worse than doing the work."),
-        Copy(title: "You'll finish early", body: "Building gets so much fun the deadline starts to feel optional. Ship when it's done and bank the days."),
-        Copy(title: "Watch it land", body: "Visits, revenue and downloads roll in on their own. No spreadsheets, no twelve open tabs."),
-        Copy(title: "Then make the call", body: "Keep it, pivot it or kill it, guilt-free. The numbers already did the arguing."),
+        Copy(title: "Build in short bursts", body: "Two weeks, a few checkpoints, and suddenly your project has a plot. The drawer will miss it."),
+        Copy(title: "Set your rhythm", body: "Long builds, quick sprints, checkpoints on Tuesdays. Prodline works the way you do, even if that's weird."),
+        Copy(title: "Show up every day", body: "One little tick a day keeps the flame happy. It's the lowest-maintenance pet you'll ever own."),
+        Copy(title: "You'll finish early", body: "Turns out ticking things off is weirdly fun. Don't be surprised if you beat your own deadline."),
+        Copy(title: "Watch it land", body: "Sales, visits and downloads show up on their own. Refreshing five dashboards is now a hobby, not a job."),
+        Copy(title: "Then make the call", body: "Keep it, pivot it or let it go. Whatever you pick, you shipped a thing. That's more than most."),
     ]
 
     private func beat(_ i: Int) -> some View {
@@ -450,11 +450,35 @@ private struct StoryCanvas: View {
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { h in
             if abs(heights[i] - h) > 1 { heights[i] = h }
         }
+        // The finish stamp stays centered on the screen and fades out of focus instead of sliding away.
+        .overlay(alignment: .bottom) {
+            stamp(i)
+                .opacity(Double(max(0, 1 - max(0, abs(d) - 0.08) * 4)))
+                .blur(radius: max(0, abs(d) - 0.04) * 30)
+        }
         .scaleEffect(1 - ad * 0.08)
         // Out of focus away from the middle, sharp while it plays.
         .blur(radius: max(0, abs(d) - 0.4) * 6)
         .opacity(Double(max(0, 1 - max(0, abs(d) - 0.7) * 1.4)))
         .offset(y: l.tops[i])
+    }
+
+    /// "+10 XP" once the goals are ticked, "Dialed in!" once the schedule settles.
+    @ViewBuilder
+    private func stamp(_ i: Int) -> some View {
+        let p = state.beats[i]
+        switch i {
+        case 0:
+            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: p >= 0.75,
+                         confetti: [0xFFC800, 0xFFD94D, 0xE5A500, 0xFFF0A0])
+                .offset(y: -40)
+        case 1:
+            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x58CC02), size: 68, on: p >= 0.85,
+                         confetti: [0x58CC02, 0x89E219, 0x46A302, 0xB8F28B])
+                .offset(y: -90)
+        default:
+            EmptyView()
+        }
     }
 
     @ViewBuilder
@@ -519,9 +543,6 @@ private struct BuildBeat: View {
                     RoundedRectangle(cornerRadius: 30 * 150 / 260, style: .continuous).fill(Color(hex: 0x161618)).offset(y: 8)
                 }
                 .shadow(color: .black.opacity(0.18), radius: 16, y: 14)
-                // Card and checkpoint lean toward each other, like two panels of a fold.
-                .rotation3DEffect(.degrees(-11), axis: (x: 1, y: 0, z: 0), anchor: .bottom, perspective: 0.5)
-                .padding(.top, 14)
             VStack(alignment: .leading, spacing: 11) {
                 Text("Checkpoint 2 · \(done.filter { $0 }.count)/3 goals").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
                     .contentTransition(.numericText())
@@ -556,14 +577,6 @@ private struct BuildBeat: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .chunkySlab(radius: 22)
             .animation(.spring(response: 0.38, dampingFraction: 0.65), value: done)
-            .rotation3DEffect(.degrees(11), axis: (x: 1, y: 0, z: 0), anchor: .top, perspective: 0.5)
-            // All three done: the checkpoint pops confetti.
-        }
-        // All three done: "+10 XP" spells itself out over the bottom of the scene.
-        .overlay(alignment: .bottom) {
-            SpelledStamp(text: "+10 XP", accent: Accent(hex: 0xFFC800), size: 76, on: done.allSatisfy { $0 },
-                         confetti: [0xFFC800, 0xFFD94D, 0xE5A500, 0xFFF0A0])
-                .offset(y: -24)
         }
     }
 }
@@ -614,13 +627,6 @@ struct RhythmBeat: View {
         }
         .padding(14)
         .chunkySlab(radius: 22)
-        // Settled on the defaults: "Dialed in!" spells itself out over the bottom of the editor.
-        .overlay(alignment: .bottom) {
-            SpelledStamp(text: "Dialed in!", accent: Accent(hex: 0x58CC02), size: 68, on: p >= 0.85,
-                         confetti: [0x58CC02, 0x89E219, 0x46A302, 0xB8F28B])
-                // Centered on the screen rather than the editor, which sits left of the line.
-                .offset(x: 26, y: -70)
-        }
         .environment(\.accent, .neutral)
         .animation(.spring(response: 0.25, dampingFraction: 0.85), value: v.build * 10_000 + v.observe * 100 + v.every)
         .allowsHitTesting(false)
