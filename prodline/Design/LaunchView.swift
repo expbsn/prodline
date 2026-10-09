@@ -30,13 +30,72 @@ enum LogoGeometry {
 }
 
 /// Cold-start splash: a dotted line rises from the bottom, carves the "p" and leaves to the left.
-/// Built from Core Animation layers so the render server plays it even while the main thread
-/// is busy starting up (SwiftData, CloudKit, first refresh).
-struct LaunchView: UIViewRepresentable {
+/// Shot like through a real lens: sharp in the middle, softly out of focus toward the edges, with
+/// red and blue fringes pulling apart where the image bends (lateral chromatic aberration).
+/// The same scene is played in several layers on one shared clock: the sharp one, a blurred one for
+/// the edges, and two tinted, slightly scaled ones for the fringes.
+struct LaunchView: View {
     var onFinish: () -> Void
+
+    var body: some View {
+        GeometryReader { geo in
+            let r = hypot(geo.size.width, geo.size.height) / 2
+            ZStack {
+                Theme.background
+                // Fringes: red pushed out, blue pulled in, only away from the center.
+                LaunchLayer(ink: UIColor(red: 1, green: 0.15, blue: 0.2, alpha: 1))
+                    .scaleEffect(1.022)
+                    .blur(radius: 2.5)
+                    .opacity(0.55)
+                    .mask(edgeMask(r))
+                LaunchLayer(ink: UIColor(red: 0.1, green: 0.45, blue: 1, alpha: 1))
+                    .scaleEffect(0.978)
+                    .blur(radius: 2.5)
+                    .opacity(0.55)
+                    .mask(edgeMask(r))
+                // Out of focus toward the edges…
+                LaunchLayer(ink: UIColor(Theme.ink))
+                    .blur(radius: 7)
+                    .mask(edgeMask(r))
+                // …and sharp in the middle, where the mark is carved.
+                LaunchLayer(ink: UIColor(Theme.ink), primary: true, onFinish: onFinish)
+                    .mask(centerMask(r))
+            }
+        }
+        .ignoresSafeArea()
+        .accessibilityElement()
+        .accessibilityLabel("Prodline")
+    }
+
+    private func centerMask(_ r: CGFloat) -> some View {
+        RadialGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.38),
+                               .init(color: .clear, location: 0.85)],
+                       center: .center, startRadius: 0, endRadius: r)
+    }
+
+    private func edgeMask(_ r: CGFloat) -> some View {
+        RadialGradient(stops: [.init(color: .clear, location: 0), .init(color: .clear, location: 0.3),
+                               .init(color: .black, location: 0.85)],
+                       center: .center, startRadius: 0, endRadius: r)
+    }
+}
+
+/// When the splash started, shared so every copy of the scene runs on the same beat.
+enum LaunchClock {
+    static var base: CFTimeInterval?
+}
+
+/// One copy of the scene. Built from Core Animation layers so the render server plays it even while
+/// the main thread is busy starting up (SwiftData, CloudKit, first refresh).
+struct LaunchLayer: UIViewRepresentable {
+    var ink: UIColor
+    var primary = false
+    var onFinish: (() -> Void)? = nil
 
     func makeUIView(context: Context) -> LaunchAnimationView {
         let v = LaunchAnimationView()
+        v.ink = ink
+        v.primary = primary
         v.onFinish = onFinish
         return v
     }
@@ -45,13 +104,14 @@ struct LaunchView: UIViewRepresentable {
 
 final class LaunchAnimationView: UIView {
     var onFinish: (() -> Void)?
+    var ink = UIColor(Theme.ink)
+    /// Plays the haptics and ends the splash; the other copies only draw.
+    var primary = false
     private var started = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        backgroundColor = UIColor(Theme.background)
-        isAccessibilityElement = true
-        accessibilityLabel = "Prodline"
+        backgroundColor = .clear
     }
     required init?(coder: NSCoder) { fatalError() }
 
@@ -62,13 +122,19 @@ final class LaunchAnimationView: UIView {
         let script = LaunchScript(size: bounds.size)
         // A short lead so layers are committed before the first beat; haptics share the same clock.
         let lead = 0.08
-        build(script, base: CACurrentMediaTime() + lead)
-        LaunchHaptics.play(script.haptics, delay: lead)
-        DispatchQueue.main.asyncAfter(deadline: .now() + lead + script.total) { [weak self] in self?.onFinish?() }
+        let now = CACurrentMediaTime()
+        // A clock older than the splash itself is a previous launch (Replay launch animation).
+        if LaunchClock.base.map({ now - $0 > 1 }) ?? true { LaunchClock.base = now + lead }
+        let base = LaunchClock.base ?? now + lead
+        build(script, base: base)
+        guard primary else { return }
+        let delay = max(0, base - now)
+        LaunchHaptics.play(script.haptics, delay: delay)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay + script.total) { [weak self] in self?.onFinish?() }
     }
 
     private func build(_ s: LaunchScript, base: CFTimeInterval) {
-        let ink = UIColor(Theme.ink).cgColor
+        let ink = self.ink.cgColor
         let width = LogoGeometry.stroke * s.scale
         var transform = s.transform
 
@@ -143,24 +209,25 @@ final class LaunchAnimationView: UIView {
         l.add(a, forKey: "fade")
     }
 
-    /// Grinder sparks thrown off the carving tip: short ink streaks flung up and sideways that arc down
-    /// under gravity, turning to follow their path and shrinking as they cool. Each is its own tiny layer
+    /// Chips shed by the carving tip: short ink streaks that drop away under gravity, drifting a little
+    /// sideways, turning to follow their path and shrinking as they fall. Each is its own tiny layer
     /// with a precomputed trajectory, so the render server plays them like the rest of the splash.
     private func addSparks(following path: CGPath, start: CFTimeInterval, duration: Double) {
         let samples = LaunchScript.sample(path, count: 120)
         guard samples.count > 1 else { return }
         var rng = LaunchScript.SplitMix(seed: 11)
         // Ink, like the mark itself: chips of the stroke flying off as it's carved.
-        let colors = [UIColor(Theme.ink), UIColor(Theme.inkSoft), UIColor(Theme.ink).withAlphaComponent(0.7)]
+        let colors = [ink, ink.withAlphaComponent(0.8), ink.withAlphaComponent(0.6)]
         let count = 110
         let gravity: CGFloat = 900
         for j in 0..<count {
             let f = Double(j) / Double(count - 1)
             let origin = samples[min(samples.count - 1, Int(f * Double(samples.count - 1)))]
-            let angle = -CGFloat.pi / 2 + rng.next(-1.35, 1.35)
-            let speed = rng.next(140, 330)
+            // Only ever downward: straight down give or take ~30°.
+            let angle = CGFloat.pi / 2 + rng.next(-0.55, 0.55)
+            let speed = rng.next(30, 120)
             let v = CGVector(dx: cos(angle) * speed, dy: sin(angle) * speed)
-            let life = Double(rng.next(0.28, 0.55))
+            let life = Double(rng.next(0.45, 0.8))
 
             let arc = CGMutablePath()
             arc.move(to: origin)
