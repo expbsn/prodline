@@ -647,29 +647,25 @@ struct OnboardingView: View {
 
     // MARK: Integrations
 
-    /// The services worth showing first for the win that was picked, then the other popular ones.
-    private var suggestedKinds: [IntegrationKind] {
-        switch profile.successFocus {
-        case .money: [.stripe, .revenueCat, .appStore, .shopify]
-        case .users: [.appStore, .revenueCat, .posthog, .npm]
-        case .audience: [.plausible, .youtube, .posthog, .bluesky]
-        case .ship, nil: [.vercel, .netlify, .appStore, .plausible]
+    /// Only services whose official logo we're allowed to show (design/IMAGE_CREDITS.md), the ones that
+    /// fit the picked win first. The rest are in the project settings.
+    private var onboardingKinds: [IntegrationKind] {
+        let withLogo = IntegrationKind.allCases.filter { $0.logo != nil }
+        let first: [IntegrationKind] = switch profile.successFocus {
+        case .money: [.stripe, .revenueCat]
+        case .users: [.revenueCat, .stripe]
+        case .audience: [.youtube, .bluesky]
+        case .ship, nil: []
         }
+        return first.filter(withLogo.contains) + withLogo.filter { !first.contains($0) }
     }
 
-    private static let popular: [IntegrationKind] = [
-        .appStore, .stripe, .revenueCat, .shopify, .lemonSqueezy, .plausible, .posthog, .vercel, .youtube, .npm,
-    ]
-
     private var integrations: some View {
-        let suggested = suggestedKinds
-        let more = Self.popular.filter { !suggested.contains($0) }
-        return VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 20) {
             header("Your numbers", "Plug in your numbers",
                    "Revenue, visitors, downloads: straight from the tools you already use. No spreadsheets, no copy-paste.")
-            integrationList("Suggested for you", suggested)
-            integrationList("Also popular", more)
-            Text("Lots more in the project settings later: Paddle, Polar, Fathom, newsletters, Product Hunt and others.")
+            integrationList("Connect now", onboardingKinds)
+            Text("Lots more in the project settings later: App Store Connect, Shopify, Plausible, Vercel, npm and others.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
