@@ -350,6 +350,7 @@ struct ProjectDetailView: View {
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(selected ? accent.base : Theme.background))
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(PressableStyle(scale: 0.95))
         .contextMenu {

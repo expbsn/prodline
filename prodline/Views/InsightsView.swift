@@ -111,9 +111,12 @@ struct InsightsView: View {
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Theme.ink : Theme.card))
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color.black : Theme.line).offset(y: 4))
-            .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+            // The chunky edge sits inside the tile's frame, so the long-press preview doesn't cut it off.
+            .padding(.bottom, 4)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color.black : Theme.line))
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
         }
         .buttonStyle(PressableStyle(scale: 0.96))
         .accessibilityAddTraits(on ? .isSelected : [])
