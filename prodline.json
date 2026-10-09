@@ -11,6 +11,7 @@
     {"day": 22, "title": "Instant sync"},
     {"day": 23, "title": "Observe integrations"},
     {"day": 24, "title": "Reviews and ideas"},
+    {"day": 25, "title": "Web integrations"},
     {"day": 26, "title": "App Store"},
     {"day": 29, "title": "Launch marketing"}
   ],
@@ -75,6 +76,11 @@
     {"id": "idea-inbox", "title": "Add an idea inbox with a project limit", "day": 24, "done": true},
     {"id": "share-cards", "title": "Share cards with days spent and results", "day": 24, "done": true},
     {"id": "lets-ship", "title": "Ship early with a days-early celebration", "day": 24, "done": true},
+
+    {"id": "web-revenue", "title": "Connect Shopify, Paddle and Polar for revenue", "day": 25, "done": true},
+    {"id": "web-analytics", "title": "Connect Fathom, PostHog and Simple Analytics for visitors", "day": 25, "done": true},
+    {"id": "deploy-pulse", "title": "Count Vercel and Netlify deploys while building", "day": 25, "done": true},
+    {"id": "audience-integrations", "title": "Track newsletters, npm, Hacker News, Product Hunt and Bluesky", "day": 25, "done": true},
 
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},

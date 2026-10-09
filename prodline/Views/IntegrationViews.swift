@@ -96,7 +96,7 @@ struct IntegrationIcon: View {
     }
 }
 
-/// Every service, grouped: store, revenue, analytics.
+/// Every service, grouped: stores, revenue, analytics, hosting, newsletters, social.
 struct IntegrationPicker: View {
     let connected: Set<IntegrationKind>
     var onPick: (IntegrationKind) -> Void
@@ -178,7 +178,7 @@ struct IntegrationEditor: View {
     }
 
     private var kind: IntegrationKind { integration.kind }
-    private var canSave: Bool { integration.isComplete && !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    private var canSave: Bool { integration.isComplete && (!kind.needsSecret || !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -206,7 +206,7 @@ struct IntegrationEditor: View {
                                 .inputField(focused: focus == f.key)
                         }
                     }
-                    secretField
+                    if kind.needsSecret { secretField }
                     testButton
                     testResult
                     if !isNew {

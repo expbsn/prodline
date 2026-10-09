@@ -11,17 +11,24 @@ import Compression
 
 nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, Sendable {
     case appStore, revenueCat, stripe, lemonSqueezy, gumroad, plausible, umami, youtube
+    case shopify, paddle, polar, fathom, posthog, simpleAnalytics, vercel, netlify
+    case kit, buttondown, beehiiv, npm, hackerNews, productHunt, bluesky
 
     var id: String { rawValue }
 
-    enum Group: String, CaseIterable { case store = "App Store", revenue = "Revenue", analytics = "Analytics", social = "Social" }
+    enum Group: String, CaseIterable {
+        case store = "Stores and packages", revenue = "Revenue", analytics = "Analytics", hosting = "Hosting"
+        case newsletter = "Newsletters", social = "Social and launches"
+    }
 
     var group: Group {
         switch self {
-        case .appStore: .store
-        case .revenueCat, .stripe, .lemonSqueezy, .gumroad: .revenue
-        case .plausible, .umami: .analytics
-        case .youtube: .social
+        case .appStore, .npm: .store
+        case .revenueCat, .stripe, .lemonSqueezy, .gumroad, .shopify, .paddle, .polar: .revenue
+        case .plausible, .umami, .fathom, .posthog, .simpleAnalytics: .analytics
+        case .vercel, .netlify: .hosting
+        case .kit, .buttondown, .beehiiv: .newsletter
+        case .youtube, .hackerNews, .productHunt, .bluesky: .social
         }
     }
 
@@ -35,6 +42,21 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible: "Plausible"
         case .umami: "Umami"
         case .youtube: "YouTube"
+        case .shopify: "Shopify"
+        case .paddle: "Paddle"
+        case .polar: "Polar"
+        case .fathom: "Fathom Analytics"
+        case .posthog: "PostHog"
+        case .simpleAnalytics: "Simple Analytics"
+        case .vercel: "Vercel"
+        case .netlify: "Netlify"
+        case .kit: "Kit"
+        case .buttondown: "Buttondown"
+        case .beehiiv: "beehiiv"
+        case .npm: "npm"
+        case .hackerNews: "Hacker News"
+        case .productHunt: "Product Hunt"
+        case .bluesky: "Bluesky"
         }
     }
 
@@ -48,6 +70,21 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible: "chart.bar.fill"
         case .umami: "chart.line.uptrend.xyaxis"
         case .youtube: "play.rectangle.fill"
+        case .shopify: "storefront.fill"
+        case .paddle: "dollarsign.square.fill"
+        case .polar: "snowflake"
+        case .fathom: "chart.pie.fill"
+        case .posthog: "chart.bar.xaxis"
+        case .simpleAnalytics: "chart.xyaxis.line"
+        case .vercel: "triangle.fill"
+        case .netlify: "square.stack.3d.up.fill"
+        case .kit: "envelope.fill"
+        case .buttondown: "envelope.badge.fill"
+        case .beehiiv: "newspaper.fill"
+        case .npm: "shippingbox.fill"
+        case .hackerNews: "y.square.fill"
+        case .productHunt: "p.circle.fill"
+        case .bluesky: "cloud.fill"
         }
     }
 
@@ -71,6 +108,21 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible: 0x5850EC
         case .umami: 0x1C1C1E
         case .youtube: 0xFF0033
+        case .shopify: 0x5E8E3E
+        case .paddle: 0x2A2D34
+        case .polar: 0x0062FF
+        case .fathom: 0x2E3B4E
+        case .posthog: 0xF54E00
+        case .simpleAnalytics: 0xFF4F64
+        case .vercel: 0x000000
+        case .netlify: 0x00AD9F
+        case .kit: 0xFB6970
+        case .buttondown: 0x0069FF
+        case .beehiiv: 0xE5A800
+        case .npm: 0xCB3837
+        case .hackerNews: 0xFF6600
+        case .productHunt: 0xDA552F
+        case .bluesky: 0x1185FE
         }
     }
 
@@ -85,6 +137,21 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible: "Visitors and pageviews"
         case .umami: "Visitors and pageviews"
         case .youtube: "Views on videos posted since the start"
+        case .shopify: "Revenue and orders"
+        case .paddle: "Revenue and sales"
+        case .polar: "Revenue and orders"
+        case .fathom: "Visitors and pageviews"
+        case .posthog: "Visitors and pageviews"
+        case .simpleAnalytics: "Visitors and pageviews"
+        case .vercel: "Deploys while you build"
+        case .netlify: "Deploys while you build"
+        case .kit: "New newsletter subscribers"
+        case .buttondown: "New newsletter subscribers"
+        case .beehiiv: "New newsletter subscribers"
+        case .npm: "Package downloads"
+        case .hackerNews: "Points on Hacker News posts about it"
+        case .productHunt: "Upvotes on your launch"
+        case .bluesky: "Followers"
         }
     }
 
@@ -120,6 +187,30 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             Field(key: "base", label: "API address", placeholder: "https://api.umami.is/v1", optional: true),
         ]
         case .youtube: [Field(key: "channel", label: "Channel", placeholder: "@yourchannel or UC…")]
+        case .shopify: [Field(key: "shop", label: "Store address", placeholder: "your-store.myshopify.com")]
+        case .paddle: [Field(key: "environment", label: "Environment", placeholder: "live (or sandbox)", optional: true)]
+        case .polar: [Field(key: "organization", label: "Organization ID", placeholder: "All organizations", optional: true)]
+        case .fathom: [Field(key: "site", label: "Site ID", placeholder: "ABCDEFG")]
+        case .posthog: [
+            Field(key: "projectID", label: "Project ID", placeholder: "12345"),
+            Field(key: "host", label: "Host", placeholder: "https://us.posthog.com", optional: true),
+        ]
+        case .simpleAnalytics: [
+            Field(key: "site", label: "Website", placeholder: "yourapp.com"),
+            Field(key: "userID", label: "User ID", placeholder: "sa_user_id_…"),
+        ]
+        case .vercel: [
+            Field(key: "projectID", label: "Project ID or name", placeholder: "prj_… or my-app"),
+            Field(key: "teamID", label: "Team ID", placeholder: "team_… (for team projects)", optional: true),
+        ]
+        case .netlify: [Field(key: "site", label: "Site ID", placeholder: "3970e0fe-8564-4903-9a55-c5f8de49fb8b")]
+        case .kit: []
+        case .buttondown: []
+        case .beehiiv: [Field(key: "publication", label: "Publication ID", placeholder: "pub_…")]
+        case .npm: [Field(key: "package", label: "Package", placeholder: "your-package or @scope/package")]
+        case .hackerNews: [Field(key: "url", label: "Website", placeholder: "yourapp.com")]
+        case .productHunt: [Field(key: "slug", label: "Launch", placeholder: "producthunt.com/posts/your-app")]
+        case .bluesky: [Field(key: "handle", label: "Handle", placeholder: "you.bsky.social")]
         }
     }
 
@@ -133,8 +224,24 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible: "Stats API key"
         case .umami: "API key"
         case .youtube: "YouTube Data API key"
+        case .shopify: "Admin API access token"
+        case .paddle: "API key"
+        case .polar: "Organization access token"
+        case .fathom: "API token"
+        case .posthog: "Personal API key"
+        case .simpleAnalytics: "API key"
+        case .vercel: "Access token"
+        case .netlify: "Personal access token"
+        case .kit: "API key (v4)"
+        case .buttondown: "API key"
+        case .beehiiv: "API key"
+        case .productHunt: "Developer token"
+        case .npm, .hackerNews, .bluesky: ""
         }
     }
+
+    /// Public sources (npm, Hacker News, Bluesky) work without a key.
+    var needsSecret: Bool { ![.npm, .hackerNews, .bluesky].contains(self) }
 
     var secretPlaceholder: String {
         switch self {
@@ -142,6 +249,12 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .revenueCat: "sk_…"
         case .stripe: "rk_live_…"
         case .youtube: "AIza…"
+        case .shopify: "shpat_…"
+        case .paddle: "pdl_live_apikey_…"
+        case .polar: "polar_oat_…"
+        case .posthog: "phx_…"
+        case .simpleAnalytics: "sa_api_key_…"
+        case .kit: "kit_…"
         default: "Paste the key"
         }
     }
@@ -193,6 +306,78 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             "Channel: your handle (@yourchannel) or the channel ID from YouTube → Settings → Advanced settings.",
             "Social views counts views on videos published since the project started, so older uploads don't inflate it. Videos posted gets the count, subscribers the channel total.",
         ]
+        case .shopify: [
+            "In your Shopify admin open Settings → Apps and sales channels → Develop apps, and create an app.",
+            "Under Configuration give the Admin API the read_orders scope, then install the app.",
+            "Reveal the Admin API access token once (it starts with shpat_) and paste it here.",
+            "Revenue is what paid orders brought in since the project started, minus refunds and cancellations.",
+        ]
+        case .paddle: [
+            "In Paddle open Developer tools → Authentication → API keys and create a key with read access to transactions.",
+            "Using the sandbox? Type sandbox under Environment.",
+            "Revenue is completed transactions since the project started, before Paddle's fees.",
+        ]
+        case .polar: [
+            "In Polar open Settings → Developers → New token, and give it the orders:read scope.",
+            "The organization ID is optional: leave it empty to count every organization the token sees.",
+            "Revenue is paid orders since the project started, minus refunds.",
+        ]
+        case .fathom: [
+            "In Fathom open Settings → API and create a token with access to the site (or all sites).",
+            "The site ID is the code in your embed snippet (data-site=\"ABCDEFG\") and under Settings → Sites.",
+        ]
+        case .posthog: [
+            "In PostHog click your avatar → Settings → Personal API keys → Create, with Query read access.",
+            "The project ID is in the address bar: us.posthog.com/project/<this number>.",
+            "On EU Cloud or self-hosted? Put the address under Host, e.g. https://eu.posthog.com.",
+            "Visitors are unique people with a pageview, pageviews every $pageview event.",
+        ]
+        case .simpleAnalytics: [
+            "In Simple Analytics open Account settings → API keys and create one. The user ID is shown on the same page.",
+            "Website is the domain exactly as it appears in your dashboard.",
+        ]
+        case .vercel: [
+            "In Vercel open Account settings → Tokens and create one, scoped to the team that owns the project.",
+            "The project ID is under Project → Settings → General (prj_…); the project's name works too.",
+            "For a team project, add the team ID from Team settings → General.",
+            "Counts deploys since the project started: a good pulse while you build. Vercel has no public analytics API yet.",
+        ]
+        case .netlify: [
+            "In Netlify open User settings → Applications → Personal access tokens → New access token.",
+            "The site ID is under Site configuration → General → Site details (Site ID).",
+            "Counts successful deploys since the project started. Netlify has no public analytics API yet.",
+        ]
+        case .kit: [
+            "In Kit open Settings → Developer → API keys (v4) and add a key.",
+            "Counts active subscribers who joined since the project started.",
+        ]
+        case .buttondown: [
+            "In Buttondown open Settings → API and copy your API key.",
+            "Counts subscribers who joined since the project started.",
+        ]
+        case .beehiiv: [
+            "In beehiiv open Settings → API → Create new API key.",
+            "The publication ID is on the same page (pub_…).",
+            "Counts active subscribers who joined since the project started.",
+        ]
+        case .npm: [
+            "No key needed: npm's download counts are public.",
+            "Type the package name as published, e.g. left-pad or @scope/package.",
+            "npm publishes counts a day later.",
+        ]
+        case .hackerNews: [
+            "No key needed: posts come from Hacker News search.",
+            "Type your website. Points add up on every post linking to it since the project started.",
+        ]
+        case .productHunt: [
+            "On Product Hunt open API Dashboard (producthunt.com/v2/oauth/applications) → Add an application.",
+            "Use any name and https://localhost as the redirect URI, then click Create Token for a developer token.",
+            "Paste your launch's address or just its slug.",
+        ]
+        case .bluesky: [
+            "No key needed: Bluesky profiles are public.",
+            "Followers is the account's total right now.",
+        ]
         }
     }
 }
@@ -232,6 +417,13 @@ nonisolated enum IntegrationMetric {
         case "rating": "Rating"
         case "videos_posted": "Videos posted"
         case "ratings": "Ratings"
+        case "deploys": "Deploys"
+        case "new_subscribers": "New subscribers"
+        case "followers": "Followers"
+        case "hn_points": "HN points"
+        case "upvotes": "Upvotes"
+        case "hn_comments": "HN comments"
+        case "ph_comments": "Product Hunt comments"
         default: key.replacingOccurrences(of: "_", with: " ").capitalized
         }
     }
@@ -403,7 +595,7 @@ nonisolated enum IntegrationSources {
     static let maxBackfillDays = 90
 
     static func fetch(_ i: Integration, secret: String, start: Date, session: URLSession, cache: IntegrationCache) async throws -> SourceResult {
-        guard !secret.isEmpty else { throw MetricsError.unauthorized }
+        guard !secret.isEmpty || !i.kind.needsSecret else { throw MetricsError.unauthorized }
         switch i.kind {
         case .appStore: return try await appStore(i, secret: secret, start: start, session: session, cache: cache)
         case .revenueCat: return try await revenueCat(i, secret: secret, start: start, session: session, cache: cache)
@@ -413,6 +605,21 @@ nonisolated enum IntegrationSources {
         case .plausible: return try await plausible(i, secret: secret, start: start, session: session)
         case .umami: return try await umami(i, secret: secret, start: start, session: session)
         case .youtube: return try await youtube(i, secret: secret, start: start, session: session)
+        case .shopify: return try await shopify(i, secret: secret, start: start, session: session)
+        case .paddle: return try await paddle(i, secret: secret, start: start, session: session)
+        case .polar: return try await polar(i, secret: secret, start: start, session: session)
+        case .fathom: return try await fathom(i, secret: secret, start: start, session: session)
+        case .posthog: return try await posthog(i, secret: secret, start: start, session: session)
+        case .simpleAnalytics: return try await simpleAnalytics(i, secret: secret, start: start, session: session)
+        case .vercel: return try await vercel(i, secret: secret, start: start, session: session)
+        case .netlify: return try await netlify(i, secret: secret, start: start, session: session)
+        case .kit: return try await kit(secret: secret, start: start, session: session)
+        case .buttondown: return try await buttondown(secret: secret, start: start, session: session)
+        case .beehiiv: return try await beehiiv(i, secret: secret, start: start, session: session)
+        case .npm: return try await npm(i, start: start, session: session)
+        case .hackerNews: return try await hackerNews(i, start: start, session: session)
+        case .productHunt: return try await productHunt(i, secret: secret, session: session)
+        case .bluesky: return try await bluesky(i, session: session)
         }
     }
 
@@ -802,6 +1009,330 @@ nonisolated enum IntegrationSources {
         r.totals["social_views"] = views
         r.totals["videos_posted"] = Double(ids.count)
         if (stats?["hiddenSubscriberCount"] as? Bool) != true { r.totals["subscribers"] = number(stats?["subscriberCount"]) }
+        return r
+    }
+
+    // MARK: Shared parsing
+
+    static func num(_ x: Any?) -> Double {
+        (x as? Double) ?? (x as? Int).map(Double.init) ?? (x as? String).flatMap(Double.init) ?? 0
+    }
+
+    static func isoString(_ d: Date) -> String {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime]
+        return f.string(from: d)
+    }
+
+    /// "https://shop.example.com/" → "shop.example.com".
+    static func host(_ s: String) -> String {
+        var h = s.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        for p in ["https://", "http://"] where h.hasPrefix(p) { h.removeFirst(p.count) }
+        return h.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    // MARK: Shopify
+
+    /// Paid orders through the Admin GraphQL API, minus refunds; cancelled orders don't count.
+    static func shopify(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var shop = host(i.field("shop"))
+        if !shop.contains(".") { shop += ".myshopify.com" }
+        guard let url = URL(string: "https://\(shop)/admin/api/2025-07/graphql.json") else { throw MetricsError.invalidURL }
+        var items: [(Date, [String: Double])] = []
+        var cursor: String?
+        for _ in 0..<40 {
+            let after = cursor.map { ", after: \"\($0)\"" } ?? ""
+            let query = """
+            { orders(first: 250\(after), sortKey: CREATED_AT, query: "created_at:>=\(DayKey.string(start))") {
+                edges { node { createdAt cancelledAt displayFinancialStatus
+                    totalPriceSet { shopMoney { amount currencyCode } } totalRefundedSet { shopMoney { amount } } } }
+                pageInfo { hasNextPage endCursor } } }
+            """
+            let body = try JSONSerialization.data(withJSONObject: ["query": query])
+            let req = request(url, method: "POST", headers: ["X-Shopify-Access-Token": secret, "Content-Type": "application/json"], body: body)
+            let obj = try json(try await load(req, session: session)) as? [String: Any]
+            if let err = (obj?["errors"] as? [[String: Any]])?.first?["message"] as? String { throw MetricsError.badPayload(err) }
+            let orders = (obj?["data"] as? [String: Any])?["orders"] as? [String: Any]
+            for edge in (orders?["edges"] as? [[String: Any]]) ?? [] {
+                guard let node = edge["node"] as? [String: Any], let created = iso(node["createdAt"] as? String),
+                      node["cancelledAt"] as? String == nil,
+                      ["PAID", "PARTIALLY_REFUNDED", "REFUNDED", "PARTIALLY_PAID"].contains(node["displayFinancialStatus"] as? String ?? "")
+                else { continue }
+                let money = (node["totalPriceSet"] as? [String: Any])?["shopMoney"] as? [String: Any]
+                let refunded = num(((node["totalRefundedSet"] as? [String: Any])?["shopMoney"] as? [String: Any])?["amount"])
+                let net = num(money?["amount"]) - refunded
+                let usd = await Rates.shared.usd(net, (money?["currencyCode"] as? String) ?? "USD", session: session) ?? 0
+                items.append((created, ["revenue": usd, "sales": 1]))
+            }
+            let page = orders?["pageInfo"] as? [String: Any]
+            guard (page?["hasNextPage"] as? Bool) == true, let end = page?["endCursor"] as? String else { break }
+            cursor = end
+        }
+        return summed(items, start: start, keys: ["revenue", "sales"])
+    }
+
+    // MARK: Paddle
+
+    /// Completed transactions (Paddle Billing); amounts come in the currency's smallest unit.
+    static func paddle(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        let base = i.field("environment").lowercased().hasPrefix("sand") ? "https://sandbox-api.paddle.com" : "https://api.paddle.com"
+        var comps = URLComponents(string: base + "/transactions")!
+        comps.queryItems = [.init(name: "status", value: "completed"), .init(name: "per_page", value: "200"),
+                            .init(name: "created_at[GTE]", value: isoString(start.startOfDay))]
+        var next: URL? = comps.url
+        var items: [(Date, [String: Double])] = []
+        for _ in 0..<50 {
+            guard let url = next else { break }
+            let obj = try json(try await load(request(url, headers: ["Authorization": "Bearer \(secret)"]), session: session)) as? [String: Any]
+            for t in (obj?["data"] as? [[String: Any]]) ?? [] {
+                guard let created = iso((t["billed_at"] as? String) ?? (t["created_at"] as? String)) else { continue }
+                let totals = (t["details"] as? [String: Any])?["totals"] as? [String: Any]
+                let amount = num(totals?["total"]) / 100
+                let usd = await Rates.shared.usd(amount, (t["currency_code"] as? String) ?? "USD", session: session) ?? 0
+                items.append((created, ["revenue": usd, "sales": 1]))
+            }
+            let pg = (obj?["meta"] as? [String: Any])?["pagination"] as? [String: Any]
+            next = (pg?["has_more"] as? Bool) == true ? (pg?["next"] as? String).flatMap(URL.init(string:)) : nil
+        }
+        return summed(items, start: start, keys: ["revenue", "sales"])
+    }
+
+    // MARK: Polar
+
+    static func polar(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var items: [(Date, [String: Double])] = []
+        page: for n in 1...50 {
+            var comps = URLComponents(string: "https://api.polar.sh/v1/orders/")!
+            comps.queryItems = [.init(name: "limit", value: "100"), .init(name: "page", value: String(n)), .init(name: "sorting", value: "-created_at")]
+            if !i.field("organization").isEmpty { comps.queryItems?.append(.init(name: "organization_id", value: i.field("organization"))) }
+            let obj = try json(try await load(request(comps.url!, headers: ["Authorization": "Bearer \(secret)", "Accept": "application/json"]), session: session)) as? [String: Any]
+            let rows = (obj?["items"] as? [[String: Any]]) ?? []
+            for o in rows {
+                guard let created = iso(o["created_at"] as? String) else { continue }
+                if created < start.startOfDay { break page }
+                let status = o["status"] as? String ?? "paid"
+                guard status != "pending", status != "refunded", (o["paid"] as? Bool) != false else { continue }
+                let gross = o["net_amount"] != nil ? num(o["net_amount"]) : num(o["amount"])
+                let cents = gross - num(o["refunded_amount"])
+                let usd = await Rates.shared.usd(cents / 100, (o["currency"] as? String) ?? "usd", session: session) ?? 0
+                items.append((created, ["revenue": usd, "sales": 1]))
+            }
+            let maxPage = ((obj?["pagination"] as? [String: Any])?["max_page"] as? Int) ?? n
+            if rows.isEmpty || n >= maxPage { break }
+        }
+        return summed(items, start: start, keys: ["revenue", "sales"])
+    }
+
+    // MARK: Fathom
+
+    static func fathom(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var comps = URLComponents(string: "https://api.usefathom.com/v1/aggregations")!
+        comps.queryItems = [
+            .init(name: "entity", value: "pageview"), .init(name: "entity_id", value: i.field("site")),
+            .init(name: "aggregates", value: "visits,pageviews"), .init(name: "date_grouping", value: "day"),
+            .init(name: "date_from", value: DayKey.string(start) + " 00:00:00"), .init(name: "timezone", value: TimeZone.current.identifier),
+        ]
+        let obj = try json(try await load(request(comps.url!, headers: ["Authorization": "Bearer \(secret)"]), session: session))
+        var items: [(Date, [String: Double])] = []
+        for row in (obj as? [[String: Any]]) ?? [] {
+            guard let day = iso((row["date"] as? String).map { $0.count == 10 ? $0 + " 12:00:00" : $0 }) else { continue }
+            items.append((day, ["visits": num(row["visits"]), "pageviews": num(row["pageviews"])]))
+        }
+        return summed(items, start: start, keys: ["visits", "pageviews"])
+    }
+
+    // MARK: PostHog
+
+    /// Daily unique people with a pageview, and pageviews, through a HogQL query.
+    static func posthog(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        let hostField = i.field("host")
+        let base = hostField.isEmpty ? "https://us.posthog.com" : (hostField.hasPrefix("http") ? hostField : "https://" + hostField)
+        guard let url = URL(string: base.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/api/projects/\(i.field("projectID"))/query/") else {
+            throw MetricsError.invalidURL
+        }
+        let hogql = "SELECT toDate(timestamp) AS d, count(DISTINCT person_id), count() FROM events "
+            + "WHERE event = '$pageview' AND timestamp >= toDateTime('\(DayKey.string(start)) 00:00:00') GROUP BY d ORDER BY d"
+        let body = try JSONSerialization.data(withJSONObject: ["query": ["kind": "HogQLQuery", "query": hogql]])
+        let req = request(url, method: "POST", headers: ["Authorization": "Bearer \(secret)", "Content-Type": "application/json"], body: body)
+        let obj = try json(try await load(req, session: session)) as? [String: Any]
+        var items: [(Date, [String: Double])] = []
+        for row in (obj?["results"] as? [[Any]]) ?? [] {
+            guard row.count >= 3, let day = iso((row[0] as? String).map { String($0.prefix(10)) + " 12:00:00" }) else { continue }
+            items.append((day, ["visits": num(row[1]), "pageviews": num(row[2])]))
+        }
+        return summed(items, start: start, keys: ["visits", "pageviews"])
+    }
+
+    // MARK: Simple Analytics
+
+    static func simpleAnalytics(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var comps = URLComponents(string: "https://simpleanalytics.com/\(host(i.field("site"))).json")
+        comps?.queryItems = [
+            .init(name: "version", value: "6"), .init(name: "fields", value: "histogram"),
+            .init(name: "start", value: DayKey.string(start)), .init(name: "end", value: DayKey.string(.now)),
+            .init(name: "timezone", value: TimeZone.current.identifier),
+        ]
+        guard let url = comps?.url else { throw MetricsError.invalidURL }
+        let req = request(url, headers: ["Api-Key": secret, "User-Id": i.field("userID"), "Content-Type": "application/json"])
+        let obj = try json(try await load(req, session: session)) as? [String: Any]
+        var items: [(Date, [String: Double])] = []
+        for row in (obj?["histogram"] as? [[String: Any]]) ?? [] {
+            guard let day = iso((row["date"] as? String).map { String($0.prefix(10)) + " 12:00:00" }) else { continue }
+            items.append((day, ["visits": num(row["visitors"]), "pageviews": num(row["pageviews"])]))
+        }
+        return summed(items, start: start, keys: ["visits", "pageviews"])
+    }
+
+    // MARK: Vercel and Netlify
+
+    /// Successful deploys since the start: the building-phase pulse a web project has.
+    static func vercel(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var items: [(Date, [String: Double])] = []
+        var until: Int?
+        for _ in 0..<30 {
+            var comps = URLComponents(string: "https://api.vercel.com/v6/deployments")!
+            comps.queryItems = [.init(name: "projectId", value: i.field("projectID")), .init(name: "limit", value: "100"),
+                                .init(name: "since", value: String(Int(start.startOfDay.timeIntervalSince1970 * 1000)))]
+            if !i.field("teamID").isEmpty { comps.queryItems?.append(.init(name: "teamId", value: i.field("teamID"))) }
+            if let until { comps.queryItems?.append(.init(name: "until", value: String(until))) }
+            let obj = try json(try await load(request(comps.url!, headers: ["Authorization": "Bearer \(secret)"]), session: session)) as? [String: Any]
+            for d in (obj?["deployments"] as? [[String: Any]]) ?? [] {
+                let state = (d["state"] as? String) ?? (d["readyState"] as? String) ?? ""
+                guard state == "READY" else { continue }
+                let ms = num(d["created"])
+                items.append((Date(timeIntervalSince1970: ms / 1000), ["deploys": 1]))
+            }
+            guard let next = (obj?["pagination"] as? [String: Any])?["next"] as? Int else { break }
+            until = next
+        }
+        return summed(items, start: start, keys: ["deploys"])
+    }
+
+    static func netlify(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var items: [(Date, [String: Double])] = []
+        page: for n in 1...30 {
+            guard let url = URL(string: "https://api.netlify.com/api/v1/sites/\(i.field("site"))/deploys?per_page=100&page=\(n)") else {
+                throw MetricsError.invalidURL
+            }
+            let rows = (try json(try await load(request(url, headers: ["Authorization": "Bearer \(secret)"]), session: session)) as? [[String: Any]]) ?? []
+            for d in rows {
+                guard let created = iso(d["created_at"] as? String) else { continue }
+                if created < start.startOfDay { break page }
+                if (d["state"] as? String) == "ready" { items.append((created, ["deploys": 1])) }
+            }
+            if rows.count < 100 { break }
+        }
+        return summed(items, start: start, keys: ["deploys"])
+    }
+
+    // MARK: Newsletters
+
+    static func kit(secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var items: [(Date, [String: Double])] = []
+        var cursor: String?
+        for _ in 0..<50 {
+            var comps = URLComponents(string: "https://api.kit.com/v4/subscribers")!
+            comps.queryItems = [.init(name: "created_after", value: isoString(start.startOfDay)), .init(name: "per_page", value: "1000"),
+                                .init(name: "status", value: "active")]
+            if let cursor { comps.queryItems?.append(.init(name: "after", value: cursor)) }
+            let obj = try json(try await load(request(comps.url!, headers: ["X-Kit-Api-Key": secret, "Accept": "application/json"]), session: session)) as? [String: Any]
+            for sub in (obj?["subscribers"] as? [[String: Any]]) ?? [] {
+                if let created = iso(sub["created_at"] as? String) { items.append((created, ["new_subscribers": 1])) }
+            }
+            let pg = obj?["pagination"] as? [String: Any]
+            guard (pg?["has_next_page"] as? Bool) == true, let end = pg?["end_cursor"] as? String else { break }
+            cursor = end
+        }
+        return summed(items, start: start, keys: ["new_subscribers"])
+    }
+
+    static func buttondown(secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var comps = URLComponents(string: "https://api.buttondown.com/v1/subscribers")!
+        comps.queryItems = [.init(name: "creation_date__start", value: DayKey.string(start)), .init(name: "type", value: "regular")]
+        var next: URL? = comps.url
+        var items: [(Date, [String: Double])] = []
+        for _ in 0..<50 {
+            guard let url = next else { break }
+            let obj = try json(try await load(request(url, headers: ["Authorization": "Token \(secret)"]), session: session)) as? [String: Any]
+            for sub in (obj?["results"] as? [[String: Any]]) ?? [] {
+                if let created = iso(sub["creation_date"] as? String), created >= start.startOfDay { items.append((created, ["new_subscribers": 1])) }
+            }
+            next = (obj?["next"] as? String).flatMap(URL.init(string:))
+        }
+        return summed(items, start: start, keys: ["new_subscribers"])
+    }
+
+    static func beehiiv(_ i: Integration, secret: String, start: Date, session: URLSession) async throws -> SourceResult {
+        var items: [(Date, [String: Double])] = []
+        page: for n in 1...50 {
+            var comps = URLComponents(string: "https://api.beehiiv.com/v2/publications/\(i.field("publication"))/subscriptions")!
+            comps.queryItems = [.init(name: "limit", value: "100"), .init(name: "page", value: String(n)), .init(name: "status", value: "active"),
+                                .init(name: "order_by", value: "created"), .init(name: "direction", value: "desc")]
+            let obj = try json(try await load(request(comps.url!, headers: ["Authorization": "Bearer \(secret)"]), session: session)) as? [String: Any]
+            let rows = (obj?["data"] as? [[String: Any]]) ?? []
+            for sub in rows {
+                let created = Date(timeIntervalSince1970: num(sub["created"]))
+                if created < start.startOfDay { break page }
+                items.append((created, ["new_subscribers": 1]))
+            }
+            if rows.isEmpty || n >= ((obj?["total_pages"] as? Int) ?? n) { break }
+        }
+        return summed(items, start: start, keys: ["new_subscribers"])
+    }
+
+    // MARK: Public sources (no key)
+
+    static func npm(_ i: Integration, start: Date, session: URLSession) async throws -> SourceResult {
+        let pkg = i.field("package")
+        guard !pkg.isEmpty, let url = URL(string: "https://api.npmjs.org/downloads/range/\(DayKey.string(start)):\(DayKey.string(.now))/\(pkg)") else {
+            throw MetricsError.invalidURL
+        }
+        let obj = try json(try await load(request(url), session: session)) as? [String: Any]
+        var items: [(Date, [String: Double])] = []
+        for row in (obj?["downloads"] as? [[String: Any]]) ?? [] {
+            guard let day = iso((row["day"] as? String).map { $0 + " 12:00:00" }) else { continue }
+            items.append((day, ["downloads": num(row["downloads"])]))
+        }
+        return summed(items, start: start, keys: ["downloads"])
+    }
+
+    /// Points on stories linking to the site, posted since the start (Hacker News search by Algolia).
+    static func hackerNews(_ i: Integration, start: Date, session: URLSession) async throws -> SourceResult {
+        var comps = URLComponents(string: "https://hn.algolia.com/api/v1/search")!
+        comps.queryItems = [.init(name: "query", value: host(i.field("url"))), .init(name: "restrictSearchableAttributes", value: "url"),
+                            .init(name: "tags", value: "story"), .init(name: "hitsPerPage", value: "100"),
+                            .init(name: "numericFilters", value: "created_at_i>=\(Int(start.startOfDay.timeIntervalSince1970))")]
+        let obj = try json(try await load(request(comps.url!), session: session)) as? [String: Any]
+        let hits = (obj?["hits"] as? [[String: Any]]) ?? []
+        var r = SourceResult()
+        r.totals["hn_points"] = hits.reduce(0) { $0 + num($1["points"]) }
+        r.totals["hn_comments"] = hits.reduce(0) { $0 + num($1["num_comments"]) }
+        return r
+    }
+
+    static func productHunt(_ i: Integration, secret: String, session: URLSession) async throws -> SourceResult {
+        let slug = i.field("slug").split(separator: "/").last.map(String.init)?.split(separator: "?").first.map(String.init) ?? ""
+        guard !slug.isEmpty, let url = URL(string: "https://api.producthunt.com/v2/api/graphql") else { throw MetricsError.invalidURL }
+        let body = try JSONSerialization.data(withJSONObject: ["query": "query { post(slug: \"\(slug)\") { votesCount commentsCount } }"])
+        let req = request(url, method: "POST", headers: ["Authorization": "Bearer \(secret)", "Content-Type": "application/json"], body: body)
+        let obj = try json(try await load(req, session: session)) as? [String: Any]
+        guard let post = (obj?["data"] as? [String: Any])?["post"] as? [String: Any] else {
+            throw MetricsError.badPayload("no launch found for \(slug)")
+        }
+        var r = SourceResult()
+        r.totals["upvotes"] = num(post["votesCount"])
+        r.totals["ph_comments"] = num(post["commentsCount"])
+        return r
+    }
+
+    static func bluesky(_ i: Integration, session: URLSession) async throws -> SourceResult {
+        var handle = i.field("handle")
+        if handle.hasPrefix("@") { handle.removeFirst() }
+        var comps = URLComponents(string: "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile")!
+        comps.queryItems = [.init(name: "actor", value: handle)]
+        let obj = try json(try await load(request(comps.url!), session: session)) as? [String: Any]
+        var r = SourceResult()
+        r.totals["followers"] = num(obj?["followersCount"])
         return r
     }
 
