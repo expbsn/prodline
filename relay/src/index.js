@@ -112,10 +112,13 @@ async function handle(request, env, apns) {
 
     let sent = 0;
     const gone = [];
+    // Apple's answers, so a webhook delivery in GitHub shows why a push didn't go out (403 = key problem).
+    const apple = [];
     for (const id of hook.devices) {
       const device = await getJSON(env, `device:${id}`);
       if (!device) { gone.push(id); continue; }
       const status = await apns(env, device, message);
+      apple.push(status);
       if (status === 200) sent++;
       // 410: the app was deleted or the token changed for good.
       if (status === 410 || status === 400) gone.push(id);
@@ -124,7 +127,7 @@ async function handle(request, env, apns) {
       const devices = hook.devices.filter((d) => !gone.includes(d));
       await env.RELAY.put(`hook:${hookId}`, JSON.stringify({ ...hook, devices }));
     }
-    return json({ ok: true, sent });
+    return json({ ok: true, sent, apple });
   }
 
   throw new HttpError(404, "not found");
