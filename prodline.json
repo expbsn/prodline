@@ -66,7 +66,7 @@
     {"id": "lock-screen-widgets", "title": "Lock Screen widgets for the next deadline", "day": 19, "done": true},
     {"id": "widget-goal-toggle", "title": "Tick goals off right from the widget", "day": 19, "done": true},
 
-    {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": false},
+    {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": true},
     {"id": "background-push", "title": "Silent push refreshes goals while the app is closed", "day": 22, "done": false},
     {"id": "tiktok-views", "title": "Track TikTok views through the relay's login", "day": 22, "done": false},
     {"id": "meta-views", "title": "Track Instagram and Threads views through the relay's login", "day": 22, "done": false},
