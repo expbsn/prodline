@@ -68,7 +68,7 @@
     {"id": "widget-goal-toggle", "title": "Tick goals off right from the widget", "day": 19, "done": true},
 
     {"id": "win-notifications", "title": "Send push notifications for goals, checkpoints and streaks won in the background", "day": 21, "done": true},
-    {"id": "test-win-push", "title": "Get a win notification on the phone", "day": 21, "done": false},
+    {"id": "test-win-push", "title": "Get a win notification on the phone", "day": 21, "done": true},
 
     {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": true},
     {"id": "background-push", "title": "Silent push refreshes goals while the app is closed", "day": 22, "done": true},
