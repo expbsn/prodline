@@ -5,3 +5,11 @@ DerivedData/
 *.xcuserstate
 .build/
 Secrets.xcconfig
+
+# Local secrets (Cloudflare token for deploying the relay, etc.)
+.env
+.env.*
+!.env.example
+relay/.dev.vars
+relay/node_modules/
+relay/.wrangler/
