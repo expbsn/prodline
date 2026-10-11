@@ -168,7 +168,7 @@ enum WeeklyReview {
         center.removePendingNotificationRequests(withIdentifiers: [notificationID])
         guard enabled else { return }
         let content = UNMutableNotificationContent()
-        content.title = "Your weekly review is ready 🎬"
+        content.title = "Your weekly review is ready"
         content.body = "A quick look back at your week, and what's next. Takes a minute."
         content.sound = .default
         content.userInfo = ["url": "prodline://review"]

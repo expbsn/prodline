@@ -24,8 +24,8 @@ enum Cheer {
             let projects = Set(goals.map(\.project))
             let place = projects.count == 1 ? first.project : "\(projects.count) projects"
             lines = pick([
-                ("\(goals.count) goals off the list 🧹", "That's +\(xp) XP in \(place). Someone's in the zone."),
-                ("\(goals.count) goals, one push 💥", "\(place) just moved. +\(xp) XP."),
+                ("\(goals.count) goals off the list", "That's +\(xp) XP in \(place). Someone's in the zone."),
+                ("\(goals.count) goals, one push", "\(place) just moved. +\(xp) XP."),
                 ("Combo! \(goals.count) goals done", "+\(xp) XP in \(place). Keep the streak warm."),
             ], seed: goals.count + xp)
         }
@@ -34,9 +34,9 @@ enum Cheer {
 
     private static func goal(_ g: DoneGoal, xp: Int) -> (String, String) {
         pick([
-            ("“\(g.title)” done ✅", "That's +\(xp) XP. \(g.project) thanks you."),
+            ("“\(g.title)” done", "That's +\(xp) XP. \(g.project) thanks you."),
             ("Off the list: \(g.title)", "Nice one. +\(xp) XP for \(g.project)."),
-            ("\(g.title) ✔︎", "Ticked by your last push. +\(xp) XP, zero clicks."),
+            ("\(g.title): ticked", "Ticked by your last push. +\(xp) XP, zero clicks."),
             ("Boom. \(g.title)", "+\(xp) XP. \(g.project) is one step closer to shipping."),
             ("\(g.title): handled", "+\(xp) XP. Small wins, big projects."),
         ], seed: g.title.count)
@@ -44,10 +44,10 @@ enum Cheer {
 
     private static func lateGoal(_ g: DoneGoal, xp: Int) -> (String, String) {
         pick([
-            ("\(g.title)… finally 🐢", "Took you quite some time, huh? +\(xp) XP anyway."),
+            ("\(g.title)… finally", "Took you quite some time, huh? +\(xp) XP anyway."),
             ("Look who showed up: \(g.title)", "Fashionably late. Still +\(xp) XP."),
             ("\(g.title) done (eventually)", "The deadline sends its regards. +\(xp) XP."),
-            ("Better late than never ✅", "\(g.title) is off the list. +\(xp) XP."),
+            ("Better late than never", "\(g.title) is off the list. +\(xp) XP."),
         ], seed: g.title.count)
     }
 
@@ -57,26 +57,26 @@ enum Cheer {
         guard enabled else { return }
         let lines: (String, String)
         if let level {
-            lines = ("Level \(level) 🎉", "\(title) in \(project) pushed you over. +\(xp) XP.")
+            lines = ("Level \(level)", "\(title) in \(project) pushed you over. +\(xp) XP.")
         } else if isLaunch && daysEarly >= 0 {
             lines = pick([
-                ("\(project) shipped 🚀", daysEarly > 0 ? "\(daysEarly) day\(daysEarly == 1 ? "" : "s") early. Go tell someone. +\(xp) XP." : "Right on time. +\(xp) XP. Now watch the numbers."),
-                ("It's out there: \(project) 🚀", "Launch done. +\(xp) XP. The observe phase starts now."),
+                ("\(project) shipped", daysEarly > 0 ? "\(daysEarly) day\(daysEarly == 1 ? "" : "s") early. Go tell someone. +\(xp) XP." : "Right on time. +\(xp) XP. Now watch the numbers."),
+                ("It's out there: \(project)", "Launch done. +\(xp) XP. The observe phase starts now."),
             ], seed: xp)
         } else if daysEarly < 0 {
             let late = -daysEarly
             lines = pick([
                 ("\(title): done, \(late) day\(late == 1 ? "" : "s") late", "Better late than never. +\(xp) XP."),
-                ("\(title) finally crossed the line 🐢", "\(late) day\(late == 1 ? "" : "s") over, but who's counting? (Us. +\(xp) XP.)"),
+                ("\(title) finally crossed the line", "\(late) day\(late == 1 ? "" : "s") over, but who's counting? (Us. +\(xp) XP.)"),
             ], seed: late)
         } else if daysEarly > 0 {
             lines = pick([
-                ("\(title) done early 😎", "\(daysEarly) day\(daysEarly == 1 ? "" : "s") to spare in \(project). +\(xp) XP."),
+                ("\(title) done early", "\(daysEarly) day\(daysEarly == 1 ? "" : "s") to spare in \(project). +\(xp) XP."),
                 ("Ahead of schedule: \(title)", "\(project) is flying. +\(xp) XP."),
             ], seed: daysEarly)
         } else {
             lines = pick([
-                ("\(title) complete 🎯", "Right on time. +\(xp) XP for \(project)."),
+                ("\(title) complete", "Right on time. +\(xp) XP for \(project)."),
                 ("Checkpoint cleared: \(title)", "Deadline met, \(project) moving. +\(xp) XP."),
             ], seed: xp)
         }
@@ -88,9 +88,9 @@ enum Cheer {
     static func streak(_ days: Int) {
         guard enabled, days > 0 else { return }
         let lines = days == 1
-            ? ("🔥 Streak started", "Day 1. Every streak starts somewhere.")
-            : pick([("🔥 \(days)-day streak", "Today counts. The flame is happy."),
-                    ("🔥 Day \(days), lit", "You showed up again. That's the whole trick.")], seed: days)
+            ? ("Streak started", "Day 1. Every streak starts somewhere.")
+            : pick([("\(days)-day streak", "Today counts. The flame is happy."),
+                    ("Day \(days), lit", "You showed up again. That's the whole trick.")], seed: days)
         post(id: "streak-\(UUID().uuidString)", title: lines.0, body: lines.1, thread: "streak")
         // Today counts now: the "ends tonight" nudge isn't needed.
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [StreakNudge.id(0)])

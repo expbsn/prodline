@@ -118,7 +118,7 @@ enum StreakNudge {
             let streak = litToday ? profile.streak + d - 1 : (d == 0 ? profile.streak : 0)
             guard streak > 0 else { continue }
             let content = UNMutableNotificationContent()
-            content.title = "Your \(streak)-day streak ends tonight 🔥"
+            content.title = "Your \(streak)-day streak ends tonight"
             content.body = ["One tiny tick keeps it alive.", "A single goal is enough. You know you want to.",
                             "Don't let the flame go out on a technicality."][d % 3]
             content.sound = .default
