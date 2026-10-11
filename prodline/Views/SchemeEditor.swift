@@ -109,6 +109,7 @@ struct MeView: View {
     @AppStorage(AppSettings.Key.sampleData) private var sampleData = true
     @AppStorage(AppSettings.Key.haptics) private var haptics = true
     @AppStorage(AppSettings.Key.relayURL) private var relayURL = ""
+    @AppStorage(AppSettings.Key.cheers) private var cheers = true
     @AppStorage(LiveActivities.enabledKey) private var liveActivity = true
     @State private var confirm: Confirm?
 
@@ -234,6 +235,7 @@ struct MeView: View {
                       : "Needs Apple Intelligence on this iPhone.", $suggestions)
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
             toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
+            toggleRow("Win notifications", "A push when a goal, checkpoint or streak lands while the app is closed, e.g. ticked by a commit.", $cheers)
             optionRow("Relay for instant updates", "Pushes to linked repos sync within seconds. Leave empty for Prodline's relay, or type off.") {
                 TextField(AppSettings.defaultRelayURL, text: $relayURL)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)

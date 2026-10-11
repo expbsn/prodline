@@ -252,6 +252,9 @@ enum ScheduleEngine {
         profile.xp += gained
         m.xpEarned = gained
         m.countedOnTime = onTime
+        Cheer.checkpoint(title: m.title, project: m.project?.name ?? "Your project", xp: gained,
+                         daysEarly: Date.days(from: now.startOfDay, to: m.dueDate), isLaunch: m.isLaunch,
+                         level: profile.level > oldLevel ? profile.level : nil)
 
         let accent = m.project?.accent ?? .neutral
         if profile.level > oldLevel {

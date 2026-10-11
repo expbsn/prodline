@@ -355,6 +355,11 @@ enum GoalEngine {
         guard !paid.isEmpty else { return 0 }
         let xp = paid.count * xpPerGoal
         profile.xp += xp
+        Cheer.goals(paid.map { item in
+            let due = item.goal.milestone?.dueDate ?? .distantFuture
+            return Cheer.DoneGoal(title: item.goal.title, project: item.project.name,
+                                  late: (item.goal.doneAt ?? now).startOfDay > due)
+        }, xp: xp)
         let projectsHit = Set(paid.map { $0.project.id })
         let subtitle: String
         if paid.count == 1 {

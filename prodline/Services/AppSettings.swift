@@ -10,6 +10,7 @@ enum AppSettings {
         static let sampleData = "config.sampleData"
         static let haptics = "config.haptics"
         static let relayURL = "config.relayURL"
+        static let cheers = "config.cheers"
     }
 
     nonisolated private static func int(_ key: String, _ fallback: Int) -> Int {
@@ -30,6 +31,8 @@ enum AppSettings {
     /// Sample numbers for projects without an endpoint.
     nonisolated static var sampleData: Bool { bool(Key.sampleData, true) }
     nonisolated static var haptics: Bool { bool(Key.haptics, true) }
+    /// Push notifications for goals, checkpoints and the streak when they happen with the app closed.
+    nonisolated static var cheers: Bool { bool(Key.cheers, true) }
     /// Prodline's own relay (relay/ in the repo), used unless another address is set.
     nonisolated static let defaultRelayURL = "https://prodline-relay.prodline-relay.workers.dev"
     /// The relay for instant updates; "off" turns the feature off.

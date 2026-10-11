@@ -111,10 +111,12 @@ enum Relay {
         let changed = await github.refresh(projects: [p], force: true)
         guard !changed.isEmpty, let snap = github.snapshots[p.id] else { return false }
         GoalEngine.syncGitHub(snap, project: p, context: context)
-        if let profile = try? context.fetch(FetchDescriptor<Profile>()).first {
-            Streak.update(profile, projects: projects)
+        if let profile = try? context.fetch(FetchDescriptor<Profile>()).first, profile.onboarded {
+            // XP, checkpoints and the streak, as on screen; Cheer turns the wins into notifications.
+            let refresher = DataRefresher()
+            GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher, celebration: nil, context: context)
             StreakNudge.schedule(profile)
-            WidgetPublisher.publish(projects: projects, profile: profile, refresher: DataRefresher())
+            WidgetPublisher.publish(projects: projects, profile: profile, refresher: refresher)
         }
         try? context.save()
         return true

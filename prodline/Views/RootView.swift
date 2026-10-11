@@ -108,6 +108,8 @@ struct RootView: View {
             #endif
         }
         // Foreground polling: runs only while the app is active, restarts on every activation.
+        // Wins only become push notifications while the app isn't on screen.
+        .onChange(of: phase, initial: true) { Cheer.appIsOpen = phase == .active }
         .task(id: phase) {
             guard phase == .active else {
                 if phase == .background {

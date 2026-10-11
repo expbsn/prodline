@@ -178,7 +178,12 @@ final class DataRefresher {
     static func runBackground(container: ModelContainer) async {
         let context = ModelContext(container)
         let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
-        await DataRefresher().refresh(projects: projects, context: context, force: true)
+        let refresher = DataRefresher()
+        await refresher.refresh(projects: projects, context: context, force: true)
+        // Metric targets reached in the background still pay out and notify.
+        if let profile = try? context.fetch(FetchDescriptor<Profile>()).first, profile.onboarded {
+            GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher, celebration: nil, context: context)
+        }
         scheduleBackgroundRefresh()
     }
 }
