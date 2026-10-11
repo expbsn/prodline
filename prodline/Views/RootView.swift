@@ -11,8 +11,38 @@ struct RootView: View {
     @State private var refresher = DataRefresher()
     @State private var github = GitHubService()
     @State private var celebration = CelebrationCenter()
-    /// Only on a fresh launch: @State survives backgrounding, so foregrounding never replays it.
-    @State private var showLaunch = LaunchGate.shouldShow
+    /// The archived animated splash, only when replayed from Me → Demo & testing.
+    @State private var showLaunch = false
+    /// The still logo, if the first screen isn't ready shortly after launch.
+    @State private var showSplash = false
+
+    #if DEBUG
+    /// -PRODLINE_SPLASH YES keeps the loading splash up, to look at it.
+    private static let forceSplash = UserDefaults.standard.bool(forKey: "PRODLINE_SPLASH")
+    #else
+    private static let forceSplash = false
+    #endif
+
+    /// Boot straight in; the still logo only if the first screen isn't ready after a moment, and the
+    /// archived animated splash only when replayed.
+    private var launchLayers: some View {
+        ZStack {
+            if (showSplash && profiles.first == nil) || Self.forceSplash {
+                LaunchSplash().transition(.opacity)
+            }
+            if showLaunch {
+                ArchivedLaunchAnimation { withAnimation(.easeOut(duration: 0.4)) { showLaunch = false } }
+                    .ignoresSafeArea()
+                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
+            }
+        }
+        .animation(.easeOut(duration: 0.3), value: profiles.first == nil)
+        .task {
+            guard LaunchGate.shouldShow else { return }
+            try? await Task.sleep(for: .milliseconds(250))
+            if profiles.first == nil { showSplash = true }
+        }
+    }
 
     var body: some View {
         ZStack {
@@ -32,13 +62,7 @@ struct RootView: View {
         .overlay { ShipOverlay() }
         .overlay { StreakOverlay() }
         .overlay { CelebrationOverlay() }
-        .overlay {
-            if showLaunch {
-                LaunchView { withAnimation(.easeOut(duration: 0.4)) { showLaunch = false } }
-                    .ignoresSafeArea()
-                    .transition(.opacity.combined(with: .scale(scale: 1.04)))
-            }
-        }
+        .overlay { launchLayers }
         // Ticking a goal updates the deadline Live Activity right away, not on the next sync.
         .onChange(of: deadlineSignature) { Task { await LiveActivities.sync(projects) } }
         // A widget tick that ran in the app's own process: apply it now rather than on the next pass.
@@ -378,7 +402,8 @@ enum LaunchGate {
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "PRODLINE_NOLAUNCH") { return false }
         #endif
-        return !UIAccessibility.isReduceMotionEnabled
+        // The splash is still now, so Reduce Motion doesn't need to skip it.
+        return true
     }
 }
 
