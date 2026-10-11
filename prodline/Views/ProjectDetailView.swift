@@ -993,7 +993,7 @@ struct ConnectionSheet: View {
     }
 
     private func menuRow(_ page: ConnectionPage) -> some View {
-        let (caption, on) = status(page)
+        let caption = status(page).0
         return HStack(spacing: 14) {
             Image(systemName: page.symbol)
                 .font(.system(size: 18, weight: .semibold))
@@ -1005,9 +1005,6 @@ struct ConnectionSheet: View {
                 Text(caption).font(.ui(13)).foregroundStyle(Theme.secondary).lineLimit(1)
             }
             Spacer(minLength: 8)
-            if on {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.success)
-            }
             Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.tertiary)
         }
         .padding(.vertical, 10)
@@ -1043,22 +1040,28 @@ struct ConnectionPageView<Content: View, Bar: View>: View {
     let title: String
     @ViewBuilder var content: Content
     @ViewBuilder var bar: Bar
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ScrollView {
-            content
-                .padding(.horizontal, 20)
-                .padding(.top, 8)
-                .padding(.bottom, 24)
+        VStack(spacing: 0) {
+            // Our own header, like the other sheets: it's there from the first frame, no bar sliding in.
+            HStack(spacing: 12) {
+                CircleIconButton(systemName: "chevron.left") { dismiss() }
+                Text(title).display(24, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                Spacer()
+            }
+            .padding(20)
+            ScrollView {
+                content
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 24)
+            }
+            .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar { bar }
         }
-        .scrollDismissesKeyboard(.immediately)
-        .bottomActionBar { bar }
         .background(Theme.background.ignoresSafeArea())
-        .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .principal) { Text(title).display(18, 750).foregroundStyle(Theme.ink) }
-        }
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarBackButtonHidden()
     }
 }
 
