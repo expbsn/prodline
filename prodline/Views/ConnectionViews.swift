@@ -642,9 +642,14 @@ struct InstantUpdatesSection: View {
             }
             copyRow("Secret", hook.secret)
             if let url = URL(string: "https://github.com/\(repo)/settings/hooks/new") {
-                Link(destination: url) {
-                    Label("Open the repo's webhook settings", systemImage: "arrow.up.right.square")
-                        .font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                VStack(alignment: .leading, spacing: 4) {
+                    Link(destination: url) {
+                        Label("Open the repo's webhook settings", systemImage: "arrow.up.right.square")
+                            .font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                    }
+                    // GitHub answers settings pages with a 404 unless you're signed in as a repo admin.
+                    Text("Shows a 404 until you're signed in to GitHub with admin access to the repo.")
+                        .font(.ui(12)).foregroundStyle(Theme.secondary)
                 }
             }
         }

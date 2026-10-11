@@ -39,4 +39,12 @@ Point the simulator at it: Me → Configuration → Relay → `http://127.0.0.1:
    webhook to add to its repo.
 
 Debug builds register as `sandbox`, TestFlight and App Store builds as `production`; the relay sends to
-the matching APNs host.
+the matching APNs host. Apple's key environment matters: a key created for **Sandbox** only can't push to
+TestFlight or App Store builds. Before the first TestFlight build, either create one key for
+**Sandbox & Production** and replace `APNS_KEY` / `APNS_KEY_ID`, or add a production key next to the
+sandbox one:
+
+```bash
+npx wrangler secret put APNS_KEY_PROD
+npx wrangler secret put APNS_KEY_ID_PROD
+```

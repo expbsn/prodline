@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { route, validSignature, apnsToken } from "../src/index.js";
+import { route, validSignature, apnsToken, apnsKey } from "../src/index.js";
 
 /// In-memory stand-in for the KV namespace.
 function kv() {
@@ -123,4 +123,12 @@ test("the APNs token is a valid ES256 JWT", async () => {
   assert.deepEqual(dec(c), { iss: "TEAM456", iat: 1_800_000_000 });
   const ok = await crypto.subtle.verify({ name: "ECDSA", hash: "SHA-256" }, pair.publicKey, Buffer.from(s, "base64url"), new TextEncoder().encode(`${h}.${c}`));
   assert.equal(ok, true);
+});
+
+test("production uses its own key when one is set", () => {
+  const env = { APNS_KEY: "sandbox-pem", APNS_KEY_ID: "SBX", APNS_KEY_PROD: "prod-pem", APNS_KEY_ID_PROD: "PRD" };
+  assert.deepEqual(apnsKey(env, false), { pem: "sandbox-pem", id: "SBX" });
+  assert.deepEqual(apnsKey(env, true), { pem: "prod-pem", id: "PRD" });
+  // Without production secrets, one key serves both.
+  assert.deepEqual(apnsKey({ APNS_KEY: "k", APNS_KEY_ID: "K" }, true), { pem: "k", id: "K" });
 });

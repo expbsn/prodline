@@ -14,6 +14,8 @@
 // Storage (KV namespace RELAY):  device:<id> → {secretHash, token, env}
 //                                hook:<id>   → {secret, devices: [ids]}
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
+// A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
+// APNS_KEY_PROD + APNS_KEY_ID_PROD (or use one "Sandbox & Production" key as APNS_KEY for both).
 
 const ID = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_DEVICES_PER_HOOK = 20;
@@ -192,7 +194,7 @@ export async function validSignature(secret, body, header) {
 
 // MARK: - APNs
 
-let cachedToken = null; // {jwt, at}
+const cachedTokens = {}; // sandbox / production → {jwt, at}
 
 function b64url(bytes) {
   let s = typeof bytes === "string" ? btoa(bytes) : btoa(String.fromCharCode(...new Uint8Array(bytes)));
@@ -200,16 +202,25 @@ function b64url(bytes) {
 }
 
 /// Provider token for APNs (ES256), reused for 50 minutes as Apple asks.
-export async function apnsToken(env, now = Date.now()) {
-  if (cachedToken && now - cachedToken.at < 50 * 60 * 1000) return cachedToken.jwt;
-  const pem = env.APNS_KEY.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
+/// The key for an environment: production uses the *_PROD secrets when they're set.
+export function apnsKey(env, production) {
+  if (production && env.APNS_KEY_PROD && env.APNS_KEY_ID_PROD) return { pem: env.APNS_KEY_PROD, id: env.APNS_KEY_ID_PROD };
+  return { pem: env.APNS_KEY, id: env.APNS_KEY_ID };
+}
+
+export async function apnsToken(env, now = Date.now(), production = false) {
+  const slot = production ? "production" : "sandbox";
+  const cached = cachedTokens[slot];
+  if (cached && now - cached.at < 50 * 60 * 1000) return cached.jwt;
+  const { pem: raw, id } = apnsKey(env, production);
+  const pem = raw.replace(/-----[^-]+-----/g, "").replace(/\s+/g, "");
   const der = Uint8Array.from(atob(pem), (c) => c.charCodeAt(0));
   const key = await crypto.subtle.importKey("pkcs8", der, { name: "ECDSA", namedCurve: "P-256" }, false, ["sign"]);
-  const header = b64url(JSON.stringify({ alg: "ES256", kid: env.APNS_KEY_ID }));
+  const header = b64url(JSON.stringify({ alg: "ES256", kid: id }));
   const claims = b64url(JSON.stringify({ iss: env.APNS_TEAM_ID, iat: Math.floor(now / 1000) }));
   const sig = await crypto.subtle.sign({ name: "ECDSA", hash: "SHA-256" }, key, enc.encode(`${header}.${claims}`));
   const jwt = `${header}.${claims}.${b64url(sig)}`;
-  cachedToken = { jwt, at: now };
+  cachedTokens[slot] = { jwt, at: now };
   return jwt;
 }
 
@@ -219,7 +230,7 @@ export async function sendSilentPush(env, device, message) {
   const res = await fetch(`https://${host}/3/device/${device.token}`, {
     method: "POST",
     headers: {
-      authorization: `bearer ${await apnsToken(env)}`,
+      authorization: `bearer ${await apnsToken(env, Date.now(), device.env !== "sandbox")}`,
       "apns-push-type": "background",
       "apns-priority": "5",
       "apns-topic": env.APNS_TOPIC,
