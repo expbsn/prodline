@@ -5,6 +5,7 @@
     {"day": 5, "title": "On device"},
     {"day": 8, "title": "Polish"},
     {"day": 10, "title": "Personal onboarding"},
+    {"day": 11, "title": "Settings polish"},
     {"day": 12, "title": "TestFlight"},
     {"day": 13, "title": "First testers"},
     {"day": 15, "title": "Tester feedback"},
@@ -47,6 +48,10 @@
     {"id": "onboarding-success-goal", "title": "Pick what counts as a win and default success targets", "day": 10, "done": true},
     {"id": "onboarding-integrations", "title": "Suggest integrations based on the win you picked", "day": 10, "done": true},
     {"id": "onboarding-work-time", "title": "Ask when you work to time reminders and the weekly wrap", "day": 10, "done": true},
+
+    {"id": "connection-menu", "title": "Split the Connection screen into a menu with pages", "day": 11, "done": true},
+    {"id": "logo-splash", "title": "Replace the animated splash with a quick logo blur-in", "day": 11, "done": true},
+    {"id": "metric-picker", "title": "Show connected numbers and let people pick three", "day": 11, "done": true},
 
     {"id": "landing-page", "title": "Build the landing page with tester waitlist", "day": 12, "done": false},
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},
