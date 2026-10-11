@@ -3,7 +3,7 @@ import Testing
 @testable import prodline
 
 @MainActor
-@Suite("Relay")
+@Suite("Relay", .serialized)
 struct RelayTests {
     @Test func aProjectKeepsItsHookAndFindsItAgain() {
         let p = Project(name: "Kite", accentHex: 0x58CC02, startDate: .now, buildDays: 14, observeDays: 28)
@@ -14,6 +14,15 @@ struct RelayTests {
         #expect(Relay.project(forHook: first.id, in: [p]) === p)
         #expect(Relay.project(forHook: "hk_nope", in: [p]) == nil)
         Keychain.delete("relay-hook-" + p.id.uuidString)
+    }
+
+    @Test func theBuiltInRelayIsTheDefault() {
+        // Empty means "use Prodline's relay" (set rather than removed: a value in another domain would show through).
+        UserDefaults.standard.set("", forKey: AppSettings.Key.relayURL)
+        defer { UserDefaults.standard.removeObject(forKey: AppSettings.Key.relayURL) }
+        #expect(AppSettings.relayURL?.absoluteString == AppSettings.defaultRelayURL)
+        UserDefaults.standard.set("off", forKey: AppSettings.Key.relayURL)
+        #expect(AppSettings.relayURL == nil)
     }
 
     @Test func webhookAddressFollowsTheRelaySetting() {

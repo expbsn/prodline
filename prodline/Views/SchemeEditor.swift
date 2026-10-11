@@ -234,8 +234,8 @@ struct MeView: View {
                       : "Needs Apple Intelligence on this iPhone.", $suggestions)
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
             toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
-            optionRow("Relay for instant updates", "Your deployed relay (relay/ in the repo). Pushes to linked repos then sync within seconds.") {
-                TextField("https://prodline-relay.you.workers.dev", text: $relayURL)
+            optionRow("Relay for instant updates", "Pushes to linked repos sync within seconds. Leave empty for Prodline's relay, or type off.") {
+                TextField(AppSettings.defaultRelayURL, text: $relayURL)
                     .textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
                     .font(.ui(15))
                     .inputField()

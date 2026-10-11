@@ -30,9 +30,13 @@ enum AppSettings {
     /// Sample numbers for projects without an endpoint.
     nonisolated static var sampleData: Bool { bool(Key.sampleData, true) }
     nonisolated static var haptics: Bool { bool(Key.haptics, true) }
-    /// The deployed relay (relay/ in the repo) for instant updates; empty turns the feature off.
+    /// Prodline's own relay (relay/ in the repo), used unless another address is set.
+    nonisolated static let defaultRelayURL = "https://prodline-relay.prodline-relay.workers.dev"
+    /// The relay for instant updates; "off" turns the feature off.
     nonisolated static var relayURL: URL? {
-        let s = (UserDefaults.standard.string(forKey: Key.relayURL) ?? "").trimmingCharacters(in: .whitespaces)
-        return s.isEmpty ? nil : URL(string: s.hasSuffix("/") ? String(s.dropLast()) : s)
+        var s = (UserDefaults.standard.string(forKey: Key.relayURL) ?? "").trimmingCharacters(in: .whitespaces)
+        if s.isEmpty { s = defaultRelayURL }
+        if s.lowercased() == "off" { return nil }
+        return URL(string: s.hasSuffix("/") ? String(s.dropLast()) : s)
     }
 }
