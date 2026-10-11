@@ -27,15 +27,14 @@ enum LogoGeometry {
     static let leftDot = CGPoint(x: 106, y: barY)
 }
 
-/// The cold-start splash, shown only while something is actually loading: the mark, still, and a quiet
-/// trademark line at the bottom. When everything is ready on the first frame the app opens straight in.
+/// The cold-start splash: the mark (where the system launch screen already put it, so the hand-over is
+/// seamless) and a quiet trademark line. RootView holds it briefly, then blurs it away into the app.
 /// (The animated splash it replaced lives in Design/Archive/LaunchAnimation.swift.)
 struct LaunchSplash: View {
     var body: some View {
         ZStack {
-            Theme.background.ignoresSafeArea()
-            Image("Mark").resizable().renderingMode(.template).scaledToFit()
-                .foregroundStyle(Theme.ink)
+            Theme.background
+            Image("LaunchMark").resizable().scaledToFit()
                 .frame(width: 96, height: 96)
         }
         .overlay(alignment: .bottom) {
@@ -43,9 +42,10 @@ struct LaunchSplash: View {
                 .font(.ui(12, .medium))
                 .tracking(1)
                 .foregroundStyle(Theme.tertiary)
-                .padding(.bottom, 10)
+                .padding(.bottom, 44)
         }
+        .ignoresSafeArea()
         .accessibilityElement()
-        .accessibilityLabel("Prodline, loading")
+        .accessibilityLabel("Prodline")
     }
 }

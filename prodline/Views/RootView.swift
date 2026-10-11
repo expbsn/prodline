@@ -13,22 +13,26 @@ struct RootView: View {
     @State private var celebration = CelebrationCenter()
     /// The archived animated splash, only when replayed from Me → Demo & testing.
     @State private var showLaunch = false
-    /// The still logo, if the first screen isn't ready shortly after launch.
-    @State private var showSplash = false
+    /// Cold start: the logo for a moment, then it blurs away while the app sharpens in (2 s in all).
+    @State private var showSplash = LaunchGate.shouldShow
+    @State private var reveal: Double = LaunchGate.shouldShow ? 0 : 1
 
     #if DEBUG
-    /// -PRODLINE_SPLASH YES keeps the loading splash up, to look at it.
+    /// -PRODLINE_SPLASH YES keeps the splash up, to look at it.
     private static let forceSplash = UserDefaults.standard.bool(forKey: "PRODLINE_SPLASH")
     #else
     private static let forceSplash = false
     #endif
 
-    /// Boot straight in; the still logo only if the first screen isn't ready after a moment, and the
-    /// archived animated splash only when replayed.
+    /// The splash, blurring and fading away as the app comes in; the archived animated splash only when replayed.
     private var launchLayers: some View {
         ZStack {
-            if (showSplash && profiles.first == nil) || Self.forceSplash {
-                LaunchSplash().transition(.opacity)
+            if showSplash || Self.forceSplash {
+                LaunchSplash()
+                    .opacity(Self.forceSplash ? 1 : 1 - reveal)
+                    .blur(radius: Self.forceSplash ? 0 : reveal * 18)
+                    .scaleEffect(1 + reveal * 0.06)
+                    .allowsHitTesting(false)
             }
             if showLaunch {
                 ArchivedLaunchAnimation { withAnimation(.easeOut(duration: 0.4)) { showLaunch = false } }
@@ -36,11 +40,12 @@ struct RootView: View {
                     .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
-        .animation(.easeOut(duration: 0.3), value: profiles.first == nil)
         .task {
-            guard LaunchGate.shouldShow else { return }
-            try? await Task.sleep(for: .milliseconds(250))
-            if profiles.first == nil { showSplash = true }
+            guard showSplash, !Self.forceSplash else { return }
+            try? await Task.sleep(for: .milliseconds(1300))
+            withAnimation(.easeInOut(duration: 0.7)) { reveal = 1 }
+            try? await Task.sleep(for: .milliseconds(700))
+            showSplash = false
         }
     }
 
@@ -58,6 +63,9 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.35), value: profiles.first?.onboarded)
+        // The app comes in out of a blur as the splash leaves.
+        .blur(radius: (1 - reveal) * 14)
+        .opacity(0.3 + 0.7 * reveal)
         // The ship moment under the banners and confetti, so the confetti falls over it.
         .overlay { ShipOverlay() }
         .overlay { StreakOverlay() }
