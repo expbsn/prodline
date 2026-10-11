@@ -12,12 +12,9 @@ struct IntegrationsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Integrations").eyebrow()
-                Text("Downloads, revenue and visitors straight from the services you use. Keys stay in your Keychain.")
-                    .font(.ui(14)).foregroundStyle(Theme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text("Downloads, revenue and visitors straight from the services you use. Keys stay in your Keychain.")
+                .font(.ui(15)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             if !project.integrations.isEmpty {
                 VStack(spacing: 0) {
                     ForEach(project.integrations) { i in

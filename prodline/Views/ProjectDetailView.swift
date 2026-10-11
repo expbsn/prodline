@@ -917,79 +917,232 @@ struct EditProjectSheet: View {
     }
 }
 
+/// Where a project's numbers and plan come from: a short menu, each part on its own page.
 struct ConnectionSheet: View {
+    @Bindable var project: Project
+    @Environment(\.dismiss) private var dismiss
+    @State private var path: [ConnectionPage] = []
+
+    var body: some View {
+        NavigationStack(path: $path) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    HStack {
+                        Text("Connection").display(26, 750).foregroundStyle(Theme.ink)
+                        Spacer()
+                        CircleIconButton(systemName: "xmark") { dismiss() }
+                    }
+                    .padding(.top, 20)
+                    Text("Numbers and goals flow in on their own from these. Set up what you use; skip the rest.")
+                        .font(.ui(15)).foregroundStyle(Theme.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    VStack(spacing: 0) {
+                        ForEach(pages) { page in
+                            NavigationLink(value: page) { menuRow(page) }
+                                .buttonStyle(.plain)
+                            if page != pages.last { Divider().padding(.leading, 62) }
+                        }
+                    }
+                    .card(padding: 14, radius: 22)
+                }
+                .padding(.horizontal, 20)
+                .padding(.bottom, 24)
+            }
+            .background(Theme.background.ignoresSafeArea())
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationDestination(for: ConnectionPage.self) { page in
+                Group {
+                    switch page {
+                    case .integrations: ConnectionPageView(title: page.title) { IntegrationsSection(project: project) }
+                    case .github: GitHubPage(project: project)
+                    case .instant:
+                        ConnectionPageView(title: page.title) {
+                            InstantUpdatesSection(project: project, repo: project.githubRepo)
+                        }
+                    case .endpoint: EndpointPage(project: project)
+                    }
+                }
+            }
+        }
+        .tint(Theme.ink)
+        .environment(\.accent, project.accent)
+    }
+
+    /// Instant updates only make sense once a repo is linked.
+    private var pages: [ConnectionPage] {
+        var list: [ConnectionPage] = [.integrations, .github]
+        if Relay.isEnabled && !project.githubRepo.isEmpty { list.append(.instant) }
+        list.append(.endpoint)
+        return list
+    }
+
+    private func status(_ page: ConnectionPage) -> (String, Bool) {
+        switch page {
+        case .integrations:
+            let kinds = project.integrations.map(\.kind.title)
+            if kinds.isEmpty { return ("Revenue, visitors, downloads", false) }
+            return (kinds.count <= 2 ? kinds.joined(separator: ", ") : "\(kinds.count) connected", true)
+        case .github:
+            return project.githubRepo.isEmpty ? ("Plan, goals and commits from a repo", false) : (project.githubRepo, true)
+        case .instant:
+            return ("Goals tick seconds after you push", false)
+        case .endpoint:
+            let host = URL(string: project.endpoint)?.host()
+            return host.map { ($0, true) } ?? ("For numbers nothing else covers", false)
+        }
+    }
+
+    private func menuRow(_ page: ConnectionPage) -> some View {
+        let (caption, on) = status(page)
+        return HStack(spacing: 14) {
+            Image(systemName: page.symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+                .frame(width: 44, height: 44)
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.background))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(page.title).font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
+                Text(caption).font(.ui(13)).foregroundStyle(Theme.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            if on {
+                Image(systemName: "checkmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.success)
+            }
+            Image(systemName: "chevron.right").font(.system(size: 13, weight: .bold)).foregroundStyle(Theme.tertiary)
+        }
+        .padding(.vertical, 10)
+        .contentShape(Rectangle())
+    }
+}
+
+enum ConnectionPage: String, Hashable, Identifiable {
+    case integrations, github, instant, endpoint
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .integrations: "Integrations"
+        case .github: "GitHub"
+        case .instant: "Instant updates"
+        case .endpoint: "Your own endpoint"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .integrations: "square.grid.2x2.fill"
+        case .github: "chevron.left.forwardslash.chevron.right"
+        case .instant: "bolt.fill"
+        case .endpoint: "antenna.radiowaves.left.and.right"
+        }
+    }
+}
+
+/// One page of the Connection menu: a scrolling column on the app background.
+struct ConnectionPageView<Content: View, Bar: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+    @ViewBuilder var bar: Bar
+
+    var body: some View {
+        ScrollView {
+            content
+                .padding(.horizontal, 20)
+                .padding(.top, 8)
+                .padding(.bottom, 24)
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .bottomActionBar { bar }
+        .background(Theme.background.ignoresSafeArea())
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) { Text(title).display(18, 750).foregroundStyle(Theme.ink) }
+        }
+    }
+}
+
+extension ConnectionPageView where Bar == EmptyView {
+    init(title: String, @ViewBuilder content: () -> Content) {
+        self.init(title: title, content: content, bar: { EmptyView() })
+    }
+}
+
+/// The linked repo: its plan file, issues and commits.
+private struct GitHubPage: View {
+    @Bindable var project: Project
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
+    @Environment(GitHubService.self) private var github
+    @State private var repo = ""
+    @State private var token = ""
+    @State private var check: RepoCheck = .idle
+
+    var body: some View {
+        ConnectionPageView(title: "GitHub") {
+            GitHubFields(repo: $repo, token: $token, check: $check)
+        } bar: {
+            Button("Save") { save() }.buttonStyle(.chunky)
+        }
+        .onAppear {
+            repo = project.githubRepo
+            token = Keychain.get("gh-" + project.id.uuidString) ?? ""
+        }
+    }
+
+    private func save() {
+        project.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
+        Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + project.id.uuidString)
+        if case .ok(let snap) = check { GoalEngine.syncGitHub(snap, project: project, context: context) }
+        try? context.save()
+        Haptics.success()
+        let p = project
+        Task {
+            if !p.githubRepo.isEmpty { await Relay.follow(p) }
+            if !(await github.refresh(projects: [p], force: true)).isEmpty, let snap = github.snapshots[p.id] {
+                GoalEngine.syncGitHub(snap, project: p, context: context)
+                try? context.save()
+            }
+        }
+        dismiss()
+    }
+}
+
+/// A custom metrics endpoint, for numbers the integrations don't cover.
+private struct EndpointPage: View {
     @Bindable var project: Project
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(DataRefresher.self) private var refresher
-    @Environment(GitHubService.self) private var github
     @State private var endpoint = ""
     @State private var apiKey = ""
     @State private var probe: ProbeState = .idle
-    @State private var repo = ""
-    @State private var token = ""
-    @State private var repoCheck: RepoCheck = .idle
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Connection").display(26, 750).foregroundStyle(Theme.ink)
-                Spacer()
-                CircleIconButton(systemName: "xmark") { dismiss() }
+        ConnectionPageView(title: "Your own endpoint") {
+            VStack(alignment: .leading, spacing: 18) {
+                Text("For anything the integrations don't cover. Its goals and extra numbers are used alongside them.")
+                    .font(.ui(15)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: project.githubRepo)
             }
-            .padding(20)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    IntegrationsSection(project: project)
-                    Divider()
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Your own endpoint").eyebrow()
-                        Text("For anything the integrations don't cover. Its goals and extra numbers are used alongside them.")
-                            .font(.ui(14)).foregroundStyle(Theme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.bottom, -14)
-                    ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
-                    Divider()
-                    GitHubFields(repo: $repo, token: $token, check: $repoCheck)
-                    if Relay.isEnabled, GitHubRepoRef(repo) != nil {
-                        InstantUpdatesSection(project: project, repo: GitHubRepoRef(repo)?.slug ?? "")
-                    }
-                }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 20)
-            }
-            .scrollDismissesKeyboard(.immediately)
-            .bottomActionBar {
-            Button("Save") {
-                project.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
-                Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: project.id.uuidString)
-                project.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
-                Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + project.id.uuidString)
-                if case .ok(let snap) = repoCheck { GoalEngine.syncGitHub(snap, project: project, context: context) }
-                try? context.save()
-                Haptics.success()
-                Task {
-                    if !project.githubRepo.isEmpty { await Relay.follow(project) }
-                    await refresher.refresh(projects: [project], context: context, force: true)
-                    if let snap = (await github.refresh(projects: [project], force: true)).isEmpty ? nil : github.snapshots[project.id] {
-                        GoalEngine.syncGitHub(snap, project: project, context: context)
-                        try? context.save()
-                    }
-                }
-                dismiss()
-            }
-            .buttonStyle(.chunky)
-            }
+        } bar: {
+            Button("Save") { save() }.buttonStyle(.chunky)
         }
-        .background(Theme.background.ignoresSafeArea())
-        .environment(\.accent, project.accent)
         .onAppear {
             endpoint = project.endpoint
             apiKey = Keychain.get(project.id.uuidString) ?? ""
-            repo = project.githubRepo
-            token = Keychain.get("gh-" + project.id.uuidString) ?? ""
         }
+    }
+
+    private func save() {
+        project.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
+        Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: project.id.uuidString)
+        try? context.save()
+        Haptics.success()
+        let p = project
+        Task { await refresher.refresh(projects: [p], context: context, force: true) }
+        dismiss()
     }
 }
 

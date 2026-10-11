@@ -625,12 +625,9 @@ struct InstantUpdatesSection: View {
     var body: some View {
         let hook = Relay.hook(for: project)
         VStack(alignment: .leading, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Instant updates").eyebrow()
-                Text("Push to \(repo) and goals tick within seconds, even with the app closed. Add this webhook to the repo once.")
-                    .font(.ui(14)).foregroundStyle(Theme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Text("Push to \(repo) and goals tick within seconds, even with the app closed. Add this webhook to the repo once.")
+                .font(.ui(15)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             VStack(alignment: .leading, spacing: 10) {
                 step(1, "On GitHub open \(repo) → Settings → Webhooks → Add webhook.")
                 step(2, "Paste the payload URL and the secret below. Content type: application/json.")
