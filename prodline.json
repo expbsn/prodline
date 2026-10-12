@@ -16,7 +16,8 @@
     {"day": 24, "title": "Reviews and ideas"},
     {"day": 25, "title": "Web integrations"},
     {"day": 26, "title": "App Store"},
-    {"day": 29, "title": "Launch marketing"}
+    {"day": 29, "title": "Launch marketing"},
+    {"day": 33, "title": "Build in public"}
   ],
   "goals": [
     {"id": "design-system", "title": "Ship design system and card carousel", "day": 1, "done": true},
@@ -40,7 +41,6 @@
     {"id": "checkpoint-editing", "title": "Rename, move and add checkpoints", "day": 8, "done": true},
     {"id": "data-charts", "title": "Trend charts in the Data tab", "day": 8, "done": true},
     {"id": "onboarding-copy", "title": "Polish onboarding copy", "day": 8, "done": true},
-    {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 8, "done": false},
     {"id": "instant-goal-ticks", "title": "Make goal ticks respond instantly", "day": 8, "done": true},
     {"id": "first-launch-intro", "title": "Tell the story as a scroll animation in onboarding", "day": 8, "done": true},
 
@@ -59,6 +59,7 @@
     {"id": "testflight-build", "title": "Upload first TestFlight build", "day": 12, "done": false},
 
     {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": false},
+    {"id": "tester-posts", "title": "Post the tester waitlist on r/SideProject and Indie Hackers", "day": 13, "done": false},
     {"id": "testers", "title": "Invite the first wave of testers from the waitlist", "day": 13, "done": false},
     {"id": "waitlist-50", "title": "Reach 50 waitlist signups", "day": 13, "done": false, "metric": {"key": "signups", "target": 50}},
 
@@ -102,6 +103,8 @@
     {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": false},
     {"id": "app-preview-video", "title": "Record the App Store preview video", "day": 29, "done": false},
     {"id": "press-kit", "title": "Put together a press kit with screenshots and logo", "day": 29, "done": false},
-    {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": false}
+    {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": false},
+
+    {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false}
   ]
 }
