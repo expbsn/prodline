@@ -9,3 +9,7 @@ APNS_TOPIC = "expbsn.app.prodline"
 [[kv_namespaces]]
 binding = "RELAY"
 id = "5b224c887bff477cba40d346836f0f01"
+
+# Starts scheduled deadline Live Activities (push-to-start).
+[triggers]
+crons = ["*/5 * * * *"]

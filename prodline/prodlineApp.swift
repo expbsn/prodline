@@ -7,7 +7,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
         // Instant updates: the relay needs this device's push token.
-        if Relay.isEnabled { application.registerForRemoteNotifications() }
+        if Relay.isEnabled {
+            application.registerForRemoteNotifications()
+            LiveActivities.watchStartToken()
+        }
         #if DEBUG
         // -PRODLINE_RELAY_TOKEN <hex>: pretend APNs handed out this token (simulators often get none).
         if let hex = UserDefaults.standard.string(forKey: "PRODLINE_RELAY_TOKEN"), Relay.isEnabled {

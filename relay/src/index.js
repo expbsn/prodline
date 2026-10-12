@@ -9,9 +9,13 @@
 //   POST   /hooks/:hook               {secret, device, deviceSecret}     follow a hook (creates it)
 //   DELETE /hooks/:hook/devices/:dev  {secret, deviceSecret}             stop following
 //   POST   /github/:hook              GitHub webhook (X-Hub-Signature-256)
+//   POST   /devices/:dev/start-token {deviceSecret, startToken}      Live Activity push-to-start token
+//   PUT    /schedules                {device, deviceSecret, items}     deadline activities to start later
 //   GET    /health
+//   cron (every 5 min): starts scheduled Live Activities whose time has come
 //
-// Storage (KV namespace RELAY):  device:<id> → {secretHash, token, env}
+// Storage (KV namespace RELAY):  device:<id> → {secretHash, token, env, startToken?}
+//                                sched:<device> → {items: [{id, at, attributes, state, alert, sent?}]}
 //                                hook:<id>   → {secret, devices: [ids]}
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
 // A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
@@ -22,6 +26,7 @@ const MAX_DEVICES_PER_HOOK = 20;
 
 export default {
   fetch: (request, env) => route(request, env),
+  scheduled: (_event, env, ctx) => ctx.waitUntil(runSchedules(env)),
 };
 
 class HttpError extends Error {
@@ -55,8 +60,40 @@ async function handle(request, env, apns) {
     const existing = await getJSON(env, key);
     const hash = await sha256(body.secret);
     if (existing && !timingSafeEqual(existing.secretHash, hash)) throw new HttpError(403, "wrong device secret");
-    await env.RELAY.put(key, JSON.stringify({ secretHash: hash, token: body.token.toLowerCase(), env: envName }));
+    // Keep the push-to-start token across re-registrations.
+    await env.RELAY.put(key, JSON.stringify({ ...(existing ?? {}), secretHash: hash, token: body.token.toLowerCase(), env: envName }));
     return json({ ok: true });
+  }
+
+  if (method === "POST" && parts.length === 3 && parts[0] === "devices" && parts[2] === "start-token") {
+    const id = parts[1];
+    requireId(id, "device");
+    const body = await readJSON(request);
+    const device = await requireDevice(env, id, body.deviceSecret);
+    if (!/^[0-9a-fA-F]{32,300}$/.test(body.startToken ?? "")) throw new HttpError(400, "bad token");
+    await env.RELAY.put(`device:${id}`, JSON.stringify({ ...device, startToken: body.startToken.toLowerCase() }));
+    return json({ ok: true });
+  }
+
+  if (method === "PUT" && parts.length === 1 && parts[0] === "schedules") {
+    const body = await readJSON(request);
+    requireId(body.device, "device");
+    await requireDevice(env, body.device, body.deviceSecret);
+    const items = Array.isArray(body.items) ? body.items : [];
+    if (items.length > 10) throw new HttpError(400, "too many items");
+    for (const it of items) {
+      if (typeof it?.id !== "string" || it.id.length > 64 || typeof it.at !== "number"
+          || typeof it.attributes !== "object" || typeof it.state !== "object") throw new HttpError(400, "bad item");
+    }
+    if (JSON.stringify(items).length > 16000) throw new HttpError(413, "too large");
+    const key = `sched:${body.device}`;
+    // Keep "already sent" marks for items that are still listed, so an upload can't start one twice.
+    const old = (await getJSON(env, key))?.items ?? [];
+    const sent = new Set(old.filter((i) => i.sent).map((i) => `${i.id}@${i.at}`));
+    const next = items.map((i) => ({ ...i, sent: sent.has(`${i.id}@${i.at}`) || undefined }));
+    if (next.length) await env.RELAY.put(key, JSON.stringify({ items: next }));
+    else await env.RELAY.delete(key);
+    return json({ ok: true, items: next.length });
   }
 
   if (parts[0] === "hooks" && parts.length >= 2) {
@@ -142,6 +179,70 @@ async function requireDevice(env, id, secret) {
   const device = await getJSON(env, `device:${id}`);
   if (!device) throw new HttpError(404, "unknown device");
   if (!timingSafeEqual(device.secretHash, await sha256(secret))) throw new HttpError(403, "wrong device secret");
+  return device;
+}
+
+// MARK: - Scheduled Live Activities
+
+/// Every few minutes: start the deadline Live Activities whose time has come, with a push-to-start.
+export async function runSchedules(env, now = Date.now(), send = sendLiveActivityStart) {
+  let cursor;
+  let started = 0;
+  do {
+    const page = await env.RELAY.list({ prefix: "sched:", cursor });
+    for (const { name } of page.keys) {
+      const sched = await getJSON(env, name);
+      if (!sched) continue;
+      const deviceID = name.slice("sched:".length);
+      const device = await getJSON(env, `device:${deviceID}`);
+      let changed = false;
+      // Forget items whose window is long over.
+      const items = sched.items.filter((i) => now / 1000 < i.at + 6 * 3600);
+      if (items.length !== sched.items.length) changed = true;
+      for (const item of items) {
+        if (item.sent || item.at > now / 1000 || !device?.startToken) continue;
+        const status = await send(env, device, item, now);
+        item.sent = true;
+        changed = true;
+        if (status === 200) started++;
+      }
+      if (!changed) continue;
+      if (items.length) await env.RELAY.put(name, JSON.stringify({ items }));
+      else await env.RELAY.delete(name);
+    }
+    cursor = page.list_complete ? undefined : page.cursor;
+  } while (cursor);
+  return started;
+}
+
+/// The APNs payload that starts a Live Activity on a device that isn't running the app.
+export function liveActivityStartPayload(item, now = Date.now()) {
+  const aps = {
+    timestamp: Math.floor(now / 1000),
+    event: "start",
+    "attributes-type": "DeadlineAttributes",
+    attributes: item.attributes,
+    "content-state": item.state,
+    alert: item.alert ?? { title: "Deadline tonight", body: "Four hours left." },
+  };
+  if (typeof item.staleAt === "number") aps["stale-date"] = Math.floor(item.staleAt);
+  return { aps };
+}
+
+export async function sendLiveActivityStart(env, device, item, now = Date.now()) {
+  const production = device.env !== "sandbox";
+  const host = production ? "api.push.apple.com" : "api.sandbox.push.apple.com";
+  const res = await fetch(`https://${host}/3/device/${device.startToken}`, {
+    method: "POST",
+    headers: {
+      authorization: `bearer ${await apnsToken(env, now, production)}`,
+      "apns-push-type": "liveactivity",
+      "apns-priority": "10",
+      "apns-topic": `${env.APNS_TOPIC}.push-type.liveactivity`,
+    },
+    body: JSON.stringify(liveActivityStartPayload(item, now)),
+  });
+  return res.status;
 }
 
 function requireId(v, name) {

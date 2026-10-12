@@ -290,14 +290,16 @@ struct ProjectDetailView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
-                Chart(points, id: \.persistentModelID) { s in
-                    AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value(current)))
-                        .interpolationMethod(.monotone)
+                // Only snapshots that carry the number (no drops to zero), straight segments like a price chart.
+                let series = points.compactMap { s in s.valueIfPresent(current).map { (date: s.date, value: $0) } }
+                Chart(Array(series.enumerated()), id: \.offset) { _, s in
+                    AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                        .interpolationMethod(.linear)
                         .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
                                                         startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value(current)))
-                        .interpolationMethod(.monotone)
-                        .lineStyle(StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                    LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                        .interpolationMethod(.linear)
+                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
                         .foregroundStyle(accent.base)
                 }
                 .chartYAxis {

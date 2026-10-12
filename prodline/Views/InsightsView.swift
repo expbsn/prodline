@@ -17,8 +17,9 @@ struct InsightsView: View {
         case day = "24H", week = "7D", month = "30D"
         var id: String { rawValue }
         var span: TimeInterval { switch self { case .day: 86_400; case .week: 7 * 86_400; case .month: 30 * 86_400 } }
-        /// Bucket size: enough points for a smooth line without drawing every snapshot.
-        var step: TimeInterval { switch self { case .day: 3_600; case .week: 6 * 3_600; case .month: 86_400 } }
+        /// Bucket size: per hour over a day, per day over a week or month.
+        var step: TimeInterval { switch self { case .day: 3_600; case .week, .month: 86_400 } }
+        var per: String { switch self { case .day: "per hour"; case .week, .month: "per day" } }
         var label: String { switch self { case .day: "today"; case .week: "this week"; case .month: "this month" } }
     }
 
@@ -131,28 +132,40 @@ struct InsightsView: View {
 
     // MARK: Trend
 
-    /// Each project's value at the end of every bucket, carried forward between snapshots.
+    /// Per project and bucket: what was added in it for running totals (commits, revenue, goals done), or the
+    /// level at its end for levels (open goals, MRR). Snapshots without the number carry the last one forward.
     private var trendPoints: [Point] {
         let key = current
+        let gains = !Stat.isLevel(key)
         let now = Date.now
-        let start = now.addingTimeInterval(-range.span)
-        let ticks = stride(from: start.timeIntervalSince1970, to: now.timeIntervalSince1970 - 1, by: range.step)
-            .map { Date(timeIntervalSince1970: $0) } + [now]
+        let cal = Calendar.current
+        // Buckets on clock boundaries (whole hours, midnights), so each bar is a real hour or day.
+        let unit: Calendar.Component = range == .day ? .hour : .day
+        let end = cal.dateInterval(of: unit, for: now)?.end ?? now
+        let count = Int((range.span / range.step).rounded())
+        let edges = (0...count).map { end.addingTimeInterval(-Double(count - $0) * range.step) }
         return projects.flatMap { p -> [Point] in
             let snaps = p.sortedSnapshots
             guard !snaps.isEmpty || refresher.value(key, for: p) != nil else { return [] }
             var i = 0
             var last: Double?
-            return ticks.map { t in
-                while i < snaps.count, snaps[i].date <= t { last = snaps[i].value(key); i += 1 }
-                let v = t == now ? (refresher.value(key, for: p) ?? last ?? 0) : (last ?? 0)
-                return Point(date: t, project: p.name, value: v)
+            let levels: [Double] = edges.map { t in
+                while i < snaps.count, snaps[i].date <= t {
+                    if let v = snaps[i].valueIfPresent(key) { last = v }
+                    i += 1
+                }
+                return t >= now ? (refresher.value(key, for: p) ?? last ?? 0) : (last ?? 0)
+            }
+            return (1..<edges.count).map { n in
+                let value = gains ? max(0, levels[n] - levels[n - 1]) : levels[n]
+                return Point(date: edges[n - 1], project: p.name, value: value)
             }
         }
     }
 
     private var trend: some View {
         let key = current
+        let gains = !Stat.isLevel(key)
         let points = trendPoints
         let names = projects.map(\.name)
         let byDate = Dictionary(grouping: points, by: \.date).mapValues { $0.reduce(0) { $0 + $1.value } }
@@ -160,20 +173,21 @@ struct InsightsView: View {
         let first = dates.first.flatMap { byDate[$0] } ?? 0
         let latest = dates.last.flatMap { byDate[$0] } ?? total(key)
         let shownDate = scrub.flatMap { s in dates.min { abs($0.timeIntervalSince(s)) < abs($1.timeIntervalSince(s)) } }
-        let shown = shownDate.flatMap { byDate[$0] } ?? latest
-        let delta = latest - first
+        // Totals: the headline is the total, the line what was added per bucket; levels: the level itself.
+        let shown = shownDate.flatMap { byDate[$0] } ?? (gains ? total(key) : latest)
+        let delta = gains ? byDate.values.reduce(0, +) : latest - first
 
         return VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(Stat.title(key)).eyebrow()
+                    Text(gains && shownDate != nil ? "\(Stat.title(key)) · added" : Stat.title(key)).eyebrow()
                     Text(Stat.format(key, shown)).display(34, 800).foregroundStyle(Theme.ink)
                         .contentTransition(.numericText())
                     Group {
                         if let d = shownDate {
                             Text(d.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour()))
                         } else {
-                            Text("\(delta >= 0 ? "+" : "−")\(Stat.format(key, abs(delta))) \(range.label)")
+                            Text("\(delta >= 0 ? "+" : "−")\(Stat.format(key, abs(delta))) \(range.label)" + (gains ? " · \(range.per) below" : ""))
                                 .foregroundStyle(delta > 0 ? Theme.success : Theme.secondary)
                         }
                     }
@@ -197,9 +211,10 @@ struct InsightsView: View {
             } else {
                 Chart {
                     ForEach(points) { pt in
+                        // Straight segments, no smoothing: honest and steady, like a price chart.
                         AreaMark(x: .value("Time", pt.date), y: .value(Stat.title(key), pt.value), stacking: .standard)
                             .foregroundStyle(by: .value("Project", pt.project))
-                            .interpolationMethod(.monotone)
+                            .interpolationMethod(.linear)
                             .opacity(0.85)
                     }
                     if let d = shownDate {

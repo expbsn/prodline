@@ -1,11 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { route, validSignature, apnsToken, apnsKey } from "../src/index.js";
+import { route, validSignature, apnsToken, apnsKey, runSchedules, liveActivityStartPayload } from "../src/index.js";
 
 /// In-memory stand-in for the KV namespace.
 function kv() {
   const m = new Map();
-  return { get: async (k) => m.get(k) ?? null, put: async (k, v) => void m.set(k, v), delete: async (k) => void m.delete(k), m };
+  return {
+    get: async (k) => m.get(k) ?? null, put: async (k, v) => void m.set(k, v), delete: async (k) => void m.delete(k), m,
+    list: async ({ prefix }) => ({ keys: [...m.keys()].filter((k) => k.startsWith(prefix)).map((name) => ({ name })), list_complete: true }),
+  };
 }
 
 const BASE = "https://relay.test";
@@ -131,4 +134,38 @@ test("production uses its own key when one is set", () => {
   assert.deepEqual(apnsKey(env, true), { pem: "prod-pem", id: "PRD" });
   // Without production secrets, one key serves both.
   assert.deepEqual(apnsKey({ APNS_KEY: "k", APNS_KEY_ID: "K" }, true), { pem: "k", id: "K" });
+});
+
+test("scheduled Live Activities start once, when their time comes", async () => {
+  const env = { RELAY: kv() };
+  await setup(env);
+  let r = await route(req(`/devices/${DEVICE}/start-token`, "POST", { deviceSecret: DEVICE_SECRET, startToken: "cd".repeat(40) }), env);
+  assert.equal(r.status, 200);
+  const at = 1_800_000_000;
+  const item = { id: "m1", at, attributes: { milestoneID: "m1" }, state: { goalCount: 2 }, alert: { title: "t", body: "b" } };
+  r = await route(req("/schedules", "PUT", { device: DEVICE, deviceSecret: DEVICE_SECRET, items: [item] }), env);
+  assert.equal(r.status, 200);
+
+  const sent = [];
+  const send = async (_e, device, it) => { sent.push([device.startToken, it.id]); return 200; };
+  assert.equal(await runSchedules(env, (at - 60) * 1000, send), 0);
+  assert.equal(await runSchedules(env, (at + 60) * 1000, send), 1);
+  assert.equal(await runSchedules(env, (at + 120) * 1000, send), 0);
+  assert.deepEqual(sent, [["cd".repeat(40), "m1"]]);
+
+  // Re-uploading the same item keeps it marked as sent.
+  await route(req("/schedules", "PUT", { device: DEVICE, deviceSecret: DEVICE_SECRET, items: [item] }), env);
+  assert.equal(await runSchedules(env, (at + 180) * 1000, send), 0);
+  // Long after the window it's forgotten.
+  await runSchedules(env, (at + 7 * 3600) * 1000, send);
+  assert.equal(await env.RELAY.get(`sched:${DEVICE}`), null);
+});
+
+test("the push-to-start payload carries the activity", () => {
+  const p = liveActivityStartPayload({ attributes: { a: 1 }, state: { b: 2 }, alert: { title: "T", body: "B" }, staleAt: 99 }, 5000);
+  assert.equal(p.aps.event, "start");
+  assert.equal(p.aps["attributes-type"], "DeadlineAttributes");
+  assert.deepEqual(p.aps["content-state"], { b: 2 });
+  assert.equal(p.aps.timestamp, 5);
+  assert.equal(p.aps["stale-date"], 99);
 });

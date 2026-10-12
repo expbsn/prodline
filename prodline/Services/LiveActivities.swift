@@ -1,5 +1,6 @@
 import Foundation
 import ActivityKit
+import CryptoKit
 
 /// Puts a checkpoint that's due today on the Lock Screen and in the Dynamic Island for the last four hours
 /// of the day (a countdown to midnight), but only while it still has open goals. Ticking the last goal shows a short "all done" and lets it go.
@@ -58,7 +59,63 @@ enum LiveActivities {
                                                 accentHex: p.accentHex, checkpoint: m.title, deadline: m.dueDate.adding(days: 1))
             if (try? Activity.request(attributes: attributes, content: content)) != nil { started[id] = now }
         }
+        // Ones the relay started while the app was closed count as started too (a dismissal then sticks).
+        for activity in Activity<DeadlineAttributes>.activities where started[activity.attributes.milestoneID] == nil {
+            started[activity.attributes.milestoneID] = now
+        }
         UserDefaults.standard.set(started, forKey: startedKey)
+        await uploadSchedule(projects, now: now)
+    }
+
+    // MARK: Starting at 20:00 with the app closed
+
+    private static let scheduleHashKey = "liveActivity.scheduleHash"
+
+    /// Upcoming deadline windows (this week) for the relay, which starts each activity with a push when
+    /// its window opens. Ones already running or dismissed are left out; uploads only when something changed.
+    @MainActor
+    static func uploadSchedule(_ projects: [Project], now: Date = .now) async {
+        guard Relay.isEnabled else { return }
+        let running = Set(Activity<DeadlineAttributes>.activities.map(\.attributes.milestoneID))
+        let started = UserDefaults.standard.dictionary(forKey: startedKey) as? [String: Date] ?? [:]
+        var items: [[String: Any]] = []
+        let enc = JSONEncoder()
+        for p in projects {
+            for m in p.sortedMilestones where !m.isDone && !m.openGoals.isEmpty {
+                let deadline = m.dueDate.adding(days: 1)
+                let windowStart = deadline.addingTimeInterval(-DeadlineAttributes.window)
+                let id = m.id.uuidString
+                guard deadline > now, windowStart < now.adding(days: 7), !running.contains(id), started[id] == nil,
+                      isEnabled else { continue }
+                let attributes = DeadlineAttributes(projectID: p.id.uuidString, milestoneID: id, projectName: p.name,
+                                                    accentHex: p.accentHex, checkpoint: m.title, deadline: deadline)
+                let st = state(m)
+                guard let a = try? JSONSerialization.jsonObject(with: enc.encode(attributes)),
+                      let c = try? JSONSerialization.jsonObject(with: enc.encode(st)) else { continue }
+                items.append(["id": id, "at": windowStart.timeIntervalSince1970.rounded(), "staleAt": deadline.timeIntervalSince1970,
+                              "attributes": a, "state": c,
+                              "alert": ["title": "\(m.title) is due tonight",
+                                        "body": "4 hours left · \(st.openCount) goal\(st.openCount == 1 ? "" : "s") open in \(p.name)"]])
+            }
+        }
+        items = Array(items.sorted { ($0["at"] as? Double ?? 0) < ($1["at"] as? Double ?? 0) }.prefix(10))
+        let body: [String: Any] = ["device": Relay.deviceID, "deviceSecret": Relay.deviceSecret, "items": items]
+        guard let data = try? JSONSerialization.data(withJSONObject: body, options: .sortedKeys) else { return }
+        // Stable across launches (hashValue isn't), so an unchanged schedule never re-uploads.
+        let hash = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+        guard UserDefaults.standard.string(forKey: scheduleHashKey) != hash else { return }
+        if await Relay.send("schedules", method: "PUT", data: data) { UserDefaults.standard.set(hash, forKey: scheduleHashKey) }
+    }
+
+    /// iOS hands out a push-to-start token for the activity type; the relay needs it to start one remotely.
+    static func watchStartToken() {
+        Task {
+            for await token in Activity<DeadlineAttributes>.pushToStartTokenUpdates {
+                let hex = token.map { String(format: "%02x", $0) }.joined()
+                UserDefaults.standard.set(hex, forKey: Relay.startTokenKey)
+                await Relay.sendStartToken()
+            }
+        }
     }
 
     /// Finished: show it done for a few minutes. Anything else (day over, checkpoint moved or deleted): gone now.

@@ -68,7 +68,16 @@ enum Relay {
         let hex = token.map { String(format: "%02x", $0) }.joined()
         UserDefaults.standard.set(hex, forKey: tokenKey)
         guard await registerDevice(hex) else { return }
+        // The push-to-start token may have arrived before the device was known to the relay.
+        await sendStartToken()
         for p in projects where !p.githubRepo.isEmpty { await follow(p) }
+    }
+
+    static let startTokenKey = "relay.startToken"
+
+    static func sendStartToken() async {
+        guard let hex = UserDefaults.standard.string(forKey: startTokenKey) else { return }
+        _ = await post("devices/\(deviceID)/start-token", ["deviceSecret": deviceSecret, "startToken": hex])
     }
 
     @discardableResult
@@ -89,12 +98,17 @@ enum Relay {
         return await post("hooks/" + h.id, ["secret": h.secret, "device": deviceID, "deviceSecret": deviceSecret])
     }
 
-    private static func post(_ path: String, _ body: [String: String]) async -> Bool {
+    static func post(_ path: String, _ body: [String: String]) async -> Bool {
+        guard let data = try? JSONSerialization.data(withJSONObject: body) else { return false }
+        return await send(path, method: "POST", data: data)
+    }
+
+    static func send(_ path: String, method: String, data: Data) async -> Bool {
         guard let base = AppSettings.relayURL else { return false }
         var req = URLRequest(url: base.appendingPathComponent(path))
-        req.httpMethod = "POST"
+        req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        req.httpBody = data
         guard let (_, res) = try? await URLSession.shared.data(for: req) else { return false }
         return (res as? HTTPURLResponse)?.statusCode == 200
     }

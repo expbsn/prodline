@@ -1,6 +1,8 @@
 # Prodline relay
 
 Turns GitHub pushes into silent pushes, so the app syncs a repo within seconds, even while it's closed.
+It also starts the deadline Live Activity at 20:00 with a push-to-start: the app uploads its upcoming
+deadline windows, and a cron trigger (every 5 minutes) starts each one when it opens.
 A Cloudflare Worker with KV storage; everything fits Cloudflare's free plan (100k requests/day,
 1k KV writes/day; writes only happen when a device or repo registers).
 

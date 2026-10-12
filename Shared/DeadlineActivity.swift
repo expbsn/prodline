@@ -9,8 +9,20 @@ nonisolated struct DeadlineAttributes: ActivityAttributes {
     var projectName: String
     var accentHex: Int
     var checkpoint: String
-    /// When the countdown ends: midnight after the day it's due.
-    var deadline: Date
+    /// When the countdown ends (midnight after the day it's due), as Unix seconds: the relay starts these
+    /// with a push, and a plain number decodes the same everywhere.
+    var deadlineUnix: Double
+
+    var deadline: Date { Date(timeIntervalSince1970: deadlineUnix) }
+
+    init(projectID: String, milestoneID: String, projectName: String, accentHex: Int, checkpoint: String, deadline: Date) {
+        self.projectID = projectID
+        self.milestoneID = milestoneID
+        self.projectName = projectName
+        self.accentHex = accentHex
+        self.checkpoint = checkpoint
+        self.deadlineUnix = deadline.timeIntervalSince1970.rounded()
+    }
 
     /// The activity runs for the last stretch of the deadline day only.
     static let window: TimeInterval = 4 * 3600

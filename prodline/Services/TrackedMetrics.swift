@@ -53,6 +53,12 @@ nonisolated enum Stat {
         }
     }
 
+    /// Numbers that are a level right now (open goals, MRR, followers…) rather than a running total
+    /// (commits, revenue, goals done…). Totals chart as what was added per bucket; levels as they are.
+    static let levels: Set<String> = ["goals_open", "rating", "ratings", "mrr", "arr", "active_subscriptions",
+                                      "active_trials", "followers", "subscribers"]
+    static func isLevel(_ key: String) -> Bool { levels.contains(key) }
+
     /// Ratings don't add up across projects; everything else does.
     static func isAverage(_ key: String) -> Bool { key == "rating" }
 
@@ -92,6 +98,12 @@ extension IntegrationKind {
 extension MetricSnapshot {
     func value(_ key: String) -> Double {
         MetricKey(rawValue: key).map(value) ?? extras[key] ?? 0
+    }
+
+    /// nil when this snapshot doesn't carry the number (charts carry the last one forward instead of
+    /// dropping to zero).
+    func valueIfPresent(_ key: String) -> Double? {
+        MetricKey(rawValue: key).map(value) ?? extras[key]
     }
 }
 
