@@ -37,6 +37,15 @@ struct LiveActivityTests {
         #expect(found.map(\.1.title) == [open.title])
     }
 
+    @Test func readsActivitiesSavedByTheOldFormat() throws {
+        // Earlier versions stored the deadline as a Date under "deadline".
+        let old = #"{"projectID":"p","milestoneID":"m","projectName":"Kite","accentHex":1,"checkpoint":"C","deadline":800000000}"#
+        let a = try JSONDecoder().decode(DeadlineAttributes.self, from: Data(old.utf8))
+        #expect(a.deadline == Date(timeIntervalSinceReferenceDate: 800000000))
+        let roundTrip = try JSONDecoder().decode(DeadlineAttributes.self, from: JSONEncoder().encode(a))
+        #expect(roundTrip.deadlineUnix == a.deadlineUnix)
+    }
+
     @Test func stateListsOpenGoalsFirst() throws {
         let ctx = try makeContext()
         let today = day(2026, 10, 6)

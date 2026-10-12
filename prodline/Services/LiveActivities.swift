@@ -5,14 +5,12 @@ import CryptoKit
 /// Puts a checkpoint that's due today on the Lock Screen and in the Dynamic Island for the last four hours
 /// of the day (a countdown to midnight), but only while it still has open goals. Ticking the last goal shows a short "all done" and lets it go.
 ///
-/// iOS only lets the app start one while it's open, and ends any after 8 hours. So it appears the
-/// first time Prodline is opened on the deadline day, and comes back on a later open if the system
-/// ended it. If the user swiped it away, it stays away for that checkpoint.
+/// The relay starts it at 20:00 with a push (see uploadSchedule); an open app also starts it. If it goes
+/// missing it comes back on the next sync; only a swipe away the app saw keeps it away for that checkpoint.
 enum LiveActivities {
     static let enabledKey = "config.liveActivity"
     /// milestone id → when its activity was started.
     private static let startedKey = "liveActivity.started"
-    private static let systemLimit: TimeInterval = 7.5 * 3600
     static let maxGoals = 3
 
     static var isEnabled: Bool { UserDefaults.standard.object(forKey: enabledKey) as? Bool ?? true }
@@ -45,6 +43,8 @@ enum LiveActivities {
 
         var started = UserDefaults.standard.dictionary(forKey: startedKey) as? [String: Date] ?? [:]
         started = started.filter { now.timeIntervalSince($0.value) < 36 * 3600 }
+        let dismissed = dismissedIDs()
+        for activity in running { watchDismissal(activity) }
         for (p, m) in wanted {
             let id = m.id.uuidString
             let content = ActivityContent(state: state(m), staleDate: m.dueDate.adding(days: 1))
@@ -52,20 +52,49 @@ enum LiveActivities {
                 if activity.content.state != content.state { await activity.update(content) }
                 continue
             }
-            // Gone before the system's 8 hours were up: the user dismissed it.
-            if let at = started[id], now.timeIntervalSince(at) < systemLimit { continue }
+            // Only a swipe away seen by the app keeps it away; an activity that's merely missing (ended by the
+            // system, lost in an update) comes back.
+            if dismissed.contains(id) { continue }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { continue }
             let attributes = DeadlineAttributes(projectID: p.id.uuidString, milestoneID: id, projectName: p.name,
                                                 accentHex: p.accentHex, checkpoint: m.title, deadline: m.dueDate.adding(days: 1))
-            if (try? Activity.request(attributes: attributes, content: content)) != nil { started[id] = now }
+            if let activity = try? Activity.request(attributes: attributes, content: content) {
+                started[id] = now
+                watchDismissal(activity)
+            }
         }
         // Ones the relay started while the app was closed count as started too (a dismissal then sticks).
-        for activity in Activity<DeadlineAttributes>.activities where started[activity.attributes.milestoneID] == nil {
-            started[activity.attributes.milestoneID] = now
-        }
         UserDefaults.standard.set(started, forKey: startedKey)
         await uploadSchedule(projects, now: now)
     }
+
+    // MARK: Swiped away
+
+    private static let dismissedKey = "liveActivity.dismissed"
+    nonisolated(unsafe) private static var watching: Set<String> = []
+
+    /// milestone ids the user swiped away (kept a day and a half).
+    static func dismissedIDs(now: Date = .now) -> Set<String> {
+        let all = UserDefaults.standard.dictionary(forKey: dismissedKey) as? [String: Date] ?? [:]
+        return Set(all.filter { now.timeIntervalSince($0.value) < 36 * 3600 }.keys)
+    }
+
+    /// Notes when the user swipes an activity away (the app's own `end` calls leave a final state first).
+    @MainActor
+    static func watchDismissal(_ activity: Activity<DeadlineAttributes>) {
+        guard watching.insert(activity.id).inserted else { return }
+        Task { @MainActor in
+            for await state in activity.activityStateUpdates where state == .dismissed {
+                guard !endedByApp.contains(activity.id) else { return }
+                var all = UserDefaults.standard.dictionary(forKey: dismissedKey) as? [String: Date] ?? [:]
+                all[activity.attributes.milestoneID] = .now
+                UserDefaults.standard.set(all, forKey: dismissedKey)
+                return
+            }
+        }
+    }
+
+    nonisolated(unsafe) private static var endedByApp: Set<String> = []
 
     // MARK: Starting at 20:00 with the app closed
 
@@ -77,7 +106,7 @@ enum LiveActivities {
     static func uploadSchedule(_ projects: [Project], now: Date = .now) async {
         guard Relay.isEnabled else { return }
         let running = Set(Activity<DeadlineAttributes>.activities.map(\.attributes.milestoneID))
-        let started = UserDefaults.standard.dictionary(forKey: startedKey) as? [String: Date] ?? [:]
+        let dismissed = dismissedIDs()
         var items: [[String: Any]] = []
         let enc = JSONEncoder()
         for p in projects {
@@ -85,7 +114,7 @@ enum LiveActivities {
                 let deadline = m.dueDate.adding(days: 1)
                 let windowStart = deadline.addingTimeInterval(-DeadlineAttributes.window)
                 let id = m.id.uuidString
-                guard deadline > now, windowStart < now.adding(days: 7), !running.contains(id), started[id] == nil,
+                guard deadline > now, windowStart < now.adding(days: 7), !running.contains(id), !dismissed.contains(id),
                       isEnabled else { continue }
                 let attributes = DeadlineAttributes(projectID: p.id.uuidString, milestoneID: id, projectName: p.name,
                                                     accentHex: p.accentHex, checkpoint: m.title, deadline: deadline)
@@ -121,6 +150,7 @@ enum LiveActivities {
     /// Finished: show it done for a few minutes. Anything else (day over, checkpoint moved or deleted): gone now.
     @MainActor
     private static func end(_ activity: Activity<DeadlineAttributes>, projects: [Project], now: Date) async {
+        endedByApp.insert(activity.id)
         let m = projects.lazy.flatMap { $0.milestones ?? [] }.first { $0.id.uuidString == activity.attributes.milestoneID }
         if let m, m.dueDate >= now.startOfDay, m.isDone || m.openGoals.isEmpty, m.hasGoals {
             var final = state(m)
@@ -133,7 +163,10 @@ enum LiveActivities {
 
     @MainActor
     static func endAll() async {
-        for activity in Activity<DeadlineAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }
+        for activity in Activity<DeadlineAttributes>.activities {
+            endedByApp.insert(activity.id)
+            await activity.end(nil, dismissalPolicy: .immediate)
+        }
     }
 
     #if DEBUG

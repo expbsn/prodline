@@ -24,6 +24,34 @@ nonisolated struct DeadlineAttributes: ActivityAttributes {
         self.deadlineUnix = deadline.timeIntervalSince1970.rounded()
     }
 
+    // Activities saved by earlier versions stored `deadline` as a Date; read those too, so an update
+    // never strands a running activity it can't decode.
+    private enum CodingKeys: String, CodingKey { case projectID, milestoneID, projectName, accentHex, checkpoint, deadlineUnix, deadline }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        projectID = try c.decode(String.self, forKey: .projectID)
+        milestoneID = try c.decode(String.self, forKey: .milestoneID)
+        projectName = try c.decode(String.self, forKey: .projectName)
+        accentHex = try c.decode(Int.self, forKey: .accentHex)
+        checkpoint = try c.decode(String.self, forKey: .checkpoint)
+        if let unix = try c.decodeIfPresent(Double.self, forKey: .deadlineUnix) {
+            deadlineUnix = unix
+        } else {
+            deadlineUnix = try c.decode(Date.self, forKey: .deadline).timeIntervalSince1970
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(projectID, forKey: .projectID)
+        try c.encode(milestoneID, forKey: .milestoneID)
+        try c.encode(projectName, forKey: .projectName)
+        try c.encode(accentHex, forKey: .accentHex)
+        try c.encode(checkpoint, forKey: .checkpoint)
+        try c.encode(deadlineUnix, forKey: .deadlineUnix)
+    }
+
     /// The activity runs for the last stretch of the deadline day only.
     static let window: TimeInterval = 4 * 3600
     var windowStart: Date { deadline.addingTimeInterval(-Self.window) }
