@@ -401,8 +401,16 @@ private struct StoryCanvas: View {
         let d = max(0, state.content / (layout.height * 0.5))
         return VStack(alignment: .leading, spacing: 12) {
             Text("Prodline").eyebrow()
-            Text("Side projects die in a drawer.").display(44, 800).foregroundStyle(Theme.ink)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Side projects")
+                HStack(alignment: .firstTextBaseline, spacing: 22) {
+                    // Lined up with "Side"; the loop reaches out past the margin like a real scribble.
+                    Text("rot").overlay { PencilCircle().padding(.horizontal, -12).padding(.vertical, -7) }
+                    Text("in a drawer.")
+                }
+            }
+            .display(44, 800).foregroundStyle(Theme.ink)
+            .lineLimit(1).minimumScaleFactor(0.7)
             Text("Prodline gets yours out the door. Scroll to see how.")
                 .font(.ui(19)).foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)
@@ -1065,5 +1073,45 @@ struct SectionBurst: View {
                 }
             }
         }
+    }
+}
+
+/// A loop drawn round a word like with a soft pencil: one slightly lopsided pass that overshoots its
+/// start, a little rough at the edges, drawn in once when it appears.
+private struct PencilCircle: View {
+    @State private var drawn: CGFloat = 0
+
+    var body: some View {
+        PencilLoop()
+            .trim(from: 0, to: drawn)
+            .stroke(Color(hex: 0x3A3A3C), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+            // Graphite: a touch of grain rather than a clean vector line.
+            .overlay {
+                PencilLoop()
+                    .trim(from: 0, to: drawn)
+                    .stroke(Color(hex: 0x3A3A3C).opacity(0.35), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [3, 2.5]))
+                    .offset(x: 0.8, y: -0.6)
+            }
+            .opacity(0.9)
+            .allowsHitTesting(false)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.9).delay(0.6)) { drawn = 1 }
+            }
+    }
+}
+
+private struct PencilLoop: Shape {
+    func path(in r: CGRect) -> Path {
+        let w = r.width, h = r.height, x = r.minX, y = r.minY
+        func p(_ fx: CGFloat, _ fy: CGFloat) -> CGPoint { CGPoint(x: x + fx * w, y: y + fy * h) }
+        var path = Path()
+        // Starts top right, goes round anticlockwise, and overshoots past the start like a quick hand.
+        path.move(to: p(0.78, 0.12))
+        path.addCurve(to: p(0.06, 0.38), control1: p(0.52, -0.02), control2: p(0.12, 0.05))
+        path.addCurve(to: p(0.40, 0.97), control1: p(-0.02, 0.72), control2: p(0.14, 0.98))
+        path.addCurve(to: p(0.97, 0.55), control1: p(0.70, 0.98), control2: p(1.0, 0.82))
+        path.addCurve(to: p(0.62, 0.04), control1: p(0.96, 0.25), control2: p(0.82, 0.06))
+        path.addCurve(to: p(0.30, 0.16), control1: p(0.50, 0.02), control2: p(0.38, 0.08))
+        return path
     }
 }
