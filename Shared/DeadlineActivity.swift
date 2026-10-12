@@ -9,10 +9,12 @@ nonisolated struct DeadlineAttributes: ActivityAttributes {
     var projectName: String
     var accentHex: Int
     var checkpoint: String
-    /// The day it's due; the countdown runs to the end of it.
-    var due: Date
+    /// When the countdown ends: midnight after the day it's due.
+    var deadline: Date
 
-    var deadline: Date { due.startOfDay.adding(days: 1) }
+    /// The activity runs for the last stretch of the deadline day only.
+    static let window: TimeInterval = 4 * 3600
+    var windowStart: Date { deadline.addingTimeInterval(-Self.window) }
     var url: URL { URL(string: "prodline://project/\(projectID)")! }
     var initial: String { projectName.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
 

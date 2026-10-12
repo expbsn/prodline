@@ -15,32 +15,32 @@ struct DeadlineLiveActivity: Widget {
             let a = context.attributes, s = context.state
             let accent = Accent(hex: a.accentHex)
             return DynamicIsland {
+                // Top: badge and countdown beside the camera; below, at full width: names, the next goal, the bar.
                 DynamicIslandExpandedRegion(.leading) {
-                    LABadge(initial: a.initial, accent: accent, size: 34)
-                        .padding(.leading, 4).padding(.top, 4)
+                    LABadge(initial: a.initial, accent: accent, size: 30)
+                        .padding(.leading, 6)
+                        .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     LACountdown(state: s, deadline: a.deadline, onDark: true)
-                        .padding(.trailing, 4).padding(.top, 4)
-                }
-                DynamicIslandExpandedRegion(.center) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text(a.projectName.uppercased()).font(.ui(11, .semibold)).tracking(0.6)
-                            .foregroundStyle(.white.opacity(0.6))
-                        Text(a.checkpoint).display(17, 800).foregroundStyle(.white).lineLimit(1)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, 4)
+                        .padding(.trailing, 6)
+                        .frame(maxHeight: .infinity, alignment: .center)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        LAGoals(state: s, accent: accent, onDark: true, max: 2)
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack(alignment: .firstTextBaseline, spacing: 6) {
+                            Text(a.checkpoint).display(17, 800).foregroundStyle(.white).lineLimit(1)
+                            Text(a.projectName.uppercased()).font(.ui(10, .semibold)).tracking(0.6)
+                                .foregroundStyle(.white.opacity(0.55)).lineLimit(1)
+                        }
+                        LAGoals(state: s, accent: accent, onDark: true, max: 1, showsMore: false)
                         LAProgress(state: s, accent: accent, onDark: true)
                     }
-                    .padding(.horizontal, 4).padding(.top, 6)
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 2)
                 }
             } compactLeading: {
-                LARing(state: s, accent: accent, size: 20, onDark: true)
+                LATimeRing(start: a.windowStart, end: a.deadline, done: s.allDone, accent: accent, size: 20)
                     .padding(.horizontal, 2)
             } compactTrailing: {
                 if s.allDone {
@@ -49,11 +49,11 @@ struct DeadlineLiveActivity: Widget {
                     Text(timerInterval: Date.now...max(Date.now, a.deadline), countsDown: true, showsHours: true)
                         .font(.ui(14, .semibold)).monospacedDigit()
                         .foregroundStyle(accent.island)
-                        .frame(width: 66)
+                        .frame(width: 58)
                         .multilineTextAlignment(.trailing)
                 }
             } minimal: {
-                LARing(state: s, accent: accent, size: 20, onDark: true)
+                LATimeRing(start: a.windowStart, end: a.deadline, done: s.allDone, accent: accent, size: 20)
             }
             .widgetURL(a.url)
             .keylineTint(accent.island)
@@ -113,24 +113,23 @@ private struct LABadge: View {
     }
 }
 
-private struct LARing: View {
-    let state: DeadlineAttributes.ContentState
+/// The time left as a ring that runs down by itself (the system animates timer progress views).
+private struct LATimeRing: View {
+    let start: Date
+    let end: Date
+    let done: Bool
     let accent: Accent
     var size: CGFloat
-    var onDark: Bool
 
     var body: some View {
-        let color = onDark ? accent.island : accent.base
-        ZStack {
-            Circle().inset(by: 1.5).stroke(color.opacity(0.25), lineWidth: 3)
-            Circle().inset(by: 1.5).trim(from: 0, to: max(0.02, state.progress))
-                .stroke(color, style: StrokeStyle(lineWidth: 3, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-            if state.allDone {
-                Image(systemName: "checkmark").font(.system(size: size * 0.42, weight: .heavy)).foregroundStyle(color)
-            }
+        if done {
+            Image(systemName: "checkmark.circle.fill").font(.system(size: size, weight: .bold)).foregroundStyle(accent.island)
+        } else {
+            ProgressView(timerInterval: min(start, end)...end, countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
+                .progressViewStyle(.circular)
+                .tint(accent.island)
+                .frame(width: size, height: size)
         }
-        .frame(width: size, height: size)
     }
 }
 
@@ -218,7 +217,7 @@ private struct LAProgress: View {
 
 extension DeadlineAttributes {
     static let preview = DeadlineAttributes(projectID: "p", milestoneID: "m", projectName: "Habit Hero", accentHex: 0x58CC02,
-                                            checkpoint: "Streak screen", due: .now)
+                                            checkpoint: "Streak screen", deadline: .now.addingTimeInterval(2 * 3600))
 }
 
 extension DeadlineAttributes.ContentState {

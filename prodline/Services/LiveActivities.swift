@@ -1,8 +1,8 @@
 import Foundation
 import ActivityKit
 
-/// Puts a checkpoint that's due today on the Lock Screen and in the Dynamic Island, but only while it
-/// still has open goals. Ticking the last goal shows a short "all done" and lets it go.
+/// Puts a checkpoint that's due today on the Lock Screen and in the Dynamic Island for the last four hours
+/// of the day (a countdown to midnight), but only while it still has open goals. Ticking the last goal shows a short "all done" and lets it go.
 ///
 /// iOS only lets the app start one while it's open, and ends any after 8 hours. So it appears the
 /// first time Prodline is opened on the deadline day, and comes back on a later open if the system
@@ -20,7 +20,8 @@ enum LiveActivities {
     static func candidates(_ projects: [Project], now: Date = .now) -> [(Project, Milestone)] {
         projects.flatMap { p in
             p.sortedMilestones
-                .filter { !$0.isDone && $0.dueDate == now.startOfDay && !$0.openGoals.isEmpty }
+                .filter { !$0.isDone && $0.dueDate == now.startOfDay && !$0.openGoals.isEmpty
+                    && now >= now.startOfDay.adding(days: 1).addingTimeInterval(-DeadlineAttributes.window) }
                 .map { (p, $0) }
         }
     }
@@ -54,7 +55,7 @@ enum LiveActivities {
             if let at = started[id], now.timeIntervalSince(at) < systemLimit { continue }
             guard ActivityAuthorizationInfo().areActivitiesEnabled else { continue }
             let attributes = DeadlineAttributes(projectID: p.id.uuidString, milestoneID: id, projectName: p.name,
-                                                accentHex: p.accentHex, checkpoint: m.title, due: m.dueDate)
+                                                accentHex: p.accentHex, checkpoint: m.title, deadline: m.dueDate.adding(days: 1))
             if (try? Activity.request(attributes: attributes, content: content)) != nil { started[id] = now }
         }
         UserDefaults.standard.set(started, forKey: startedKey)
@@ -82,8 +83,10 @@ enum LiveActivities {
     /// -PRODLINE_LIVE: a sample activity, to look at the layout without waiting for a deadline day.
     @MainActor
     static func demo() async {
+        // Due so that the four-hour countdown is about half way.
         let attributes = DeadlineAttributes(projectID: "demo", milestoneID: "demo", projectName: "Habit Hero",
-                                            accentHex: 0x58CC02, checkpoint: "Streak screen", due: .now)
+                                            accentHex: 0x58CC02, checkpoint: "Streak screen",
+                                            deadline: Date.now.addingTimeInterval(2 * 3600))
         let state = DeadlineAttributes.ContentState(
             goals: [WidgetGoal(title: "Shareable streak card", done: false), WidgetGoal(title: "Push reminders", done: false),
                     WidgetGoal(title: "Onboarding flow live", done: true)],

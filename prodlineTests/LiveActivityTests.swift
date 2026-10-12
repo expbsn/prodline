@@ -31,7 +31,9 @@ struct LiveActivityTests {
         let finished = checkpoint("Finished today", due: today, goals: [("E", false)], in: p, ctx: ctx)
         finished.completedAt = today
 
-        let found = LiveActivities.candidates([p], now: today.addingTimeInterval(9 * 3600))
+        // Only in the last four hours of the day.
+        #expect(LiveActivities.candidates([p], now: today.addingTimeInterval(19 * 3600)).isEmpty)
+        let found = LiveActivities.candidates([p], now: today.addingTimeInterval(21 * 3600))
         #expect(found.map(\.1.title) == [open.title])
     }
 
