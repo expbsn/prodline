@@ -21,3 +21,6 @@ Shown unmodified on the integration screens to say which service a connection ta
 | Logo-stripe | White Stripe wordmark from the [Stripe logo kit](https://stripe.com/newsroom/brand-assets), on Stripe's purple as its guidelines allow for dark backgrounds |
 
 App Store Connect keeps a generic symbol: Apple doesn't allow its logos or icons in third-party apps without a license. The other services keep generic symbols: Shopify, Vercel, npm and PostHog require written permission for their logos, and the rest publish no clear rule.
+
+## Web font
+- Afacad Flux (SIL Open Font License 1.1), subset to Latin for `web/fonts/AfacadFlux.woff2`.

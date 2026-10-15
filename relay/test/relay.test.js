@@ -169,3 +169,27 @@ test("the push-to-start payload carries the activity", () => {
   assert.equal(p.aps.timestamp, 5);
   assert.equal(p.aps["stale-date"], 99);
 });
+
+test("waitlist: signs up once, ignores bots, reports signups", async () => {
+  const env = { RELAY: kv() };
+  let r = await route(req("/waitlist", "POST", { email: " Ada@Example.com " }), env);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get("access-control-allow-origin"), "*");
+  assert.equal((await r.json()).count, 1);
+  r = await route(req("/waitlist", "POST", { email: "ada@example.com" }), env);
+  assert.equal((await r.json()).already, true);
+  r = await route(req("/waitlist", "POST", { email: "bot@spam.com", website: "x" }), env);
+  assert.equal(r.status, 200);
+  r = await route(req("/waitlist", "POST", { email: "nope" }), env);
+  assert.equal(r.status, 400);
+  assert.equal(r.headers.get("access-control-allow-origin"), "*");
+  r = await route(req("/waitlist", "OPTIONS"), env);
+  assert.equal(r.status, 204);
+  r = await route(new Request(BASE + "/waitlist/metrics"), env);
+  assert.deepEqual((await r.json()).metrics, [{ key: "signups", value: 1 }]);
+  const locked = { ...env, WAITLIST_KEY: "k".repeat(20) };
+  r = await route(new Request(BASE + "/waitlist/metrics"), locked);
+  assert.equal(r.status, 401);
+  r = await route(new Request(BASE + "/waitlist/metrics", { headers: { authorization: "Bearer " + "k".repeat(20) } }), locked);
+  assert.equal(r.status, 200);
+});

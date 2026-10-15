@@ -11,12 +11,15 @@
 //   POST   /github/:hook              GitHub webhook (X-Hub-Signature-256)
 //   POST   /devices/:dev/start-token {deviceSecret, startToken}      Live Activity push-to-start token
 //   PUT    /schedules                {device, deviceSecret, items}     deadline activities to start later
+//   POST   /waitlist                 {email, website?}                  join the tester waitlist (landing page)
+//   GET    /waitlist/metrics         Bearer WAITLIST_KEY (if set)       signups, in the Prodline endpoint format
 //   GET    /health
 //   cron (every 5 min): starts scheduled Live Activities whose time has come
 //
 // Storage (KV namespace RELAY):  device:<id> → {secretHash, token, env, startToken?}
 //                                sched:<device> → {items: [{id, at, attributes, state, alert, sent?}]}
 //                                hook:<id>   → {secret, devices: [ids]}
+//                                wait:<sha256(email)> → {email, at};  waitcount → number
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
 // A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
 // APNS_KEY_PROD + APNS_KEY_ID_PROD (or use one "Sandbox & Production" key as APNS_KEY for both).
@@ -35,12 +38,15 @@ class HttpError extends Error {
 
 /// Every request: errors become JSON answers with their status. `apns` is swappable for tests.
 export async function route(request, env, apns = sendSilentPush) {
+  let res;
   try {
-    return await handle(request, env, apns);
+    res = await handle(request, env, apns);
   } catch (e) {
-    if (e instanceof HttpError) return json({ error: e.message }, e.status);
-    return json({ error: "internal" }, 500);
+    res = e instanceof HttpError ? json({ error: e.message }, e.status) : json({ error: "internal" }, 500);
   }
+  // The landing page calls the waitlist from another origin, errors included.
+  if (new URL(request.url).pathname.startsWith("/waitlist")) for (const [k, v] of Object.entries(CORS)) res.headers.set(k, v);
+  return res;
 }
 
 async function handle(request, env, apns) {
@@ -49,6 +55,8 @@ async function handle(request, env, apns) {
   const method = request.method;
 
   if (method === "GET" && url.pathname === "/health") return json({ ok: true });
+
+  if (parts[0] === "waitlist") return waitlist(request, env, parts, method);
 
   if (method === "POST" && parts.length === 1 && parts[0] === "devices") {
     const body = await readJSON(request);
@@ -169,6 +177,41 @@ async function handle(request, env, apns) {
     return json({ ok: true, sent, apple });
   }
 
+  throw new HttpError(404, "not found");
+}
+
+// MARK: - Waitlist (landing page)
+
+const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
+const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "POST, GET, OPTIONS",
+  "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400" };
+
+async function waitlist(request, env, parts, method) {
+  if (method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+
+  if (method === "POST" && parts.length === 1) {
+    const body = await readJSON(request);
+    // Bots fill the hidden field; tell them it worked and keep nothing.
+    if (body.website) return (json({ ok: true }));
+    const email = String(body.email ?? "").trim().toLowerCase();
+    if (!EMAIL.test(email)) throw new HttpError(400, "bad email");
+    const key = `wait:${await sha256(email)}`;
+    if (await env.RELAY.get(key)) return (json({ ok: true, already: true }));
+    await env.RELAY.put(key, JSON.stringify({ email, at: new Date().toISOString() }));
+    const count = Number(await env.RELAY.get("waitcount") ?? 0) + 1;
+    await env.RELAY.put("waitcount", String(count));
+    return (json({ ok: true, count }));
+  }
+
+  if (method === "GET" && parts.length === 2 && parts[1] === "metrics") {
+    if (env.WAITLIST_KEY) {
+      const auth = request.headers.get("authorization") ?? "";
+      if (!timingSafeEqual(auth, `Bearer ${env.WAITLIST_KEY}`)) throw new HttpError(401, "unauthorized");
+    }
+    const count = Number(await env.RELAY.get("waitcount") ?? 0);
+    return (json({ schemaVersion: 1, project: "Prodline", asOf: new Date().toISOString(),
+      metrics: [{ key: "signups", value: count }] }));
+  }
   throw new HttpError(404, "not found");
 }
 
