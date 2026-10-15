@@ -5,108 +5,237 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prodline · Ship your side projects</title>
   <meta name="description" content="Prodline turns side projects into short plans, daily ticks and real numbers. Join the iPhone beta.">
-  <meta name="theme-color" content="#F2F2F5">
+  <meta name="theme-color" content="#FFFFFF">
   <meta name="color-scheme" content="light">
   <meta property="og:title" content="Prodline · Ship your side projects">
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css">
-  <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
-      }
-    }
-  </script>
-  <script type="module" src="main.js"></script>
+  <link rel="stylesheet" href="style.css?v=6">
+  <script type="module" src="main.js?v=6"></script>
 </head>
 <body>
-  <canvas id="gl" aria-hidden="true"></canvas>
+  <header class="nav" id="top">
+    <a class="logo" href="#top" aria-label="Prodline home">
+      <img src="mark.svg" alt="" width="26" height="26">
+      <span>Prod<span class="dot">line</span></span>
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#numbers">Integrations</a>
+    </nav>
+    <a class="btn dark small" href="#join">Join the beta</a>
+  </header>
 
-  <a class="brand" href="#start" data-go="0" aria-label="Prodline, back to top">
-    <img src="mark.svg" alt="" width="28" height="28">
-    <span>Prodline</span>
-  </a>
+  <main>
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-copy">
+        <h1 data-reveal><span class="nowrap">Side projects <svg class="spark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 0c1.6 10.4 9.6 18.4 20 20-10.4 1.6-18.4 9.6-20 20-1.6-10.4-9.6-18.4-20-20C10.4 18.4 18.4 10.4 20 0z"/></svg></span><br>rot in a drawer.</h1>
+        <p class="lede" data-reveal style="--d:.08s">Prodline gets yours out the door. Short plans, one tick a day, and the numbers that prove it worked, right on your iPhone.</p>
+        <div class="cta-row" data-reveal style="--d:.16s">
+          <a class="btn dark" href="#join"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Join the beta</a>
+        </div>
+        <a class="more" href="#how" data-reveal style="--d:.24s">Find out more <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
+        <svg class="swoop" viewBox="0 0 300 420" aria-hidden="true">
+          <path class="draw" pathLength="1" d="M60 10 C200 30 260 120 220 230 C190 310 150 380 160 400 C170 420 190 398 175 375 C150 340 80 330 10 335"/>
+          <path class="draw head" pathLength="1" d="M28 318 L8 335 L30 352"/>
+        </svg>
+      </div>
 
-  <main id="beats">
-    <section class="beat" id="start" data-len="2.6" aria-labelledby="h-start">
-      <div class="copy">
-        <p class="eyebrow" data-k>Prodline for iPhone · Beta</p>
-        <h1 id="h-start" data-k>Side projects <span class="rot">rot<svg class="pencil" viewBox="0 0 220 120" aria-hidden="true"><path pathLength="1" d="M178 38 C150 10 60 8 28 40 C4 64 18 100 80 108 C140 116 204 96 206 62 C208 34 170 18 118 16 C92 15 70 20 56 26"/></svg></span><br>in a drawer.</h1>
-        <p class="lede" data-k>Prodline gets yours out the door. Short plans, one tick a day, and the numbers that prove it worked.</p>
-        <div class="row" data-k>
-          <a class="chunky" href="#join" data-go="4">Join the beta</a>
-          <span class="hint"><span class="dots" aria-hidden="true"></span>Scroll to open it</span>
+      <div class="hero-art" aria-hidden="true">
+        <div class="blob yellow"></div>
+        <!-- Dash screen -->
+        <div class="phone light" data-reveal style="--d:.1s">
+          <div class="ph-top"><span class="ph-title">Dash</span><span class="chip flame"><svg viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.3 2.4-5.4 3.8-7.9.5 1.6 1.4 2.6 2.4 3.1C12 7 13.2 4.6 15 3c.2 3.4 3.5 5.6 3.5 11.2 0 4-2.7 6.8-6.5 6.8z"/></svg>12</span></div>
+          <div class="pcard" style="--a:#58CC02;--ad:#46A302">
+            <div class="cover"></div>
+            <div class="badge">H</div>
+            <b>Habit Hero</b>
+            <small>Checkpoint 2 · Streak screen</small>
+            <div class="bar"><i style="width:66%"></i></div>
+          </div>
+          <div class="pcard" style="--a:#1CB0F6;--ad:#1593CE">
+            <div class="cover"></div>
+            <div class="badge">T</div>
+            <b>Tiny Invoice</b>
+            <small>Checkpoint 4 · Beta</small>
+            <div class="bar"><i style="width:40%"></i></div>
+          </div>
+          <div class="pcard peek" style="--a:#FF4B4B;--ad:#D93B3B">
+            <div class="cover"></div>
+            <div class="badge">R</div>
+          </div>
+          <div class="ph-tabs"><i class="on"></i><i></i><i></i><i></i></div>
+        </div>
+        <!-- Project screen, dark -->
+        <div class="phone dark" data-reveal style="--d:.22s">
+          <div class="ph-head"><span class="back">‹</span><span><b>Habit Hero</b><small>Day 9 of 14</small></span><span class="badge sm" style="--a:#58CC02;--ad:#46A302">H</span></div>
+          <div class="ph-big">$1,284 <em>+$212 this week</em></div>
+          <svg class="ph-chart" viewBox="0 0 200 90" preserveAspectRatio="none">
+            <path class="area" d="M0 82 L14 78 L28 80 L42 70 L56 72 L70 60 L84 62 L98 50 L112 54 L126 40 L140 44 L154 30 L168 34 L182 18 L200 12 L200 90 L0 90Z"/>
+            <path class="line" d="M0 82 L14 78 L28 80 L42 70 L56 72 L70 60 L84 62 L98 50 L112 54 L126 40 L140 44 L154 30 L168 34 L182 18 L200 12"/>
+          </svg>
+          <div class="ph-seg"><span>Week</span><span class="on">Month</span><span>All</span></div>
+          <div class="ph-tiles">
+            <span><b>3.1k</b>visits</span><span><b>412</b>downloads</span><span><b>+86</b>signups</span>
+          </div>
+          <div class="ph-goals">
+            <p><i class="ok"></i>Shareable streak card</p>
+            <p><i></i>Push reminders</p>
+          </div>
+          <div class="ph-actions"><span class="red">Let go</span><span class="green">Keep it</span></div>
         </div>
       </div>
     </section>
 
-    <section class="beat" id="plan" data-len="3.2" aria-labelledby="h-plan">
-      <div class="copy">
-        <p class="eyebrow" data-k>01 · Plan</p>
-        <h2 id="h-plan" data-k>Two weeks.<br>A few checkpoints.<br>Suddenly, a plot.</h2>
-        <p class="lede" data-k>Break the big vague thing into checkpoints you can see coming. Tick a goal and the next one rolls into view. The drawer will miss it.</p>
-        <p class="meta" data-k><span class="pill" id="plan-meta">Checkpoint 1 of 7</span></p>
+    <!-- How it works: two cards -->
+    <section class="block" id="how">
+      <h2 data-reveal>Get the most out<br>of every side project</h2>
+      <div class="duo">
+        <article class="card soft" data-reveal>
+          <div>
+            <h3>Plans that fit in two weeks</h3>
+            <p>Break the big vague thing into a few checkpoints. Tick a goal and the next one comes into view.</p>
+            <a class="more" href="#features">See how <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <svg class="art" viewBox="0 0 220 200" aria-hidden="true">
+            <path fill="#58CC02" d="M120 20 C150 10 210 40 220 70 L220 200 L70 200 C80 150 95 40 120 20Z"/>
+            <path fill="#1C1C1E" d="M40 110 C60 90 110 95 125 120 L140 200 L0 200 C10 160 22 130 40 110Z"/>
+            <path class="draw" pathLength="1" fill="none" stroke="#1C1C1E" stroke-width="4" stroke-linecap="round" d="M150 120 C140 90 170 70 190 85 C210 100 195 135 170 125 C150 117 160 95 178 90"/>
+          </svg>
+        </article>
+        <article class="card soft" data-reveal style="--d:.1s">
+          <div>
+            <h3>Numbers without the tab hopping</h3>
+            <p>Sales, visits and downloads land in your project on their own. Refreshing five dashboards is now a hobby, not a job.</p>
+            <a class="more" href="#numbers">See integrations <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+          </div>
+          <svg class="art" viewBox="0 0 220 200" aria-hidden="true">
+            <path fill="none" stroke="#FFC800" stroke-width="22" stroke-linecap="round" d="M60 70 A110 110 0 0 1 130 26"/>
+            <path fill="none" stroke="#1C1C1E" stroke-width="22" d="M170 22 A110 110 0 0 1 240 80"/>
+            <path fill="none" stroke="#FF4B4B" stroke-width="22" stroke-linecap="round" d="M40 110 A120 120 0 0 0 52 200"/>
+            <path class="draw" pathLength="1" fill="none" stroke="#1C1C1E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M92 160 C100 130 110 175 120 150 C130 125 138 165 150 135 C160 112 170 120 186 92 M172 94 L188 90 L190 106"/>
+          </svg>
+        </article>
       </div>
     </section>
 
-    <section class="beat" id="streak" data-len="2.6" aria-labelledby="h-streak">
-      <div class="copy">
-        <p class="eyebrow" data-k>02 · Show up</p>
-        <h2 id="h-streak" data-k>One tick a day<br>keeps the flame fed.</h2>
-        <p class="lede" data-k>Commits and ticked goals count on their own. It's the lowest-maintenance pet you'll ever own, and it doesn't shed.</p>
-        <p class="meta" data-k><span class="big" id="streak-n">0</span><span class="unit">day streak</span></p>
+    <!-- Features grid -->
+    <section class="block features" id="features">
+      <div class="f-intro" data-reveal>
+        <h2>Built for people<br>with too many ideas</h2>
+        <p class="lede">Prodline keeps the fun part fun and quietly handles the rest.</p>
+      </div>
+      <div class="f-grid">
+        <div class="f" data-reveal>
+          <span class="ic green"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <div><h3>Checkpoints, not chaos</h3><p>A few goals per checkpoint, due on the days you pick. Weird schedules welcome.</p></div>
+        </div>
+        <div class="f" data-reveal style="--d:.08s">
+          <span class="ic yellow"><svg viewBox="0 0 24 24"><path d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span>
+          <div><h3>A streak that notices</h3><p>Commits and ticked goals count by themselves. The flame stays fed if you show up.</p></div>
+        </div>
+        <div class="f" data-reveal style="--d:.16s">
+          <span class="ic blue"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span>
+          <div><h3>Numbers show up</h3><p>Connect Stripe, App Store, YouTube or your own endpoint. The data page does the rest.</p></div>
+        </div>
+        <div class="f" data-reveal style="--d:.24s">
+          <span class="ic red"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span>
+          <div><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
+        </div>
       </div>
     </section>
 
-    <section class="beat" id="data" data-len="2.6" aria-labelledby="h-data">
-      <div class="copy">
-        <p class="eyebrow" data-k>03 · Watch it land</p>
-        <h2 id="h-data" data-k>Your numbers<br>come to you.</h2>
-        <p class="lede" data-k>Stripe, App Store, YouTube, Plausible and twenty more report straight into your project. Refreshing five dashboards is now a hobby, not a job.</p>
-        <p class="meta stats" data-k>
-          <span><b id="stat-rev">$0</b>revenue</span>
-          <span><b id="stat-visits">0</b>visits</span>
-          <span><b id="stat-dl">0</b>downloads</span>
-        </p>
+    <!-- Two feature rows -->
+    <section class="block rows" id="numbers">
+      <div class="row">
+        <div class="row-art" data-reveal>
+          <div class="stack">
+            <div class="back-card"></div>
+            <div class="chart-card">
+              <div class="cc-top"><span>Revenue</span><span><b>$1,284</b><em>+19.8%</em></span></div>
+              <svg viewBox="0 0 300 120" preserveAspectRatio="none">
+                <path class="faint" d="M0 92 C60 110 120 112 170 96 C220 80 260 76 300 70"/>
+                <path class="draw line" pathLength="1" d="M0 96 L18 90 L30 98 L44 84 L58 88 L70 70 L84 78 L98 66 L110 74 L124 52 L136 60 L150 44 L162 56 L176 38 L190 46 L204 30 L218 40 L232 26 L246 34 L262 18 L276 24 L290 12 L300 16"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+        <div class="row-copy" data-reveal style="--d:.1s">
+          <h2>Know where it stands</h2>
+          <p class="lede">Running totals show what you added each day, levels stay levels, and a gap in the data never drops your chart to zero. Straight lines, no guesswork.</p>
+        </div>
+      </div>
+
+      <div class="row flip">
+        <div class="row-copy" data-reveal>
+          <h2><span data-count="23">23</span> integrations<br>in your pocket</h2>
+          <p class="lede">From payments to analytics to newsletters. Keyless ones like npm, Hacker News and Bluesky take one tap. The rest take a key that stays in your Keychain.</p>
+        </div>
+        <div class="row-art lists" data-reveal style="--d:.1s">
+          <div class="circle blue"></div>
+          <svg class="cord" viewBox="0 0 300 420" aria-hidden="true"><path class="draw" pathLength="1" d="M90 0 C60 60 200 50 150 130 C110 190 60 200 120 250 C170 290 230 300 160 360 C120 395 40 400 0 420"/></svg>
+          <div class="li" style="--r:-2deg"><span class="li-ic" style="--c:#5B5BF0">S</span><span><b>Stripe</b><small>sales</small></span><svg viewBox="0 0 60 20"><path d="M0 14 L10 10 L20 13 L30 6 L40 9 L50 3 L60 5" stroke="#58CC02"/></svg><span class="num"><b>$1,882</b><em class="up">+18.1%</em></span></div>
+          <div class="li" style="--r:1.5deg"><span class="li-ic" style="--c:#1CB0F6">A</span><span><b>App Store</b><small>downloads</small></span><svg viewBox="0 0 60 20"><path d="M0 6 L10 9 L20 7 L30 13 L40 10 L50 15 L60 12" stroke="#FF4B4B"/></svg><span class="num"><b>412</b><em class="down">−3.2%</em></span></div>
+          <div class="li" style="--r:-1deg"><span class="li-ic" style="--c:#FF4B4B">Y</span><span><b>YouTube</b><small>views</small></span><svg viewBox="0 0 60 20"><path d="M0 12 L10 14 L20 9 L30 11 L40 5 L50 7 L60 2" stroke="#58CC02"/></svg><span class="num"><b>9,410</b><em class="up">+11.7%</em></span></div>
+        </div>
       </div>
     </section>
 
-    <section class="beat" id="join" data-len="1.4" aria-labelledby="h-join">
-      <div class="copy">
-        <p class="eyebrow" data-k>Beta · iPhone</p>
-        <h2 id="h-join" data-k>Get it out<br>of the drawer.</h2>
-        <p class="lede" data-k>We're letting testers in batches. Leave your email and we'll send a TestFlight invite when your spot opens.</p>
-        <form id="waitlist" class="waitlist" data-k novalidate>
-          <label class="sr" for="email">Email</label>
-          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required>
-          <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-          <button class="chunky" type="submit">Join</button>
-        </form>
-        <p class="fine" id="form-note" data-k aria-live="polite">Only used for the beta invite. No newsletter, no spam.</p>
-        <p class="foot" data-k>© 2026 Prodline · For people with too many side projects</p>
+    <!-- Works with -->
+    <section class="block works">
+      <h2 data-reveal>Works with what you already use</h2>
+      <p class="lede center" data-reveal style="--d:.06s">Payments, stores, analytics, hosting and newsletters. Or point it at your own endpoint.</p>
+      <ul class="pills" data-reveal style="--d:.12s">
+        <li>Stripe</li><li>App Store</li><li>RevenueCat</li><li>YouTube</li><li>Plausible</li><li>PostHog</li><li>Vercel</li><li>Netlify</li>
+        <li>Shopify</li><li>Lemon Squeezy</li><li>Gumroad</li><li>Paddle</li><li>Kit</li><li>beehiiv</li><li>npm</li><li>Product Hunt</li><li>Hacker News</li><li>Bluesky</li><li>GitHub</li>
+      </ul>
+    </section>
+
+    <!-- Join -->
+    <section class="block" id="join">
+      <div class="band" data-reveal>
+        <svg class="squiggle" viewBox="0 0 160 80" aria-hidden="true"><path class="draw" pathLength="1" d="M0 78 L50 20 C62 6 70 10 72 30 C74 52 84 60 110 44 L140 26"/></svg>
+        <div class="band-copy">
+          <h2>Get it out<br>of the drawer.</h2>
+          <p class="lede">We're letting testers in batches. Leave your email and we'll send a TestFlight invite when your spot opens.</p>
+          <form id="waitlist" class="waitlist" novalidate>
+            <label class="sr" for="email">Email</label>
+            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required>
+            <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+            <button class="btn light" type="submit">Join</button>
+          </form>
+          <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam.</p>
+        </div>
+        <div class="band-phone" aria-hidden="true">
+          <div class="phone light tall">
+            <div class="ph-cap">THIS WEEK</div>
+            <div class="ph-total">7 <small>goals done</small></div>
+            <div class="pcard dark-card">
+              <small>Streak</small>
+              <b>12 days</b>
+              <div class="days"><i></i><i></i><i></i><i></i><i></i><i class="off"></i><i class="off"></i></div>
+            </div>
+            <div class="ph-row"><span class="li-ic" style="--c:#58CC02">H</span><b>Habit Hero</b><svg viewBox="0 0 40 14"><path d="M0 10 L8 8 L16 9 L24 5 L32 6 L40 1" stroke="#58CC02"/></svg></div>
+            <div class="ph-row"><span class="li-ic" style="--c:#1CB0F6">T</span><b>Tiny Invoice</b><svg viewBox="0 0 40 14"><path d="M0 6 L8 8 L16 5 L24 9 L32 7 L40 10" stroke="#FF4B4B"/></svg></div>
+            <div class="ph-row"><span class="li-ic" style="--c:#FFC800">R</span><b>Recipe Box</b><svg viewBox="0 0 40 14"><path d="M0 11 L8 9 L16 10 L24 6 L32 4 L40 3" stroke="#58CC02"/></svg></div>
+          </div>
+        </div>
       </div>
     </section>
   </main>
 
-  <div id="space" aria-hidden="true"></div>
-
-  <nav class="rail" aria-label="Sections">
-    <span class="rail-dots" aria-hidden="true"></span>
-  </nav>
-
-  <nav class="tabbar" aria-label="Main">
-    <div class="tabs">
-      <a href="#start" data-go="0" class="tab"><svg viewBox="0 0 24 24"><path d="M4 7.5h16v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2zM6.5 3.5h11M5 5.5h14"/></svg><span>Start</span></a>
-      <a href="#plan" data-go="1" class="tab"><svg viewBox="0 0 24 24"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5" stroke-dasharray="0.1 3.2"/></svg><span>Plan</span></a>
-      <a href="#streak" data-go="2" class="tab"><svg viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.3 2.4-5.4 3.8-7.9.5 1.6 1.4 2.6 2.4 3.1C12 7 13.2 4.6 15 3c.2 3.4 3.5 5.6 3.5 11.2 0 4-2.7 6.8-6.5 6.8z"/></svg><span>Streak</span></a>
-      <a href="#data" data-go="3" class="tab"><svg viewBox="0 0 24 24"><path d="M5 20V12M12 20V5M19 20v-9"/></svg><span>Data</span></a>
+  <footer class="foot">
+    <div class="foot-in">
+      <a class="logo inv" href="#top"><img src="mark-light.svg" alt="" width="26" height="26"><span>Prod<span class="dot">line</span></span></a>
+      <div class="cols">
+        <div><h4>Product</h4><a href="#how">How it works</a><a href="#features">Features</a><a href="#numbers">Integrations</a></div>
+        <div><h4>Beta</h4><a href="#join">Join the waitlist</a></div>
+      </div>
+      <p class="copy">© 2026 Prodline. For people with too many side projects.</p>
     </div>
-    <a href="#join" data-go="4" class="plus" aria-label="Join the beta"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></a>
-  </nav>
-
-  <noscript><p class="noscript">Prodline is in beta for iPhone. This page needs JavaScript for its 3D scenes.</p></noscript>
+  </footer>
 </body>
 </html>
