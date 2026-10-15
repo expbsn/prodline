@@ -11,14 +11,14 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=6">
-  <script type="module" src="main.js?v=6"></script>
+  <link rel="stylesheet" href="style.css?v=7">
+  <script type="module" src="main.js?v=7"></script>
 </head>
 <body>
   <header class="nav" id="top">
     <a class="logo" href="#top" aria-label="Prodline home">
       <img src="mark.svg" alt="" width="26" height="26">
-      <span>Prod<span class="dot">line</span></span>
+      <span>Prodline</span>
     </a>
     <nav class="links" aria-label="Main">
       <a href="#how">How it works</a>
@@ -32,7 +32,7 @@
     <!-- Hero -->
     <section class="hero">
       <div class="hero-copy">
-        <h1 data-reveal><span class="nowrap">Side projects <svg class="spark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 0c1.6 10.4 9.6 18.4 20 20-10.4 1.6-18.4 9.6-20 20-1.6-10.4-9.6-18.4-20-20C10.4 18.4 18.4 10.4 20 0z"/></svg></span><br>rot in a drawer.</h1>
+        <h1 data-reveal>Side projects<br>rot in a drawer.</h1>
         <p class="lede" data-reveal style="--d:.08s">Prodline gets yours out the door. Short plans, one tick a day, and the numbers that prove it worked, right on your iPhone.</p>
         <div class="cta-row" data-reveal style="--d:.16s">
           <a class="btn dark" href="#join"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Join the beta</a>
@@ -44,80 +44,31 @@
         </svg>
       </div>
 
-      <div class="hero-art" aria-hidden="true">
-        <div class="blob yellow"></div>
-        <!-- Dash screen -->
-        <div class="phone light" data-reveal style="--d:.1s">
-          <div class="ph-top"><span class="ph-title">Dash</span><span class="chip flame"><svg viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.3 2.4-5.4 3.8-7.9.5 1.6 1.4 2.6 2.4 3.1C12 7 13.2 4.6 15 3c.2 3.4 3.5 5.6 3.5 11.2 0 4-2.7 6.8-6.5 6.8z"/></svg>12</span></div>
-          <div class="pcard" style="--a:#58CC02;--ad:#46A302">
-            <div class="cover"></div>
-            <div class="badge">H</div>
-            <b>Habit Hero</b>
-            <small>Checkpoint 2 · Streak screen</small>
-            <div class="bar"><i style="width:66%"></i></div>
-          </div>
-          <div class="pcard" style="--a:#1CB0F6;--ad:#1593CE">
-            <div class="cover"></div>
-            <div class="badge">T</div>
-            <b>Tiny Invoice</b>
-            <small>Checkpoint 4 · Beta</small>
-            <div class="bar"><i style="width:40%"></i></div>
-          </div>
-          <div class="pcard peek" style="--a:#FF4B4B;--ad:#D93B3B">
-            <div class="cover"></div>
-            <div class="badge">R</div>
-          </div>
-          <div class="ph-tabs"><i class="on"></i><i></i><i></i><i></i></div>
-        </div>
-        <!-- Project screen, dark -->
-        <div class="phone dark" data-reveal style="--d:.22s">
-          <div class="ph-head"><span class="back">‹</span><span><b>Habit Hero</b><small>Day 9 of 14</small></span><span class="badge sm" style="--a:#58CC02;--ad:#46A302">H</span></div>
-          <div class="ph-big">$1,284 <em>+$212 this week</em></div>
-          <svg class="ph-chart" viewBox="0 0 200 90" preserveAspectRatio="none">
-            <path class="area" d="M0 82 L14 78 L28 80 L42 70 L56 72 L70 60 L84 62 L98 50 L112 54 L126 40 L140 44 L154 30 L168 34 L182 18 L200 12 L200 90 L0 90Z"/>
-            <path class="line" d="M0 82 L14 78 L28 80 L42 70 L56 72 L70 60 L84 62 L98 50 L112 54 L126 40 L140 44 L154 30 L168 34 L182 18 L200 12"/>
-          </svg>
-          <div class="ph-seg"><span>Week</span><span class="on">Month</span><span>All</span></div>
-          <div class="ph-tiles">
-            <span><b>3.1k</b>visits</span><span><b>412</b>downloads</span><span><b>+86</b>signups</span>
-          </div>
-          <div class="ph-goals">
-            <p><i class="ok"></i>Shareable streak card</p>
-            <p><i></i>Push reminders</p>
-          </div>
-          <div class="ph-actions"><span class="red">Let go</span><span class="green">Keep it</span></div>
-        </div>
+      <div class="hero-art">
+        <figure class="phone back" data-reveal style="--d:.22s"><img src="shots/project.jpg" alt="A project in Prodline: Habit Hero on day 13, with its timeline" width="600" height="1304"></figure>
+        <figure class="phone front" data-reveal style="--d:.1s"><img src="shots/dash.jpg" alt="Prodline's Dash: project cards with the streak in the corner" width="600" height="1304"></figure>
       </div>
     </section>
 
-    <!-- How it works: two cards -->
+    <!-- How it works: two cards with real screens peeking in -->
     <section class="block" id="how">
       <h2 data-reveal>Get the most out<br>of every side project</h2>
       <div class="duo">
         <article class="card soft" data-reveal>
-          <div>
+          <div class="card-copy">
             <h3>Plans that fit in two weeks</h3>
             <p>Break the big vague thing into a few checkpoints. Tick a goal and the next one comes into view.</p>
             <a class="more" href="#features">See how <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </div>
-          <svg class="art" viewBox="0 0 220 200" aria-hidden="true">
-            <path fill="#58CC02" d="M120 20 C150 10 210 40 220 70 L220 200 L70 200 C80 150 95 40 120 20Z"/>
-            <path fill="#1C1C1E" d="M40 110 C60 90 110 95 125 120 L140 200 L0 200 C10 160 22 130 40 110Z"/>
-            <path class="draw" pathLength="1" fill="none" stroke="#1C1C1E" stroke-width="4" stroke-linecap="round" d="M150 120 C140 90 170 70 190 85 C210 100 195 135 170 125 C150 117 160 95 178 90"/>
-          </svg>
+          <div class="peek"><img src="shots/plan.jpg" alt="The Plan tab: streak, XP, the week ahead and checkpoints" width="600" height="1304" loading="lazy"></div>
         </article>
         <article class="card soft" data-reveal style="--d:.1s">
-          <div>
+          <div class="card-copy">
             <h3>Numbers without the tab hopping</h3>
             <p>Sales, visits and downloads land in your project on their own. Refreshing five dashboards is now a hobby, not a job.</p>
             <a class="more" href="#numbers">See integrations <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
           </div>
-          <svg class="art" viewBox="0 0 220 200" aria-hidden="true">
-            <path fill="none" stroke="#FFC800" stroke-width="22" stroke-linecap="round" d="M60 70 A110 110 0 0 1 130 26"/>
-            <path fill="none" stroke="#1C1C1E" stroke-width="22" d="M170 22 A110 110 0 0 1 240 80"/>
-            <path fill="none" stroke="#FF4B4B" stroke-width="22" stroke-linecap="round" d="M40 110 A120 120 0 0 0 52 200"/>
-            <path class="draw" pathLength="1" fill="none" stroke="#1C1C1E" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" d="M92 160 C100 130 110 175 120 150 C130 125 138 165 150 135 C160 112 170 120 186 92 M172 94 L188 90 L190 106"/>
-          </svg>
+          <div class="peek"><img src="shots/data.jpg" alt="Insights: revenue, visits and social views across all projects" width="600" height="1304" loading="lazy"></div>
         </article>
       </div>
     </section>
@@ -130,68 +81,42 @@
       </div>
       <div class="f-grid">
         <div class="f" data-reveal>
-          <span class="ic green"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
           <div><h3>Checkpoints, not chaos</h3><p>A few goals per checkpoint, due on the days you pick. Weird schedules welcome.</p></div>
         </div>
         <div class="f" data-reveal style="--d:.08s">
-          <span class="ic yellow"><svg viewBox="0 0 24 24"><path d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24"><path class="fill" d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span>
           <div><h3>A streak that notices</h3><p>Commits and ticked goals count by themselves. The flame stays fed if you show up.</p></div>
         </div>
         <div class="f" data-reveal style="--d:.16s">
-          <span class="ic blue"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span>
           <div><h3>Numbers show up</h3><p>Connect Stripe, App Store, YouTube or your own endpoint. The data page does the rest.</p></div>
         </div>
         <div class="f" data-reveal style="--d:.24s">
-          <span class="ic red"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span>
+          <span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span>
           <div><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
         </div>
       </div>
     </section>
 
-    <!-- Two feature rows -->
+    <!-- Numbers -->
     <section class="block rows" id="numbers">
       <div class="row">
         <div class="row-art" data-reveal>
-          <div class="stack">
-            <div class="back-card"></div>
-            <div class="chart-card">
-              <div class="cc-top"><span>Revenue</span><span><b>$1,284</b><em>+19.8%</em></span></div>
-              <svg viewBox="0 0 300 120" preserveAspectRatio="none">
-                <path class="faint" d="M0 92 C60 110 120 112 170 96 C220 80 260 76 300 70"/>
-                <path class="draw line" pathLength="1" d="M0 96 L18 90 L30 98 L44 84 L58 88 L70 70 L84 78 L98 66 L110 74 L124 52 L136 60 L150 44 L162 56 L176 38 L190 46 L204 30 L218 40 L232 26 L246 34 L262 18 L276 24 L290 12 L300 16"/>
-              </svg>
-            </div>
-          </div>
+          <svg class="cord" viewBox="0 0 300 420" aria-hidden="true"><path class="draw" pathLength="1" d="M300 30 C220 40 250 140 180 170 C110 200 60 150 40 210 C20 270 120 300 90 360 C70 400 20 410 0 420"/></svg>
+          <figure class="phone solo"><img src="shots/data.jpg" alt="Insights in Prodline: revenue per day, by project" width="600" height="1304" loading="lazy"></figure>
         </div>
         <div class="row-copy" data-reveal style="--d:.1s">
           <h2>Know where it stands</h2>
-          <p class="lede">Running totals show what you added each day, levels stay levels, and a gap in the data never drops your chart to zero. Straight lines, no guesswork.</p>
+          <p class="lede">Running totals show what you added each day, levels stay levels, and a gap in the data never drops your chart to zero. Hold a number to swap it for another one.</p>
+          <h3 class="sub">23 integrations, one tap or one key</h3>
+          <ul class="pills">
+            <li>Stripe</li><li>App Store</li><li>RevenueCat</li><li>YouTube</li><li>Plausible</li><li>PostHog</li><li>Vercel</li><li>Netlify</li>
+            <li>Shopify</li><li>Lemon Squeezy</li><li>Gumroad</li><li>Paddle</li><li>Kit</li><li>beehiiv</li><li>npm</li><li>Product Hunt</li><li>Hacker News</li><li>Bluesky</li><li>GitHub</li>
+          </ul>
+          <p class="note">Keys stay in your Keychain. Or point Prodline at your own endpoint.</p>
         </div>
       </div>
-
-      <div class="row flip">
-        <div class="row-copy" data-reveal>
-          <h2><span data-count="23">23</span> integrations<br>in your pocket</h2>
-          <p class="lede">From payments to analytics to newsletters. Keyless ones like npm, Hacker News and Bluesky take one tap. The rest take a key that stays in your Keychain.</p>
-        </div>
-        <div class="row-art lists" data-reveal style="--d:.1s">
-          <div class="circle blue"></div>
-          <svg class="cord" viewBox="0 0 300 420" aria-hidden="true"><path class="draw" pathLength="1" d="M90 0 C60 60 200 50 150 130 C110 190 60 200 120 250 C170 290 230 300 160 360 C120 395 40 400 0 420"/></svg>
-          <div class="li" style="--r:-2deg"><span class="li-ic" style="--c:#5B5BF0">S</span><span><b>Stripe</b><small>sales</small></span><svg viewBox="0 0 60 20"><path d="M0 14 L10 10 L20 13 L30 6 L40 9 L50 3 L60 5" stroke="#58CC02"/></svg><span class="num"><b>$1,882</b><em class="up">+18.1%</em></span></div>
-          <div class="li" style="--r:1.5deg"><span class="li-ic" style="--c:#1CB0F6">A</span><span><b>App Store</b><small>downloads</small></span><svg viewBox="0 0 60 20"><path d="M0 6 L10 9 L20 7 L30 13 L40 10 L50 15 L60 12" stroke="#FF4B4B"/></svg><span class="num"><b>412</b><em class="down">−3.2%</em></span></div>
-          <div class="li" style="--r:-1deg"><span class="li-ic" style="--c:#FF4B4B">Y</span><span><b>YouTube</b><small>views</small></span><svg viewBox="0 0 60 20"><path d="M0 12 L10 14 L20 9 L30 11 L40 5 L50 7 L60 2" stroke="#58CC02"/></svg><span class="num"><b>9,410</b><em class="up">+11.7%</em></span></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Works with -->
-    <section class="block works">
-      <h2 data-reveal>Works with what you already use</h2>
-      <p class="lede center" data-reveal style="--d:.06s">Payments, stores, analytics, hosting and newsletters. Or point it at your own endpoint.</p>
-      <ul class="pills" data-reveal style="--d:.12s">
-        <li>Stripe</li><li>App Store</li><li>RevenueCat</li><li>YouTube</li><li>Plausible</li><li>PostHog</li><li>Vercel</li><li>Netlify</li>
-        <li>Shopify</li><li>Lemon Squeezy</li><li>Gumroad</li><li>Paddle</li><li>Kit</li><li>beehiiv</li><li>npm</li><li>Product Hunt</li><li>Hacker News</li><li>Bluesky</li><li>GitHub</li>
-      </ul>
     </section>
 
     <!-- Join -->
@@ -209,19 +134,8 @@
           </form>
           <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam.</p>
         </div>
-        <div class="band-phone" aria-hidden="true">
-          <div class="phone light tall">
-            <div class="ph-cap">THIS WEEK</div>
-            <div class="ph-total">7 <small>goals done</small></div>
-            <div class="pcard dark-card">
-              <small>Streak</small>
-              <b>12 days</b>
-              <div class="days"><i></i><i></i><i></i><i></i><i></i><i class="off"></i><i class="off"></i></div>
-            </div>
-            <div class="ph-row"><span class="li-ic" style="--c:#58CC02">H</span><b>Habit Hero</b><svg viewBox="0 0 40 14"><path d="M0 10 L8 8 L16 9 L24 5 L32 6 L40 1" stroke="#58CC02"/></svg></div>
-            <div class="ph-row"><span class="li-ic" style="--c:#1CB0F6">T</span><b>Tiny Invoice</b><svg viewBox="0 0 40 14"><path d="M0 6 L8 8 L16 5 L24 9 L32 7 L40 10" stroke="#FF4B4B"/></svg></div>
-            <div class="ph-row"><span class="li-ic" style="--c:#FFC800">R</span><b>Recipe Box</b><svg viewBox="0 0 40 14"><path d="M0 11 L8 9 L16 10 L24 6 L32 4 L40 3" stroke="#58CC02"/></svg></div>
-          </div>
+        <div class="band-phone">
+          <figure class="phone"><img src="shots/plan.jpg" alt="" width="600" height="1304" loading="lazy"></figure>
         </div>
       </div>
     </section>
@@ -229,7 +143,7 @@
 
   <footer class="foot">
     <div class="foot-in">
-      <a class="logo inv" href="#top"><img src="mark-light.svg" alt="" width="26" height="26"><span>Prod<span class="dot">line</span></span></a>
+      <a class="logo inv" href="#top"><img src="mark-light.svg" alt="" width="26" height="26"><span>Prodline</span></a>
       <div class="cols">
         <div><h4>Product</h4><a href="#how">How it works</a><a href="#features">Features</a><a href="#numbers">Integrations</a></div>
         <div><h4>Beta</h4><a href="#join">Join the waitlist</a></div>

@@ -18,24 +18,6 @@ const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
 addEventListener("scroll", onScroll, { passive: true });
 onScroll();
 
-// Numbers count up the first time they're seen.
-const counter = new IntersectionObserver((entries) => {
-  for (const e of entries) {
-    if (!e.isIntersecting) continue;
-    counter.unobserve(e.target);
-    const to = Number(e.target.dataset.count);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) continue;
-    const t0 = performance.now();
-    const tick = (now) => {
-      const k = Math.min(1, (now - t0) / 1100);
-      e.target.textContent = String(Math.round(to * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }
-});
-document.querySelectorAll("[data-count]").forEach((el) => counter.observe(el));
-
 // Waitlist
 const form = document.getElementById("waitlist");
 const note = document.getElementById("form-note");
