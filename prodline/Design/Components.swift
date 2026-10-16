@@ -55,11 +55,11 @@ private struct ChunkyButtonBody: View {
     }
 
     private var colors: (Color, Color, Color, Color?) {
-        guard enabled else { return (Theme.line, Color(hex: 0xD1D1D6), Theme.secondary, nil) }
+        guard enabled else { return (Theme.line, Color(light: 0xD1D1D6, dark: 0x3A3A3C), Theme.secondary, nil) }
         switch kind {
         case .accent: return (accent.base, accent.dark, accent.on, nil)
-        case .neutral: return (.white, Theme.line, Theme.ink, Theme.line)
-        case .danger: return (.white, Theme.line, Theme.danger, Theme.line)
+        case .neutral: return (Theme.card, Theme.line, Theme.ink, Theme.line)
+        case .danger: return (Theme.card, Theme.line, Theme.danger, Theme.line)
         }
     }
 }
@@ -92,7 +92,7 @@ struct CircleIconButton: View {
                 .font(.system(size: 15, weight: .bold))
                 .foregroundStyle(Theme.ink)
                 .frame(width: 40, height: 40)
-                .background(Circle().fill(.white))
+                .background(Circle().fill(Theme.card))
                 .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
         }
         .buttonStyle(PressableStyle(scale: 0.9))
@@ -114,7 +114,7 @@ extension View {
             .foregroundStyle(Theme.ink)
             .padding(.horizontal, 16)
             .frame(minHeight: 54)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(focused ? Theme.ink : Theme.line, lineWidth: 2))
     }
@@ -179,7 +179,7 @@ struct Chip: View {
                 .foregroundStyle(isOn ? accent.on : Theme.inkSoft)
                 .padding(.horizontal, 12)
                 .frame(minWidth: 40, minHeight: 40)
-                .background(Capsule().fill(isOn ? accent.base : .white))
+                .background(Capsule().fill(isOn ? accent.base : Theme.card))
                 .overlay(Capsule().strokeBorder(isOn ? .clear : Theme.line, lineWidth: 1.5))
         }
         .buttonStyle(PressableStyle(scale: 0.92))

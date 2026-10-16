@@ -74,7 +74,7 @@ struct ProjectCardFace: View {
             .frame(width: w, height: h)
             .clipShape(RoundedRectangle(cornerRadius: 30 * s, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: 30 * s, style: .continuous)
-                .strokeBorder(.white.opacity(0.7), lineWidth: 1.5))
+                .strokeBorder(Theme.rim, lineWidth: 1.5))
         }
         .aspectRatio(5 / 7, contentMode: .fit)
     }
@@ -129,8 +129,8 @@ struct ProjectCardFace: View {
             Image(uiImage: cover).resizable().scaledToFill()
         } else {
             ZStack(alignment: .topTrailing) {
-                Color.white
-                LinearGradient(colors: [.white, accent.base.opacity(0.12), accent.base.opacity(0.28)],
+                Theme.card
+                LinearGradient(colors: [Theme.card, accent.base.opacity(0.12), accent.base.opacity(0.28)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
                 RadialGradient(colors: [accent.base.opacity(0.2), .clear], center: .topTrailing,
                                startRadius: 0, endRadius: w * 0.9)
@@ -191,7 +191,7 @@ struct CreateProjectCardFace: View {
             }
             .padding(24 * s)
             .frame(width: geo.size.width, height: geo.size.height, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 30 * s, style: .continuous).fill(.white))
+            .background(RoundedRectangle(cornerRadius: 30 * s, style: .continuous).fill(Theme.card))
             .overlay(
                 RoundedRectangle(cornerRadius: 30 * s, style: .continuous)
                     .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 2, dash: [8, 7]))

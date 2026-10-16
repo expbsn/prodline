@@ -110,6 +110,7 @@ struct MeView: View {
     @AppStorage(AppSettings.Key.haptics) private var haptics = true
     @AppStorage(AppSettings.Key.relayURL) private var relayURL = ""
     @AppStorage(AppSettings.Key.cheers) private var cheers = true
+    @AppStorage(AppSettings.Key.appearance) private var appearance = "system"
     @AppStorage(LiveActivities.enabledKey) private var liveActivity = true
     @State private var confirm: Confirm?
 
@@ -205,6 +206,13 @@ struct MeView: View {
         VStack(alignment: .leading, spacing: 18) {
             SectionTitle("Configuration")
 
+            optionRow("Appearance", "Follow your iPhone, or keep Prodline light or dark.") {
+                HStack(spacing: 6) {
+                    ForEach([("system", "System"), ("light", "Light"), ("dark", "Dark")], id: \.0) { v, label in
+                        Chip(title: label, isOn: appearance == v) { appearance = v }
+                    }
+                }
+            }
             optionRow("Live refresh", "How often numbers update while the app is open.") {
                 HStack(spacing: 6) {
                     ForEach([(15, "15s"), (30, "30s"), (60, "1m"), (120, "2m")], id: \.0) { v, label in

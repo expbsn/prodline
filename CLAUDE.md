@@ -35,7 +35,7 @@ DEBUG launch arguments for jumping straight to a screen: `-PRODLINE_DEMO YES`, `
 
 ## Conventions
 
-- Bright theme only, portrait only. Colors, fonts and the chunky button styles live in `prodline/Design/`; reuse them instead of new one-off styling.
+- Light and dark mode (Me → Appearance: System, Light, Dark), portrait only. Colors, fonts and the chunky button styles live in `prodline/Design/` and `Shared/DesignCore.swift`; reuse them instead of new one-off styling. Never hard-code `.white`/`.black` for surfaces or text: use `Theme.card`, `Theme.background`, `Theme.ink`, `Theme.inverse` (text on an `ink` fill) and `Theme.inkFixed` (dark text on bright fills); `Color(light:dark:)` for anything new. White stays white only on accent colors and photos. Share images render light (`.environment(\.colorScheme, .light)`).
 - The tab bar and other chrome stay neutral; project color comes from `\.accent`.
 - Dash card geometry is shared through `DashLayout`. When the card's size or position changes on Dash, the project detail screen must match.
 - Secrets (API keys, GitHub tokens) go in the Keychain, never in SwiftData or the repo.

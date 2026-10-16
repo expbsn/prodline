@@ -155,7 +155,7 @@ struct ProjectDetailView: View {
                     .font(.system(size: 16, weight: .bold))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 40, height: 40)
-                    .background(Circle().fill(.white))
+                    .background(Circle().fill(Theme.card))
                     .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
             }
         }
@@ -1213,7 +1213,7 @@ struct CheckpointSheet: View {
                             .labelsHidden()
                             .tint(project.accent.text)
                             .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(.white))
+                            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card))
                     }
                     if let m = milestone, !m.isLaunch {
                         Button("Delete checkpoint") { confirmDelete = true }
@@ -1298,7 +1298,7 @@ struct CheckpointSheet: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 12)
             }
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(.white))
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card))
             Text(goalRows.contains { !$0.editable }
                  ? "The checkpoint finishes once every goal is done. Synced goals change where they come from."
                  : "The checkpoint finishes once every goal is done.")

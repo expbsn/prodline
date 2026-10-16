@@ -111,7 +111,7 @@ struct HomeView: View {
         } label: {
             VStack(spacing: -6) {
                 ZStack {
-                    Circle().fill(.white)
+                    Circle().fill(Theme.card)
                     Circle().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2.5)
                     Image(systemName: "play.fill").font(.system(size: 17)).foregroundStyle(Accent.sale.text)
                 }
@@ -120,7 +120,7 @@ struct HomeView: View {
                     .display(11, 800)
                     .foregroundStyle(Theme.ink)
                     .padding(.horizontal, 8).padding(.vertical, 1)
-                    .background(Capsule().fill(.white))
+                    .background(Capsule().fill(Theme.card))
                     .overlay(Capsule().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2))
                     .fixedSize()
             }
@@ -144,7 +144,7 @@ struct HomeView: View {
         let tint = lit ? Theme.flame : Theme.tertiary
         return VStack(spacing: -6) {
             ZStack {
-                Circle().fill(.white)
+                Circle().fill(Theme.card)
                 Circle().strokeBorder(tint.opacity(0.9), lineWidth: 2.5)
                 FlameMark(color: tint, lit: lit)
                     .frame(height: 23)
@@ -155,7 +155,7 @@ struct HomeView: View {
                 .display(13, 800)
                 .foregroundStyle(lit ? Theme.ink : Theme.secondary)
                 .padding(.horizontal, 10).padding(.vertical, 1)
-                .background(Capsule().fill(.white))
+                .background(Capsule().fill(Theme.card))
                 .overlay(Capsule().strokeBorder(tint.opacity(0.9), lineWidth: 2))
                 .contentTransition(.numericText())
         }

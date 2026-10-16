@@ -311,6 +311,7 @@ struct ShareCardSheet: View {
                     if let data {
                         let size = ShareCardView.size(style)
                         ShareCardView(data: data, stats: picks, style: style)
+                            .environment(\.colorScheme, .light) // a shared image looks the same everywhere
                             .background {
                                 if style == .transparent { Checkerboard() }
                             }
@@ -370,7 +371,7 @@ struct ShareCardSheet: View {
 
     private func render() {
         guard let data else { return }
-        let renderer = ImageRenderer(content: ShareCardView(data: data, stats: picks, style: style))
+        let renderer = ImageRenderer(content: ShareCardView(data: data, stats: picks, style: style).environment(\.colorScheme, .light))
         renderer.scale = 3
         renderer.isOpaque = false
         image = renderer.uiImage

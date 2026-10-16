@@ -96,15 +96,15 @@ struct PlanView: View {
                                     .display(24, 750)
                                 HStack(spacing: 3) {
                                     ForEach(Array(dots.prefix(3).enumerated()), id: \.offset) { _, a in
-                                        Circle().fill(selected ? .white : a.base).frame(width: 6, height: 6)
+                                        Circle().fill(selected ? Theme.inverse : a.base).frame(width: 6, height: 6)
                                     }
                                 }
                                 .frame(height: 6)
                             }
-                            .foregroundStyle(selected ? .white : (day == .now.startOfDay ? Theme.ink : Theme.secondary))
+                            .foregroundStyle(selected ? Theme.inverse : (day == .now.startOfDay ? Theme.ink : Theme.secondary))
                             .frame(width: 56, height: 86)
                             .background(RoundedRectangle(cornerRadius: 20, style: .continuous)
-                                .fill(selected ? Theme.ink : .white))
+                                .fill(selected ? Theme.ink : Theme.card))
                             .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .strokeBorder(day == .now.startOfDay && !selected ? Theme.ink : .clear, lineWidth: 2))
                         }

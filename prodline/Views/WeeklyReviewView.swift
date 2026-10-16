@@ -536,7 +536,8 @@ struct WeeklyReviewView: View {
             let r = ImageRenderer(content: WeekSummaryCard(stats: stats)
                 .frame(width: 354, height: WeekSummaryCard.height)
                 .background(RoundedRectangle(cornerRadius: 28, style: .continuous).fill(Theme.card))
-                .padding(20).background(Theme.background))
+                .padding(20).background(Theme.background)
+                .environment(\.colorScheme, .light))
             r.scale = 3
             shareImage = r.uiImage
         }

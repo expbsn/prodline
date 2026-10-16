@@ -53,6 +53,7 @@
     {"id": "connection-menu", "title": "Split the Connection screen into a menu with pages", "day": 11, "done": true},
     {"id": "logo-splash", "title": "Replace the animated splash with a quick logo blur-in", "day": 11, "done": true},
     {"id": "metric-picker", "title": "Show connected numbers and let people pick three", "day": 11, "done": true},
+    {"id": "dark-mode", "title": "Add dark mode with an Appearance setting", "day": 11, "done": true},
 
     {"id": "landing-page", "title": "Build the landing page with tester waitlist", "day": 12, "done": false},
     {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},

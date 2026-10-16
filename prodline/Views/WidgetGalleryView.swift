@@ -32,7 +32,7 @@ struct WidgetTile<Content: View, Background: View>: View {
 
 extension WidgetTile where Background == Color {
     init(size: CGSize, scale: CGFloat = 1, @ViewBuilder content: @escaping () -> Content) {
-        self.size = size; self.scale = scale; self.content = content; self.background = { Color.white }
+        self.size = size; self.scale = scale; self.content = content; self.background = { Theme.card }
     }
 }
 

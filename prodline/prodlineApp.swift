@@ -87,10 +87,12 @@ struct prodlineApp: App {
         }
     }()
 
+    @AppStorage(AppSettings.Key.appearance) private var appearance = "system"
+
     var body: some Scene {
         WindowGroup {
             RootView()
-                .preferredColorScheme(.light)
+                .preferredColorScheme(appearance == "light" ? .light : appearance == "dark" ? .dark : nil)
                 .tint(Theme.ink)
         }
         .modelContainer(container)

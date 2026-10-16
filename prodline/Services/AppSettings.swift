@@ -11,6 +11,8 @@ enum AppSettings {
         static let haptics = "config.haptics"
         static let relayURL = "config.relayURL"
         static let cheers = "config.cheers"
+        /// "system", "light" or "dark".
+        static let appearance = "config.appearance"
     }
 
     nonisolated private static func int(_ key: String, _ fallback: Int) -> Int {

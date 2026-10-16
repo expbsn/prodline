@@ -49,7 +49,7 @@ struct CardCoverEditor: View {
                                 .font(.system(size: 26 * s, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                                 .frame(width: 64 * s, height: 64 * s)
-                                .background(Circle().fill(.white))
+                                .background(Circle().fill(Theme.card))
                                 .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
                             Text("Add cover")
                                 .font(.ui(13 * s, .semibold))

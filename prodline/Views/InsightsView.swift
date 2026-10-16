@@ -106,15 +106,15 @@ struct InsightsView: View {
                     .lineLimit(1).minimumScaleFactor(0.6).contentTransition(.numericText())
                 Text(Stat.title(k)).font(.ui(12, .medium)).opacity(on ? 0.75 : 1)
                     .lineLimit(1).minimumScaleFactor(0.8)
-                    .foregroundStyle(on ? Color.white : Theme.secondary)
+                    .foregroundStyle(on ? Theme.inverse.opacity(0.7) : Theme.secondary)
             }
-            .foregroundStyle(on ? Color.white : Theme.ink)
+            .foregroundStyle(on ? Theme.inverse : Theme.ink)
             .padding(14)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Theme.ink : Theme.card))
             // The chunky edge sits inside the tile's frame, so the long-press preview doesn't cut it off.
             .padding(.bottom, 4)
-            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color.black : Theme.line))
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color(light: 0x000000, dark: 0xAEAEB2) : Theme.line))
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
             .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 14, y: 5)

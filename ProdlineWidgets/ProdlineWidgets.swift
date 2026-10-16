@@ -176,7 +176,7 @@ private struct ProjectEntryView: View {
             .containerBackground(for: .widget) {
                 switch family {
                 case .accessoryCircular, .accessoryRectangular, .accessoryInline: AccessoryWidgetBackground().opacity(0)
-                default: Color.white
+                default: Theme.card
                 }
             }
     }
@@ -201,7 +201,7 @@ private struct TractionEntryView: View {
         TractionWidgetView(project: entry.pickedProject, projects: entry.data.projects, metricKey: entry.metric,
                            date: entry.date, family: family)
             .containerBackground(for: .widget) {
-                if family == .systemSmall { TractionWidgetView.background(for: entry.pickedProject) } else { Color.white }
+                if family == .systemSmall { TractionWidgetView.background(for: entry.pickedProject) } else { Theme.card }
             }
     }
 }
@@ -223,6 +223,6 @@ private struct LineupEntryView: View {
 
     var body: some View {
         LineupWidgetView(data: entry.data, date: entry.date, family: family)
-            .containerBackground(.white, for: .widget)
+            .containerBackground(Theme.card, for: .widget)
     }
 }

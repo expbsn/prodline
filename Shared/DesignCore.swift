@@ -13,6 +13,11 @@ extension Color {
         )
     }
 
+    /// One color in light mode, another in dark mode.
+    init(light: Int, dark: Int) {
+        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+    }
+
     /// 0xRRGGBB of a resolved color.
     var hex: Int {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
@@ -22,15 +27,28 @@ extension Color {
     }
 }
 
-/// The app chrome is neutral; color comes from projects.
+extension UIColor {
+    convenience init(hex: Int) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
+    }
+}
+
+/// The app chrome is neutral; color comes from projects. Every chrome color has a light and a dark value.
 enum Theme {
-    static let ink = Color(hex: 0x1C1C1E)
-    static let inkSoft = Color(hex: 0x3A3A3C)
-    static let secondary = Color(hex: 0x8E8E93)
-    static let tertiary = Color(hex: 0xC7C7CC)
-    static let line = Color(hex: 0xE5E5EA)
-    static let background = Color(hex: 0xF2F2F5)
-    static let card = Color.white
+    static let ink = Color(light: 0x1C1C1E, dark: 0xF5F5F7)
+    static let inkSoft = Color(light: 0x3A3A3C, dark: 0xD1D1D6)
+    static let secondary = Color(light: 0x8E8E93, dark: 0x98989F)
+    static let tertiary = Color(light: 0xC7C7CC, dark: 0x5A5A5F)
+    static let line = Color(light: 0xE5E5EA, dark: 0x2C2C2E)
+    static let background = Color(light: 0xF2F2F5, dark: 0x000000)
+    static let card = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
+    /// Text and icons on an `ink` fill (selected chips, the dark tile): white in light mode, near-black in dark.
+    static let inverse = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
+    /// The thin highlight around project cards: bright on light, barely there on dark.
+    static let rim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.14) : UIColor(white: 1, alpha: 0.7) })
+    /// Dark text that stays dark in both modes, for bright fills like yellow.
+    static let inkFixed = Color(hex: 0x1C1C1E)
 
     static let flame = Color(hex: 0xFF9600)
     static let success = Color(hex: 0x34C759)
@@ -51,13 +69,17 @@ struct Accent: Equatable, Hashable {
     /// Money moments (sales, revenue) are always gold, whatever the project color.
     static let sale = Accent(hex: 0xFFC800)
 
-    var base: Color { Color(hex: hex) }
+    /// Near-black accents (the neutral one, the graphite swatch) would vanish on a dark background,
+    /// so in dark mode they turn a soft grey, with dark text on top.
+    var isNearBlack: Bool { luminance < 0.06 }
+
+    var base: Color { isNearBlack ? Color(light: hex, dark: 0xAEAEB2) : Color(hex: hex) }
 
     /// Darker shade for the 3D edge of buttons.
     var dark: Color {
-        let ui = UIColor(base)
+        if isNearBlack { return Color(light: 0x000000, dark: 0x7C7C80) }
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        ui.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        UIColor(hex: hex).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
         if b < 0.25 { return .black }
         return Color(hue: h, saturation: min(s * 1.05, 1), brightness: b * 0.78)
     }
@@ -74,10 +96,10 @@ struct Accent: Equatable, Hashable {
     }
 
     /// Readable foreground on top of `base`.
-    var on: Color { luminance > 0.55 ? Theme.ink : .white }
+    var on: Color { luminance > 0.55 ? Theme.inkFixed : isNearBlack ? Theme.inverse : .white }
 
-    /// Text-safe version of the accent on light backgrounds (yellow gets darkened).
-    var text: Color { luminance > 0.55 ? dark : base }
+    /// Text-safe version of the accent on the page (yellow gets darkened; near-black follows the text color).
+    var text: Color { luminance > 0.55 ? dark : isNearBlack ? Theme.ink : base }
 }
 
 // MARK: - Typography

@@ -652,9 +652,9 @@ struct RhythmBeat: View {
                 .font(.ui(13, .semibold))
                 .lineLimit(1)
                 .fixedSize()
-                .foregroundStyle(isOn ? .white : Theme.inkSoft)
+                .foregroundStyle(isOn ? Theme.inverse : Theme.inkSoft)
                 .frame(width: 35, height: 35)
-                .background(Circle().fill(isOn ? Theme.ink : .white))
+                .background(Circle().fill(isOn ? Theme.ink : Theme.card))
                 .overlay(Circle().strokeBorder(isOn ? .clear : Theme.line, lineWidth: 1.5))
                 .scaleEffect(isOn ? 1.06 : 1)
         }
@@ -1084,12 +1084,12 @@ private struct PencilCircle: View {
     var body: some View {
         PencilLoop()
             .trim(from: 0, to: drawn)
-            .stroke(Color(hex: 0x3A3A3C), style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
+            .stroke(Theme.inkSoft, style: StrokeStyle(lineWidth: 2.6, lineCap: .round, lineJoin: .round))
             // Graphite: a touch of grain rather than a clean vector line.
             .overlay {
                 PencilLoop()
                     .trim(from: 0, to: drawn)
-                    .stroke(Color(hex: 0x3A3A3C).opacity(0.35), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [3, 2.5]))
+                    .stroke(Theme.inkSoft.opacity(0.35), style: StrokeStyle(lineWidth: 1.2, lineCap: .round, dash: [3, 2.5]))
                     .offset(x: 0.8, y: -0.6)
             }
             .opacity(0.9)

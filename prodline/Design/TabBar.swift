@@ -60,7 +60,7 @@ struct FloatingTabBar: View {
                 }
             }
             .padding(5)
-            .background(Capsule().fill(.white))
+            .background(Capsule().fill(Theme.card))
             .shadow(color: .black.opacity(0.08), radius: 18, y: 6)
 
             Button(action: { Haptics.tap(); onAdd() }) {
@@ -68,7 +68,7 @@ struct FloatingTabBar: View {
                     .font(.system(size: 22, weight: .bold))
                     .foregroundStyle(Theme.ink)
                     .frame(width: 66, height: 66)
-                    .background(Circle().fill(.white))
+                    .background(Circle().fill(Theme.card))
                     .shadow(color: .black.opacity(0.08), radius: 18, y: 6)
             }
             .buttonStyle(PressableStyle(scale: 0.9))

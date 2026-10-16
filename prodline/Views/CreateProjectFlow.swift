@@ -202,7 +202,7 @@ struct CreateProjectFlow: View {
                 Spacer(minLength: 0)
             }
             .padding(14)
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(.white))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Theme.line, lineWidth: 2))
             .opacity(0.55)
             .allowsHitTesting(false)
