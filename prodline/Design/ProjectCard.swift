@@ -77,6 +77,8 @@ struct ProjectCardFace: View {
                 .strokeBorder(Theme.rim, lineWidth: 1.5))
         }
         .aspectRatio(5 / 7, contentMode: .fit)
+        // Cards look the same in dark mode as in light: white faces, bright rim, real project colors.
+        .environment(\.colorScheme, .light)
     }
 
     /// Square artwork on top (the cover, or a tinted letter), melting into the accent below:
@@ -199,6 +201,7 @@ struct CreateProjectCardFace: View {
             )
         }
         .aspectRatio(5 / 7, contentMode: .fit)
+        .environment(\.colorScheme, .light)
     }
 }
 

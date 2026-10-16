@@ -149,7 +149,7 @@ struct MeView: View {
                     Toggle(isOn: $profile.remindersEnabled) {
                         Text("Deadline notifications").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
                     }
-                    .tint(Theme.ink)
+                    .tint(Theme.switchOn)
                     .onChange(of: profile.remindersEnabled) { _, on in
                         Haptics.select()
                         Task {
@@ -277,7 +277,7 @@ struct MeView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .tint(Theme.ink)
+        .tint(Theme.switchOn)
         .onChange(of: value.wrappedValue) { Haptics.select() }
     }
 

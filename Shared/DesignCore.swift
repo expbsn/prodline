@@ -47,6 +47,8 @@ enum Theme {
     static let inverse = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
     /// The thin highlight around project cards: bright on light, barely there on dark.
     static let rim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.14) : UIColor(white: 1, alpha: 0.7) })
+    /// Switches when on: ink in light mode; in dark mode the white knob needs a colored track.
+    static let switchOn = Color(light: 0x1C1C1E, dark: 0x34C759)
     /// Dark text that stays dark in both modes, for bright fills like yellow.
     static let inkFixed = Color(hex: 0x1C1C1E)
 
@@ -73,10 +75,17 @@ struct Accent: Equatable, Hashable {
     /// so in dark mode they turn a soft grey, with dark text on top.
     var isNearBlack: Bool { luminance < 0.06 }
 
-    var base: Color { isNearBlack ? Color(light: hex, dark: 0xAEAEB2) : Color(hex: hex) }
+    /// The app's own neutral (chips, buttons on Me…) rather than a project color: near-white in dark mode.
+    var isNeutral: Bool { hex == 0x1C1C1E }
+
+    var base: Color {
+        if isNeutral { return Color(light: hex, dark: 0xF5F5F7) }
+        return isNearBlack ? Color(light: hex, dark: 0xAEAEB2) : Color(hex: hex)
+    }
 
     /// Darker shade for the 3D edge of buttons.
     var dark: Color {
+        if isNeutral { return Color(light: 0x000000, dark: 0xAEAEB2) }
         if isNearBlack { return Color(light: 0x000000, dark: 0x7C7C80) }
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         UIColor(hex: hex).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
