@@ -81,7 +81,8 @@ if (flow) {
       for (const s of stickers) {
         const r = s.getBoundingClientRect();
         const off = (r.top + r.height / 2 - innerHeight / 2) * -(Number(getComputedStyle(s).getPropertyValue("--p")) || 0.15);
-        s.style.setProperty("--py", `${off.toFixed(1)}px`);
+        // capped, so a sticker never drifts out of its own step (e.g. on a short phone screen)
+        s.style.setProperty("--py", `${Math.max(-48, Math.min(48, off)).toFixed(1)}px`);
       }
     }
   };
@@ -96,6 +97,30 @@ if (flow) {
   flow.querySelectorAll("img").forEach((img) => img.complete || img.addEventListener("load", build, { once: true }));
   document.fonts?.ready.then(build);
   build();
+}
+
+// Integrations: each row is doubled so it can loop; scrolling slides the rows in opposite directions,
+// with a slow drift of their own while they're on screen.
+const marquees = [...document.querySelectorAll(".marquee")].map((m, i) => {
+  const track = m.querySelector(".track");
+  track.append(...[...track.children].map((li) => { const c = li.cloneNode(true); c.setAttribute("aria-hidden", "true"); return c; }));
+  return { m, track, dir: m.classList.contains("rev") ? 1 : -1, phase: i * 180 };
+});
+if (marquees.length) {
+  const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let visible = false, t0 = performance.now();
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) requestAnimationFrame(tick); })
+    .observe(document.querySelector(".intg"));
+  function tick(now) {
+    for (const { track, dir, phase } of marquees) {
+      const half = track.scrollWidth / 2;
+      const drift = calm ? 0 : (now - t0) * 0.018;
+      let x = (scrollY * 0.45 + drift + phase) * dir;
+      x = ((x % half) + half) % half;          // 0…half, then wrap
+      track.style.transform = `translate3d(${-x}px, 0, 0)`;
+    }
+    if (visible) requestAnimationFrame(tick);
+  }
 }
 
 // Waitlist

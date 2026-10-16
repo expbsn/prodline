@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=16">
-  <script type="module" src="main.js?v=16"></script>
+  <link rel="stylesheet" href="style.css?v=18">
+  <script type="module" src="main.js?v=18"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -114,6 +114,22 @@
       </article>
     </section>
 
+    <!-- Integrations: two rows of services that slide as you scroll -->
+    <section class="sec intg" id="numbers">
+      <div class="sec-head">
+        <div data-reveal>
+          <p class="eyebrow">Integrations</p>
+          <h2>23 services.<br>Zero dashboards.</h2>
+        </div>
+        <p class="lede" data-reveal style="--d:.08s">Payments, stores, analytics, hosting and newsletters report straight into your project. Keyless ones take one tap; keys stay in your Keychain.</p>
+      </div>
+      <div class="rows" data-reveal style="--d:.12s">
+        <div class="marquee "><ul class="track"><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Stripe</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>App Store Connect</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 12a7 7 0 0 1 12-5l2 2M20 12a7 7 0 0 1-12 5l-2-2"/><path d="M18 4v5h-5M6 20v-5h5"/></svg></span>RevenueCat</li><li><span class="mi logo"><img src="img/youtube.png" alt="" width="24" height="24"></span>YouTube</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Lemon Squeezy</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>Gumroad</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>Shopify</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Paddle</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Polar</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span>Product Hunt</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span>Hacker News</li></ul></div>
+        <div class="marquee rev"><ul class="track"><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Plausible</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>PostHog</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Fathom Analytics</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Simple Analytics</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Umami</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 4l9 15H3z"/></svg></span>Vercel</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 4l9 15H3z"/></svg></span>Netlify</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>Kit</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>Buttondown</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>beehiiv</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span>npm</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H10l-4 4v-4H5z"/></svg></span>Bluesky</li></ul></div>
+      </div>
+      <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else.</p>
+    </section>
+
     <!-- Features -->
     <section class="sec" id="features">
       <div class="sec-head">
@@ -128,25 +144,6 @@
         <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span><h3>A streak that notices</h3><p>Ticked goals and commits keep it alive. Reminders arrive when you usually work.</p></div>
         <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span><h3>Numbers on autopilot</h3><p>Connect a service once. Data refreshes in the background and lands on your Lock Screen.</p></div>
         <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
-      </div>
-    </section>
-
-    <!-- Integrations -->
-    <section class="sec" id="numbers">
-      <div class="split">
-        <div class="split-art" data-reveal>
-          <figure class="phone"><img src="shots/project.jpg?v=2" alt="A project in Prodline: Habit Hero on day 13 with its timeline" width="600" height="1304" loading="lazy"></figure>
-        </div>
-        <div class="split-copy" data-reveal style="--d:.08s">
-          <p class="eyebrow">Integrations</p>
-          <h2>23 services.<br>Zero dashboards.</h2>
-          <p class="lede">Payments, stores, analytics, hosting and newsletters report straight into your project. Keyless ones take one tap; keys stay in your Keychain.</p>
-          <ul class="pills">
-            <li>Stripe</li><li>App Store</li><li>RevenueCat</li><li>YouTube</li><li>Plausible</li><li>PostHog</li><li>Vercel</li><li>Netlify</li>
-            <li>Shopify</li><li>Lemon Squeezy</li><li>Gumroad</li><li>Paddle</li><li>Kit</li><li>beehiiv</li><li>npm</li><li>Product Hunt</li><li>Hacker News</li><li>Bluesky</li><li>GitHub</li>
-          </ul>
-          <p class="note">Or point Prodline at your own endpoint.</p>
-        </div>
       </div>
     </section>
 
