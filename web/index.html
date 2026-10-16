@@ -11,13 +11,13 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=8">
-  <script type="module" src="main.js?v=8"></script>
+  <link rel="stylesheet" href="style.css?v=9">
+  <script type="module" src="main.js?v=9"></script>
 </head>
 <body>
   <header class="nav" id="top">
     <a class="logo" href="#top" aria-label="Prodline home">
-      <img src="mark.svg" alt="" width="26" height="26">
+      <img src="mark-light.svg" alt="" width="26" height="26">
       <span>Prodline</span>
     </a>
     <nav class="links" aria-label="Main">
@@ -25,28 +25,21 @@
       <a href="#features">Features</a>
       <a href="#numbers">Integrations</a>
     </nav>
-    <a class="btn dark small" href="#join">Join the beta</a>
+    <a class="btn light small" href="#join">Join the beta</a>
   </header>
 
   <main>
-    <!-- Hero -->
-    <section class="hero">
-      <div class="hero-copy">
-        <h1 data-reveal>Side projects<br>rot in a drawer.</h1>
-        <p class="lede" data-reveal style="--d:.08s">Prodline gets yours out the door. Short plans, one tick a day, and the numbers that prove it worked, right on your iPhone.</p>
-        <div class="cta-row" data-reveal style="--d:.16s">
-          <a class="btn dark" href="#join"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Join the beta</a>
+    <!-- Header -->
+    <section class="header" aria-labelledby="h-top">
+      <img class="header-bg" src="img/header.jpg" alt="" width="3200" height="1800" fetchpriority="high">
+      <div class="header-in">
+        <p class="eyebrow up" style="--d:.15s">Prodline for iPhone · Beta</p>
+        <h1 id="h-top" class="up" style="--d:.25s">Watch your projects<br>take off.</h1>
+        <p class="lede up" style="--d:.38s">Short plans, one tick a day, and the numbers that prove it worked. Prodline gets your side projects out of the drawer and into the air.</p>
+        <div class="cta-row up" style="--d:.5s">
+          <a class="btn light" href="#join">Join the beta</a>
+          <a class="more" href="#how">How it works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
         </div>
-        <a class="more" href="#how" data-reveal style="--d:.24s">Find out more <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
-        <svg class="swoop" viewBox="0 0 300 420" aria-hidden="true">
-          <path class="draw" pathLength="1" d="M60 10 C200 30 260 120 220 230 C190 310 150 380 160 400 C170 420 190 398 175 375 C150 340 80 330 10 335"/>
-          <path class="draw head" pathLength="1" d="M28 318 L8 335 L30 352"/>
-        </svg>
-      </div>
-
-      <div class="hero-art">
-        <figure class="phone back" data-reveal style="--d:.22s"><img src="shots/project.jpg" alt="A project in Prodline: Habit Hero on day 13, with its timeline" width="600" height="1304"></figure>
-        <figure class="phone front" data-reveal style="--d:.1s"><img src="shots/dash.jpg" alt="Prodline's Dash: project cards with the streak in the corner" width="600" height="1304"></figure>
       </div>
     </section>
 
