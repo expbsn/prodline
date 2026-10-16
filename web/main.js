@@ -12,12 +12,6 @@ const seen = new IntersectionObserver((entries) => {
 }, { rootMargin: "0px 0px -12% 0px", threshold: 0.12 });
 document.querySelectorAll("[data-reveal], .draw").forEach((el) => seen.observe(el));
 
-// Nav gets a hairline once the page moves.
-const nav = document.querySelector(".nav");
-const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
-addEventListener("scroll", onScroll, { passive: true });
-onScroll();
-
 // Waitlist
 const form = document.getElementById("waitlist");
 const note = document.getElementById("form-note");

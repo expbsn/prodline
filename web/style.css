@@ -105,12 +105,20 @@ h3 { font-size: 26px; line-height: 1.05; font-weight: 700; }
   justify-content: space-between;
   gap: 16px;
   padding: 18px 0;
-  background: rgba(255,255,255,.86);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
 }
-.nav::after { content: ""; position: absolute; left: -50vw; right: -50vw; bottom: 0; height: 1px; background: var(--line); opacity: 0; transition: opacity .2s; }
-.nav.scrolled::after { opacity: 1; }
+/* No edge: the page blurs behind the bar and the blur fades out toward the bottom. */
+.nav::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0 -50vw -36px;
+  background: linear-gradient(rgba(255,255,255,.78), rgba(255,255,255,0));
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  -webkit-mask-image: linear-gradient(#000 45%, transparent);
+  mask-image: linear-gradient(#000 45%, transparent);
+  pointer-events: none;
+}
 .logo { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font: 800 24px/1 var(--display); }
 .links { display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: var(--grey); }
 .links a { padding: 10px 16px; border-radius: 999px; text-decoration: none; font: 600 14px/1 var(--ui); color: var(--ink-soft); transition: background .15s, color .15s; }
