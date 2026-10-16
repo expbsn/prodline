@@ -24,3 +24,7 @@ App Store Connect keeps a generic symbol: Apple doesn't allow its logos or icons
 
 ## Web font
 - Afacad Flux (SIL Open Font License 1.1), subset to Latin for `web/fonts/AfacadFlux.woff2`.
+
+## Landing page header
+- `web/img/header.jpg`: night-flight wing photo from Unsplash (Unsplash License), mirrored; the area left of
+  the original frame comes from an AI-extended version of the same photo. Photographer: TODO (add name + link).
