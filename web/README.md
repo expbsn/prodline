@@ -14,3 +14,11 @@ CSS/JS links in `index.html` after changing them. The waitlist form posts to the
 python3 -m http.server 8790 --directory web          # local preview
 npx wrangler pages deploy web --project-name prodline  # deploy (Cloudflare Pages)
 ```
+
+## App Store Connect
+
+- Support URL: `<site>/faq.html` (FAQ + contact). Privacy Policy URL: `<site>/privacy.html`. Marketing URL: `<site>/`.
+- The contact address `support@prodline.app` in `faq.html`, `privacy.html` and `index.html` is a placeholder:
+  replace it with a real, monitored address before submitting.
+- The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
+  "Download on the App Store" badge (unmodified, from Apple's marketing tools) linking to the product page.

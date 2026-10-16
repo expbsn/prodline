@@ -112,16 +112,9 @@ if (stage) {
 
   const build = () => {
     const vw = stage.clientWidth;
-    const p = vw * 2.2;                  // perspective; with R below the sides project to ~0.6 vw
-    R = (0.6 * vw * p) / (p - 0.6 * vw);
+    const p = vw * 2.2;                  // perspective; with R0 below the sides project to ~0.6 vw
+    const R0 = (0.6 * vw * p) / (p - 0.6 * vw);
     stage.style.setProperty("--ring-p", `${p}px`);
-    const h = Math.round(Math.max(260, vw * 0.36));
-    stage.style.setProperty("--ring-h", `${h}px`);
-    // tilting drops the front of the ring by R·sin(tilt); lift it so the front lands low in the stage
-    // and the sides rise towards its top edge
-    stage.style.setProperty("--ring-top", `${Math.round(h * 0.66 - R * Math.sin((TILT * Math.PI) / 180))}px`);
-    ring.replaceChildren();
-    const circ = 2 * Math.PI * R;
     const make = (text, hidden) => {
       const li = document.createElement("li");
       li.textContent = text;
@@ -129,20 +122,25 @@ if (stage) {
       ring.append(li);
       return li;
     };
-    // fill the circumference: keep adding names (cycling through the list) while the next one still fits
-    // with at least the minimum gap, then spread the space that's left evenly between them
+    // One full list, measured. The ring holds whole copies only (one, or two half a turn apart), so a name
+    // never shows up again close to itself; if one copy doesn't fit (phones), the ring grows instead.
     const MIN_GAP = 64;
-    let used = 0, k = 0;
-    items = [];
-    while (true) {
-      const li = make(names[k % names.length], k >= names.length);
-      const w = li.offsetWidth;   // layout width (the ring's 3D transform would shrink a measured box)
-      if (k > 0 && used + w + (items.length + 1) * MIN_GAP > circ) { li.remove(); break; }
-      items.push({ li, w });
-      used += w;
-      k++;
-    }
+    ring.replaceChildren();
+    const first = names.map((n) => ({ li: make(n, false), name: n }));
+    const widths = first.map((it) => it.li.offsetWidth);   // layout width (3D transforms shrink measured boxes)
+    const once = widths.reduce((a, b) => a + b, 0) + names.length * MIN_GAP;
+    R = Math.max(R0, once / (2 * Math.PI));
+    const circ = 2 * Math.PI * R;
+    const copies = Math.max(1, Math.floor(circ / once));
+    items = first.map((it, i) => ({ li: it.li, w: widths[i] }));
+    for (let c = 1; c < copies; c++) names.forEach((n, i) => items.push({ li: make(n, true), w: widths[i] }));
+    const used = widths.reduce((a, b) => a + b, 0) * copies;
     const gap = (circ - used) / items.length;
+    const h = Math.round(Math.max(230, vw * 0.27));
+    stage.style.setProperty("--ring-h", `${h}px`);
+    // tilting drops the front of the ring by R·sin(tilt); lift it so the front lands low in the stage
+    // and the sides rise towards its top edge
+    stage.style.setProperty("--ring-top", `${Math.round(h * 0.62 - R * Math.sin((TILT * Math.PI) / 180))}px`);
     let at = 0;
     for (const it of items) {
       it.angle = ((at + it.w / 2) / circ) * 360;
@@ -153,7 +151,7 @@ if (stage) {
   };
 
   const update = (now) => {
-    const spin = -(scrollY * 0.05) - (calm ? 0 : (now - t0) * 0.0012);
+    const spin = -(scrollY * 0.05) - (calm ? 0 : (now - t0) * 0.005);
     // move the ring back by R so the front name sits at the screen plane, tilt, then spin
     ring.style.transform = `translateZ(${-R}px) rotateX(${-TILT}deg) rotateY(${spin}deg)`;
     for (const it of items) {
@@ -170,11 +168,68 @@ if (stage) {
   build();
 }
 
+// Features: the revenue counts up the first time it's seen; the Live Activity's countdown ticks.
+const count = document.querySelector(".t-numbers .count");
+if (count) {
+  const to = Number(count.dataset.to);
+  new IntersectionObserver(([e], o) => {
+    if (!e.isIntersecting) return;
+    o.disconnect();
+    const t0 = performance.now();
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / 1400);
+      count.textContent = "$" + Math.round(to * (1 - (1 - k) ** 3)).toLocaleString("en-US");
+      if (k < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }, { threshold: 0.4 }).observe(count);
+}
+const liveT = document.querySelector(".live-t");
+if (liveT) {
+  let left = 2 * 3600 - 1;
+  const show = () => {
+    const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), sec = left % 60;
+    liveT.textContent = `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  };
+  show();
+  setInterval(() => { left = left > 0 ? left - 1 : 2 * 3600 - 1; show(); }, 1000);
+}
+
+// Nav: a pill slides to the link of the section you're looking at.
+const navLinks = [...document.querySelectorAll(".links a[href^='#']")];
+if (navLinks.length) {
+  const bar = document.querySelector(".links");
+  const pill = document.createElement("span");
+  pill.className = "pill-ind";
+  bar.prepend(pill);
+  const targets = navLinks.map((a) => document.querySelector(a.getAttribute("href")));
+  let current = -1;
+  const place = () => {
+    const line = innerHeight * 0.4;
+    let i = -1;
+    targets.forEach((t, k) => { if (t && t.getBoundingClientRect().top <= line) i = k; });
+    // past the end of the last tracked section (e.g. the join card), nothing is current
+    const last = targets.at(-1);
+    if (i === targets.length - 1 && last.getBoundingClientRect().bottom < line) i = -1;
+    if (i === current) return;
+    current = i;
+    navLinks.forEach((a, k) => a.classList.toggle("on", k === i));
+    if (i < 0) { pill.style.opacity = 0; return; }
+    const a = navLinks[i], b = bar.getBoundingClientRect(), r = a.getBoundingClientRect();
+    pill.style.opacity = 1;
+    pill.style.width = `${r.width}px`;
+    pill.style.transform = `translateX(${r.left - b.left}px)`;
+  };
+  addEventListener("scroll", place, { passive: true });
+  addEventListener("resize", () => { current = -2; place(); });
+  place();
+}
+
 // Waitlist
 const form = document.getElementById("waitlist");
 const note = document.getElementById("form-note");
-const button = form.querySelector("button");
-form.addEventListener("submit", async (e) => {
+const button = form?.querySelector("button");
+form?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const email = form.email.value.trim();
   form.classList.remove("bad");

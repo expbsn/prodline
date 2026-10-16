@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=23">
-  <script type="module" src="main.js?v=23"></script>
+  <link rel="stylesheet" href="style.css?v=25">
+  <script type="module" src="main.js?v=25"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -22,8 +22,9 @@
     </a>
     <nav class="links" aria-label="Main">
       <a href="#how">How it works</a>
+      <a href="#integrations">Integrations</a>
       <a href="#features">Features</a>
-      <a href="#numbers">Integrations</a>
+      <a href="faq.html">FAQ</a>
     </nav>
     <a class="btn light small" href="#join">Join the beta</a>
   </header>
@@ -38,6 +39,7 @@
         <p class="lede up" style="--d:.38s">Short plans, one tick a day, and the numbers that prove it worked. Prodline gets your side projects out of the drawer and into the air.</p>
         <div class="cta-row up" style="--d:.5s">
           <a class="btn light" href="#join">Join the beta</a>
+          <a class="btn store" href="#join" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a>
           <a class="more" href="#how">How it works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
         </div>
       </div>
@@ -115,7 +117,7 @@
     </section>
 
     <!-- Integrations: the service names on a 3D ring that turns as you scroll -->
-    <section class="sec intg" id="numbers">
+    <section class="sec intg" id="integrations">
       <div class="sec-head">
         <div data-reveal>
           <p class="eyebrow">Integrations</p>
@@ -153,20 +155,62 @@
       <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else.</p>
     </section>
 
-    <!-- Features -->
-    <section class="sec" id="features">
+    <!-- Features: a grid of cards, each one showing the thing it describes -->
+    <section class="sec feats" id="features">
       <div class="sec-head">
         <div data-reveal>
           <p class="eyebrow">Features</p>
           <h2>Built for people<br>with too many ideas.</h2>
         </div>
-        <p class="lede" data-reveal style="--d:.08s">The fun part stays fun. Prodline quietly handles the rest.</p>
+        <p class="lede" data-reveal style="--d:.08s">The fun part stays fun. Prodline quietly handles the rest, right where you already look.</p>
       </div>
-      <div class="grid4" data-reveal>
-        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h3>Checkpoints, not chaos</h3><p>A few goals per checkpoint, on the weekdays you pick. Weird schedules welcome.</p></div>
-        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span><h3>A streak that notices</h3><p>Ticked goals and commits keep it alive. Reminders arrive when you usually work.</p></div>
-        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span><h3>Numbers on autopilot</h3><p>Connect a service once. Data refreshes in the background and lands on your Lock Screen.</p></div>
-        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
+
+      <div class="bento">
+        <article class="tile t-live" data-reveal>
+          <div class="tile-copy"><h3>On your Lock Screen</h3><p>When a checkpoint is due tonight, a Live Activity counts down the last four hours.</p></div>
+          <div class="live">
+            <img src="img/live.png" alt="Live Activity: Checkpoint 3 of Habit Hero is due today, one goal of two done" width="1082" height="407" loading="lazy">
+            <span class="live-t" aria-hidden="true">1:59:59</span>
+          </div>
+        </article>
+
+        <article class="tile t-streak" data-reveal style="--d:.08s">
+          <div class="flame-big" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.3 2.4-5.4 3.8-7.9.5 1.6 1.4 2.6 2.4 3.1C12 7 13.2 4.6 15 3c.2 3.4 3.5 5.6 3.5 11.2 0 4-2.7 6.8-6.5 6.8z"/></svg>
+          </div>
+          <p class="streak-n"><b>12</b> day streak</p>
+          <div class="week" aria-hidden="true"><i>M</i><i>T</i><i>W</i><i>T</i><i>F</i><i>S</i><i>S</i></div>
+          <div class="tile-copy"><h3>A streak that notices</h3><p>Ticked goals and commits keep it alive. Reminders come when you usually work.</p></div>
+        </article>
+
+        <article class="tile t-widgets" data-reveal>
+          <div class="tile-copy"><h3>Widgets that keep score</h3><p>The next checkpoint, its goals and your numbers on the Home Screen, in light or dark.</p></div>
+          <div class="widgets">
+            <img class="wm" src="img/w-medium.png" alt="Medium widget: Checkpoint 3 of Habit Hero with its goals" width="1092" height="510" loading="lazy">
+            <img class="ws" src="img/w-small.png" alt="Small widget: next checkpoint, one of two goals done" width="500" height="500" loading="lazy">
+            <img class="wv" src="img/w-visits.png" alt="Small widget: 63.3K visits, up 46.7K this week" width="500" height="500" loading="lazy">
+          </div>
+        </article>
+
+        <article class="tile t-goals" data-reveal>
+          <ul class="ticks" aria-hidden="true">
+            <li><i></i>Paywall screen</li>
+            <li><i></i>Onboarding flow live</li>
+            <li><i></i>Shareable streak card</li>
+          </ul>
+          <div class="tile-copy"><h3>Checkpoints, not chaos</h3><p>A few goals each, due on the weekdays you pick.</p></div>
+        </article>
+
+        <article class="tile t-numbers" data-reveal style="--d:.08s">
+          <div class="num-big"><span class="count" data-to="1284">$0</span><em>+$212 this week</em></div>
+          <svg class="spark" viewBox="0 0 240 70" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M0 62 L20 58 L40 60 L60 50 L80 53 L100 42 L120 45 L140 33 L160 36 L180 22 L200 26 L220 12 L240 6"/></svg>
+          <div class="tile-copy"><h3>Numbers on autopilot</h3><p>Data refreshes in the background, per day and per project.</p></div>
+        </article>
+
+        <article class="tile t-call" data-reveal style="--d:.16s">
+          <div class="choices" aria-hidden="true"><span class="keep">Keep it</span><span class="pivot">Pivot</span><span class="drop">Let go</span></div>
+          <div class="tile-copy"><h3>Then make the call</h3><p>On ship day, decide. Whatever you pick, you shipped a thing.</p></div>
+        </article>
       </div>
     </section>
 
@@ -183,7 +227,8 @@
             <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
             <button class="btn light" type="submit">Join</button>
           </form>
-          <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam.</p>
+          <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam. <a href="privacy.html">Privacy</a></p>
+          <div class="store-row"><a class="btn store" href="faq.html" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a></div>
         </div>
         <div class="join-art"><figure class="phone"><img src="shots/plan.jpg?v=2" alt="" width="600" height="1304" loading="lazy"></figure></div>
       </div>
@@ -194,7 +239,7 @@
     <div class="foot-in">
       <a class="logo" href="#top"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
       <nav class="foot-links" aria-label="Footer">
-        <a href="#how">How it works</a><a href="#features">Features</a><a href="#numbers">Integrations</a><a href="#join">Join the beta</a>
+        <a href="#how">How it works</a><a href="#integrations">Integrations</a><a href="#features">Features</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="mailto:support@prodline.app">Contact</a>
       </nav>
       <p class="copy">© 2026 Prodline</p>
     </div>

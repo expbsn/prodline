@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>FAQ & support · Prodline</title>
+  <meta name="description" content="Answers about Prodline, the iPhone app for shipping side projects, and how to get support.">
+  <meta name="theme-color" content="#07080B">
+  <meta name="color-scheme" content="dark">
+  <link rel="icon" href="mark.svg" type="image/svg+xml">
+  <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css?v=25">
+</head>
+<body class="doc-page">
+  <header class="nav" id="top">
+    <a class="logo" href="index.html" aria-label="Prodline home">
+      <img src="mark-light.svg" alt="" width="26" height="26">
+      <span>Prodline</span>
+    </a>
+    <nav class="links" aria-label="Main">
+      <a href="index.html#how">How it works</a>
+      <a href="index.html#integrations">Integrations</a>
+      <a href="index.html#features">Features</a>
+      <a href="faq.html" class="on solid">FAQ</a>
+    </nav>
+    <a class="btn light small" href="index.html#join">Join the beta</a>
+  </header>
+
+  <main class="doc">
+    <p class="eyebrow">FAQ &amp; support</p>
+    <h1>Questions, answered.</h1>
+    <p class="lede">Can't find yours? Write to <a href="mailto:support@prodline.app">support@prodline.app</a> and you'll hear back from a human, usually within two days.</p>
+
+    <section class="qa-list">
+      <h2>The app</h2>
+      <details class="qa">
+        <summary>What is Prodline?</summary>
+        <div><p>An iPhone app for side projects. You plan each project in short build phases with a few checkpoints, tick goals as you go, keep a daily streak, and watch the numbers that matter (revenue, visits, downloads) come in on their own. At the end you decide: keep it, pivot it, or let it go.</p></div>
+      </details>
+      <details class="qa">
+        <summary>What does it cost?</summary>
+        <div><p>Prodline is free during the beta.</p></div>
+      </details>
+      <details class="qa">
+        <summary>Which devices does it run on?</summary>
+        <div><p>iPhone with iOS 26 or later. Widgets work on the Home Screen and Lock Screen, and deadline Live Activities appear on the Lock Screen and in the Dynamic Island.</p></div>
+      </details>
+      <details class="qa">
+        <summary>How do I join the beta?</summary>
+        <div><p>Leave your email on the <a href="index.html#join">home page</a>. We let testers in batches and send a TestFlight invite when your spot opens.</p></div>
+      </details>
+      <details class="qa">
+        <summary>Does it have dark mode?</summary>
+        <div><p>Yes. It follows your iPhone by default; Me → Configuration → Appearance keeps it light or dark.</p></div>
+      </details>
+      <h2>Numbers and integrations</h2>
+      <details class="qa">
+        <summary>Which services can I connect?</summary>
+        <div><p>Stripe, App Store Connect, RevenueCat, YouTube, Lemon Squeezy, Gumroad, Shopify, Paddle, Polar, Plausible, PostHog, Fathom Analytics, Simple Analytics, Umami, Vercel, Netlify, Kit, Buttondown, beehiiv, npm, Hacker News, Product Hunt and Bluesky. GitHub links your plan and commits, and anything else can report through your own endpoint.</p></div>
+      </details>
+      <details class="qa">
+        <summary>Are my API keys safe?</summary>
+        <div><p>Keys are stored in the iOS Keychain on your device (and in your iCloud Keychain if you use it). The app sends each key only to the service it belongs to, directly from your iPhone. Prodline has no server that sees your keys or your numbers.</p></div>
+      </details>
+      <details class="qa">
+        <summary>How often do numbers update?</summary>
+        <div><p>Every 30 seconds by default while the app is open (Me → Configuration → Live refresh), and in the background when iOS allows it.</p></div>
+      </details>
+      <details class="qa">
+        <summary>Can I connect something that isn't listed?</summary>
+        <div><p>Yes: point a project at your own endpoint that returns a small JSON document with your metrics. The format is described in the app under the project's Connection → Your own endpoint.</p></div>
+      </details>
+      <h2>GitHub and instant updates</h2>
+      <details class="qa">
+        <summary>What does the GitHub link do?</summary>
+        <div><p>Prodline reads your repository's commits, issues and an optional <code>prodline.json</code> file with your checkpoints and goals. Goals in that file tick themselves when you mark them done in a commit.</p></div>
+      </details>
+      <details class="qa">
+        <summary>What are instant updates?</summary>
+        <div><p>Optional. A GitHub webhook goes to Prodline's relay, which sends a silent push to your iPhone so the app syncs within seconds of a push. Without it, the app checks on its own every few minutes. You can turn it off under Me → Configuration (type <em>off</em> as the relay address).</p></div>
+      </details>
+      <h2>Your data</h2>
+      <details class="qa">
+        <summary>Where is my data stored?</summary>
+        <div><p>On your iPhone and in your own private iCloud database, so it syncs across your devices. There's no Prodline account. Details are in the <a href="privacy.html">privacy policy</a>.</p></div>
+      </details>
+      <details class="qa">
+        <summary>How do I delete my data?</summary>
+        <div><p>Me → Delete all data removes every project, goal, metric and stored key. Deleting the app removes what's left on the device; iCloud data can be removed under Settings → [your name] → iCloud → Manage Storage. To remove relay or waitlist entries, write to <a href="mailto:support@prodline.app">support@prodline.app</a>.</p></div>
+      </details>
+      <details class="qa">
+        <summary>Does Prodline track me?</summary>
+        <div><p>No. There are no ads, no analytics SDKs and no tracking across apps or websites.</p></div>
+      </details>
+    </section>
+
+    <section class="contact-card">
+      <h2>Still stuck?</h2>
+      <p>Bugs, ideas or questions about your data: <a href="mailto:support@prodline.app">support@prodline.app</a></p>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <div class="foot-in">
+      <a class="logo" href="index.html"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="index.html#how">How it works</a><a href="index.html#features">Features</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="mailto:support@prodline.app">Contact</a>
+      </nav>
+      <p class="copy">© 2026 Prodline</p>
+    </div>
+  </footer>
+</body>
+</html>
