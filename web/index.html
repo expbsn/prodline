@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=14">
-  <script type="module" src="main.js?v=14"></script>
+  <link rel="stylesheet" href="style.css?v=16">
+  <script type="module" src="main.js?v=16"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -43,29 +43,75 @@
       </div>
     </section>
 
-    <!-- How it works -->
-    <section class="sec" id="how">
+    <!-- How it works: three steps on a dotted trail -->
+    <section class="sec flow" id="how">
       <div class="sec-head">
         <div data-reveal>
           <p class="eyebrow">How it works</p>
-          <h2>Short bursts.<br>Real progress.</h2>
+          <h2>One dot<br>at a time.</h2>
         </div>
-        <p class="lede" data-reveal style="--d:.08s">Prodline turns the big vague thing into two-week stretches with a few checkpoints, keeps you showing up every day, and brings the numbers to you.</p>
+        <p class="lede" data-reveal style="--d:.08s">Plan it, show up, watch it land. Prodline connects the dots between a vague idea and a thing you actually shipped.</p>
       </div>
-      <div class="steps">
-        <article class="step" data-reveal>
-          <div class="step-copy"><span class="num">01</span><h3>Plan it</h3><p>A handful of checkpoints, each with a few goals. Due on the days you actually work.</p></div>
-          <div class="shot"><img src="shots/plan.jpg?v=2" alt="The Plan tab: streak, XP, the week ahead and checkpoints" width="600" height="1304" loading="lazy"></div>
-        </article>
-        <article class="step" data-reveal style="--d:.08s">
-          <div class="step-copy"><span class="num">02</span><h3>Show up</h3><p>Tick one goal a day. Commits count by themselves, and the streak keeps you honest.</p></div>
-          <div class="shot"><img src="shots/dash.jpg?v=2" alt="Dash: your projects, the day in the build phase and the streak" width="600" height="1304" loading="lazy"></div>
-        </article>
-        <article class="step" data-reveal style="--d:.16s">
-          <div class="step-copy"><span class="num">03</span><h3>Watch it land</h3><p>Revenue, visits and downloads show up on their own, per day and per project.</p></div>
-          <div class="shot"><img src="shots/data.jpg?v=2" alt="Insights: revenue, visits and social views across projects" width="600" height="1304" loading="lazy"></div>
-        </article>
-      </div>
+
+      <svg class="trail" aria-hidden="true">
+        <defs><mask id="trail-mask" maskUnits="userSpaceOnUse"><path class="trail-reveal"/></mask></defs>
+        <path class="trail-ghost"/>
+        <path class="trail-dots" mask="url(#trail-mask)"/>
+        <circle class="trail-head" r="7"/>
+      </svg>
+
+      <article class="flow-step">
+        <div class="flow-copy" data-reveal>
+          <span class="node">1</span>
+          <h3>Plan it</h3>
+          <p>Two weeks, a few checkpoints, a handful of goals each. Due on the days you actually work, even if that's only Tuesdays.</p>
+        </div>
+        <div class="flow-art" data-reveal style="--d:.1s">
+          <figure class="phone big" style="--r:-4deg"><img src="shots/plan.jpg?v=2" alt="The Plan tab: streak, XP, the week ahead and today's checkpoints" width="600" height="1304" loading="lazy"></figure>
+          <div class="stk pill" style="top:9%;left:-6%;--r:-6deg;--p:.10"><span class="ico cal"></span>Checkpoint 3 · due Fri</div>
+          <div class="stk goals" style="top:44%;right:-14%;--r:4deg;--p:.18">
+            <p><i></i>Onboarding flow live</p>
+            <p class="done"><i></i>Shareable streak card</p>
+          </div>
+          <div class="stk bubble check" style="bottom:10%;left:-4%;--r:-8deg;--p:.26"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        </div>
+      </article>
+
+      <article class="flow-step flip">
+        <div class="flow-copy" data-reveal>
+          <span class="node">2</span>
+          <h3>Show up</h3>
+          <p>Tick one goal a day and the flame stays fed. Push a commit and it counts on its own, no app open needed.</p>
+        </div>
+        <div class="flow-art" data-reveal style="--d:.1s">
+          <figure class="phone big" style="--r:4deg"><img src="shots/dash.jpg?v=2" alt="Dash: your projects as cards, with the streak in the corner" width="600" height="1304" loading="lazy"></figure>
+          <div class="stk flame" style="top:6%;right:-10%;--r:7deg;--p:.14">
+            <svg viewBox="0 0 24 24"><path d="M12 21c-3.9 0-6.5-2.6-6.5-6.1 0-3.3 2.4-5.4 3.8-7.9.5 1.6 1.4 2.6 2.4 3.1C12 7 13.2 4.6 15 3c.2 3.4 3.5 5.6 3.5 11.2 0 4-2.7 6.8-6.5 6.8z"/></svg>
+            <span><b>12</b>day streak</span>
+          </div>
+          <div class="stk pill xp" style="top:52%;left:-16%;--r:-5deg;--p:.22"><span class="coin">★</span>+10 XP</div>
+          <div class="stk code" style="bottom:7%;right:-8%;--r:3deg;--p:.3"><span>$ git push</span><small>counts for today</small></div>
+        </div>
+      </article>
+
+      <article class="flow-step">
+        <div class="flow-copy" data-reveal>
+          <span class="node">3</span>
+          <h3>Watch it land</h3>
+          <p>Sales, visits and downloads arrive by themselves. On day 14 you make the call: keep it, pivot it, or let it go.</p>
+        </div>
+        <div class="flow-art" data-reveal style="--d:.1s">
+          <figure class="phone big" style="--r:-3deg"><img src="shots/data.jpg?v=2" alt="Insights: revenue per day across projects" width="600" height="1304" loading="lazy"></figure>
+          <div class="stk note" style="top:7%;left:-14%;--r:-4deg;--p:.12">
+            <span class="app"><img src="mark-light.svg" alt=""></span>
+            <span><b>New sale · Habit Hero</b><small>+$29.00 via Stripe</small></span>
+          </div>
+          <div class="stk pill up" style="top:47%;right:-14%;--r:5deg;--p:.2">
+            <svg viewBox="0 0 60 20"><path d="M0 16 L10 13 L20 14 L30 8 L40 10 L50 4 L60 2"/></svg>+$212 this week
+          </div>
+          <div class="stk call" style="bottom:9%;left:-8%;--r:-6deg;--p:.28"><span class="no">Let go</span><span class="yes">Keep it</span></div>
+        </div>
+      </article>
     </section>
 
     <!-- Features -->
