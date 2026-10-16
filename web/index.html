@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prodline · Ship your side projects</title>
   <meta name="description" content="Prodline turns side projects into short plans, daily ticks and real numbers. Join the iPhone beta.">
-  <meta name="theme-color" content="#FFFFFF">
-  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#07080B">
+  <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Prodline · Ship your side projects">
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=13">
-  <script type="module" src="main.js?v=13"></script>
+  <link rel="stylesheet" href="style.css?v=14">
+  <script type="module" src="main.js?v=14"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -43,80 +43,72 @@
       </div>
     </section>
 
-    <!-- How it works: two cards with real screens peeking in -->
-    <section class="block" id="how">
-      <h2 data-reveal>Get the most out<br>of every side project</h2>
-      <div class="duo">
-        <article class="card soft" data-reveal>
-          <div class="card-copy">
-            <h3>Plans that fit in two weeks</h3>
-            <p>Break the big vague thing into a few checkpoints. Tick a goal and the next one comes into view.</p>
-            <a class="more" href="#features">See how <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          </div>
-          <div class="peek"><img src="shots/plan.jpg" alt="The Plan tab: streak, XP, the week ahead and checkpoints" width="600" height="1304" loading="lazy"></div>
+    <!-- How it works -->
+    <section class="sec" id="how">
+      <div class="sec-head">
+        <div data-reveal>
+          <p class="eyebrow">How it works</p>
+          <h2>Short bursts.<br>Real progress.</h2>
+        </div>
+        <p class="lede" data-reveal style="--d:.08s">Prodline turns the big vague thing into two-week stretches with a few checkpoints, keeps you showing up every day, and brings the numbers to you.</p>
+      </div>
+      <div class="steps">
+        <article class="step" data-reveal>
+          <div class="step-copy"><span class="num">01</span><h3>Plan it</h3><p>A handful of checkpoints, each with a few goals. Due on the days you actually work.</p></div>
+          <div class="shot"><img src="shots/plan.jpg" alt="The Plan tab: streak, XP, the week ahead and checkpoints" width="600" height="1304" loading="lazy"></div>
         </article>
-        <article class="card soft" data-reveal style="--d:.1s">
-          <div class="card-copy">
-            <h3>Numbers without the tab hopping</h3>
-            <p>Sales, visits and downloads land in your project on their own. Refreshing five dashboards is now a hobby, not a job.</p>
-            <a class="more" href="#numbers">See integrations <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          </div>
-          <div class="peek"><img src="shots/data.jpg" alt="Insights: revenue, visits and social views across all projects" width="600" height="1304" loading="lazy"></div>
+        <article class="step" data-reveal style="--d:.08s">
+          <div class="step-copy"><span class="num">02</span><h3>Show up</h3><p>Tick one goal a day. Commits count by themselves, and the streak keeps you honest.</p></div>
+          <div class="shot"><img src="shots/dash.jpg" alt="Dash: your projects, the day in the build phase and the streak" width="600" height="1304" loading="lazy"></div>
+        </article>
+        <article class="step" data-reveal style="--d:.16s">
+          <div class="step-copy"><span class="num">03</span><h3>Watch it land</h3><p>Revenue, visits and downloads show up on their own, per day and per project.</p></div>
+          <div class="shot"><img src="shots/data.jpg" alt="Insights: revenue, visits and social views across projects" width="600" height="1304" loading="lazy"></div>
         </article>
       </div>
     </section>
 
-    <!-- Features grid -->
-    <section class="block features" id="features">
-      <div class="f-intro" data-reveal>
-        <h2>Built for people<br>with too many ideas</h2>
-        <p class="lede">Prodline keeps the fun part fun and quietly handles the rest.</p>
+    <!-- Features -->
+    <section class="sec" id="features">
+      <div class="sec-head">
+        <div data-reveal>
+          <p class="eyebrow">Features</p>
+          <h2>Built for people<br>with too many ideas.</h2>
+        </div>
+        <p class="lede" data-reveal style="--d:.08s">The fun part stays fun. Prodline quietly handles the rest.</p>
       </div>
-      <div class="f-grid">
-        <div class="f" data-reveal>
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
-          <div><h3>Checkpoints, not chaos</h3><p>A few goals per checkpoint, due on the days you pick. Weird schedules welcome.</p></div>
-        </div>
-        <div class="f" data-reveal style="--d:.08s">
-          <span class="ic"><svg viewBox="0 0 24 24"><path class="fill" d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span>
-          <div><h3>A streak that notices</h3><p>Commits and ticked goals count by themselves. The flame stays fed if you show up.</p></div>
-        </div>
-        <div class="f" data-reveal style="--d:.16s">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span>
-          <div><h3>Numbers show up</h3><p>Connect Stripe, App Store, YouTube or your own endpoint. The data page does the rest.</p></div>
-        </div>
-        <div class="f" data-reveal style="--d:.24s">
-          <span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span>
-          <div><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
-        </div>
+      <div class="grid4" data-reveal>
+        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span><h3>Checkpoints, not chaos</h3><p>A few goals per checkpoint, on the weekdays you pick. Weird schedules welcome.</p></div>
+        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M12 20c-3.5 0-6-2.4-6-5.6 0-3 2.2-5 3.5-7.3.5 1.5 1.3 2.4 2.2 2.9C12 6.6 13.1 4.4 14.8 3c.2 3.1 3.2 5.2 3.2 10.4 0 3.8-2.5 6.6-6 6.6z"/></svg></span><h3>A streak that notices</h3><p>Ticked goals and commits keep it alive. Reminders arrive when you usually work.</p></div>
+        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M5 19V12M12 19V5M19 19v-8"/></svg></span><h3>Numbers on autopilot</h3><p>Connect a service once. Data refreshes in the background and lands on your Lock Screen.</p></div>
+        <div class="f"><span class="ic"><svg viewBox="0 0 24 24"><path d="M7 4v16M7 5h10l-2 4 2 4H7"/></svg></span><h3>Then make the call</h3><p>Keep it, pivot it or let it go. Whatever you pick, you shipped a thing.</p></div>
       </div>
     </section>
 
-    <!-- Numbers -->
-    <section class="block rows" id="numbers">
-      <div class="row">
-        <div class="row-art" data-reveal>
-          <svg class="cord" viewBox="0 0 300 420" aria-hidden="true"><path class="draw" pathLength="1" d="M300 30 C220 40 250 140 180 170 C110 200 60 150 40 210 C20 270 120 300 90 360 C70 400 20 410 0 420"/></svg>
-          <figure class="phone solo"><img src="shots/data.jpg" alt="Insights in Prodline: revenue per day, by project" width="600" height="1304" loading="lazy"></figure>
+    <!-- Integrations -->
+    <section class="sec" id="numbers">
+      <div class="split">
+        <div class="split-art" data-reveal>
+          <figure class="phone"><img src="shots/project.jpg" alt="A project in Prodline: Habit Hero on day 13 with its timeline" width="600" height="1304" loading="lazy"></figure>
         </div>
-        <div class="row-copy" data-reveal style="--d:.1s">
-          <h2>Know where it stands</h2>
-          <p class="lede">Running totals show what you added each day, levels stay levels, and a gap in the data never drops your chart to zero. Hold a number to swap it for another one.</p>
-          <h3 class="sub">23 integrations, one tap or one key</h3>
+        <div class="split-copy" data-reveal style="--d:.08s">
+          <p class="eyebrow">Integrations</p>
+          <h2>23 services.<br>Zero dashboards.</h2>
+          <p class="lede">Payments, stores, analytics, hosting and newsletters report straight into your project. Keyless ones take one tap; keys stay in your Keychain.</p>
           <ul class="pills">
             <li>Stripe</li><li>App Store</li><li>RevenueCat</li><li>YouTube</li><li>Plausible</li><li>PostHog</li><li>Vercel</li><li>Netlify</li>
             <li>Shopify</li><li>Lemon Squeezy</li><li>Gumroad</li><li>Paddle</li><li>Kit</li><li>beehiiv</li><li>npm</li><li>Product Hunt</li><li>Hacker News</li><li>Bluesky</li><li>GitHub</li>
           </ul>
-          <p class="note">Keys stay in your Keychain. Or point Prodline at your own endpoint.</p>
+          <p class="note">Or point Prodline at your own endpoint.</p>
         </div>
       </div>
     </section>
 
     <!-- Join -->
-    <section class="block" id="join">
-      <div class="band" data-reveal>
-        <svg class="squiggle" viewBox="0 0 160 80" aria-hidden="true"><path class="draw" pathLength="1" d="M0 78 L50 20 C62 6 70 10 72 30 C74 52 84 60 110 44 L140 26"/></svg>
-        <div class="band-copy">
+    <section class="sec" id="join">
+      <div class="join" data-reveal>
+        <div class="join-copy">
+          <p class="eyebrow">Beta · iPhone</p>
           <h2>Get it out<br>of the drawer.</h2>
           <p class="lede">We're letting testers in batches. Leave your email and we'll send a TestFlight invite when your spot opens.</p>
           <form id="waitlist" class="waitlist" novalidate>
@@ -127,21 +119,18 @@
           </form>
           <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam.</p>
         </div>
-        <div class="band-phone">
-          <figure class="phone"><img src="shots/plan.jpg" alt="" width="600" height="1304" loading="lazy"></figure>
-        </div>
+        <div class="join-art"><figure class="phone"><img src="shots/plan.jpg" alt="" width="600" height="1304" loading="lazy"></figure></div>
       </div>
     </section>
   </main>
 
   <footer class="foot">
     <div class="foot-in">
-      <a class="logo inv" href="#top"><img src="mark-light.svg" alt="" width="26" height="26"><span>Prodline</span></a>
-      <div class="cols">
-        <div><h4>Product</h4><a href="#how">How it works</a><a href="#features">Features</a><a href="#numbers">Integrations</a></div>
-        <div><h4>Beta</h4><a href="#join">Join the waitlist</a></div>
-      </div>
-      <p class="copy">© 2026 Prodline. For people with too many side projects.</p>
+      <a class="logo" href="#top"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="#how">How it works</a><a href="#features">Features</a><a href="#numbers">Integrations</a><a href="#join">Join the beta</a>
+      </nav>
+      <p class="copy">© 2026 Prodline</p>
     </div>
   </footer>
 </body>
