@@ -29,9 +29,3 @@ App Store Connect keeps a generic symbol: Apple doesn't allow its logos or icons
 - `web/img/header.jpg`: night-flight wing photo from Unsplash (Unsplash License), mirrored; the area left of
   the original frame comes from an AI-extended version of the same photo. Photographer: TODO (add name + link).
 
-## Landing page integrations
-- `web/img/youtube.png`: the same unmodified YouTube icon as the app, shown as one of 23 services under the
-  [YouTube API Services branding guidelines](https://developers.google.com/youtube/terms/branding-guidelines)
-  (marketing use allowed; never the most prominent element; no implied endorsement). Every other service is
-  shown by name with a generic category icon: Stripe, Bluesky and GitHub ask for written permission before
-  their logos appear in marketing, Apple, Shopify, Vercel, npm and PostHog require it, the rest publish no rule.

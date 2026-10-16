@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=18">
-  <script type="module" src="main.js?v=18"></script>
+  <link rel="stylesheet" href="style.css?v=23">
+  <script type="module" src="main.js?v=23"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -114,7 +114,7 @@
       </article>
     </section>
 
-    <!-- Integrations: two rows of services that slide as you scroll -->
+    <!-- Integrations: the service names on a 3D ring that turns as you scroll -->
     <section class="sec intg" id="numbers">
       <div class="sec-head">
         <div data-reveal>
@@ -123,9 +123,32 @@
         </div>
         <p class="lede" data-reveal style="--d:.08s">Payments, stores, analytics, hosting and newsletters report straight into your project. Keyless ones take one tap; keys stay in your Keychain.</p>
       </div>
-      <div class="rows" data-reveal style="--d:.12s">
-        <div class="marquee "><ul class="track"><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Stripe</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>App Store Connect</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M4 12a7 7 0 0 1 12-5l2 2M20 12a7 7 0 0 1-12 5l-2-2"/><path d="M18 4v5h-5M6 20v-5h5"/></svg></span>RevenueCat</li><li><span class="mi logo"><img src="img/youtube.png" alt="" width="24" height="24"></span>YouTube</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Lemon Squeezy</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>Gumroad</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1 11H6z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg></span>Shopify</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Paddle</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10.5h18M7 15h4"/></svg></span>Polar</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span>Product Hunt</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 5l7 8h-4v6H9v-6H5z"/></svg></span>Hacker News</li></ul></div>
-        <div class="marquee rev"><ul class="track"><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Plausible</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>PostHog</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Fathom Analytics</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Simple Analytics</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 19V12M10 19V6M15 19v-9M20 19V9"/></svg></span>Umami</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 4l9 15H3z"/></svg></span>Vercel</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 4l9 15H3z"/></svg></span>Netlify</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>Kit</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>Buttondown</li><li><span class="mi"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M4 8l8 6 8-6"/></svg></span>beehiiv</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span>npm</li><li><span class="mi"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H10l-4 4v-4H5z"/></svg></span>Bluesky</li></ul></div>
+      <div class="ring-stage" data-reveal style="--d:.12s">
+        <ul class="ring" aria-label="Supported services">
+          <li>Stripe</li>
+          <li>App Store Connect</li>
+          <li>RevenueCat</li>
+          <li>YouTube</li>
+          <li>Lemon Squeezy</li>
+          <li>Gumroad</li>
+          <li>Shopify</li>
+          <li>Paddle</li>
+          <li>Polar</li>
+          <li>Plausible</li>
+          <li>PostHog</li>
+          <li>Fathom Analytics</li>
+          <li>Simple Analytics</li>
+          <li>Umami</li>
+          <li>Vercel</li>
+          <li>Netlify</li>
+          <li>Kit</li>
+          <li>Buttondown</li>
+          <li>beehiiv</li>
+          <li>npm</li>
+          <li>Hacker News</li>
+          <li>Product Hunt</li>
+          <li>Bluesky</li>
+        </ul>
       </div>
       <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else.</p>
     </section>

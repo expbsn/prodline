@@ -99,28 +99,75 @@ if (flow) {
   build();
 }
 
-// Integrations: each row is doubled so it can loop; scrolling slides the rows in opposite directions,
-// with a slow drift of their own while they're on screen.
-const marquees = [...document.querySelectorAll(".marquee")].map((m, i) => {
-  const track = m.querySelector(".track");
-  track.append(...[...track.children].map((li) => { const c = li.cloneNode(true); c.setAttribute("aria-hidden", "true"); return c; }));
-  return { m, track, dir: m.classList.contains("rev") ? 1 : -1, phase: i * 180 };
-});
-if (marquees.length) {
+// Integrations: the names stand on a ring (a cylinder) seen slightly from above. Sizes come from the
+// screen width so the ring's sides always reach past both edges; the list repeats until it fills the
+// circumference, spaced by each name's own width. Scrolling turns the ring.
+const stage = document.querySelector(".ring-stage");
+if (stage) {
+  const ring = stage.querySelector(".ring");
+  const names = [...ring.children].map((li) => li.textContent);
   const calm = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let visible = false, t0 = performance.now();
-  new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) requestAnimationFrame(tick); })
-    .observe(document.querySelector(".intg"));
-  function tick(now) {
-    for (const { track, dir, phase } of marquees) {
-      const half = track.scrollWidth / 2;
-      const drift = calm ? 0 : (now - t0) * 0.018;
-      let x = (scrollY * 0.45 + drift + phase) * dir;
-      x = ((x % half) + half) % half;          // 0…half, then wrap
-      track.style.transform = `translate3d(${-x}px, 0, 0)`;
+  const TILT = 17;                       // degrees we look down onto the ring
+  let items = [], R = 0, visible = false, t0 = performance.now();
+
+  const build = () => {
+    const vw = stage.clientWidth;
+    const p = vw * 2.2;                  // perspective; with R below the sides project to ~0.6 vw
+    R = (0.6 * vw * p) / (p - 0.6 * vw);
+    stage.style.setProperty("--ring-p", `${p}px`);
+    const h = Math.round(Math.max(260, vw * 0.36));
+    stage.style.setProperty("--ring-h", `${h}px`);
+    // tilting drops the front of the ring by R·sin(tilt); lift it so the front lands low in the stage
+    // and the sides rise towards its top edge
+    stage.style.setProperty("--ring-top", `${Math.round(h * 0.66 - R * Math.sin((TILT * Math.PI) / 180))}px`);
+    ring.replaceChildren();
+    const circ = 2 * Math.PI * R;
+    const make = (text, hidden) => {
+      const li = document.createElement("li");
+      li.textContent = text;
+      if (hidden) li.setAttribute("aria-hidden", "true");
+      ring.append(li);
+      return li;
+    };
+    // fill the circumference: keep adding names (cycling through the list) while the next one still fits
+    // with at least the minimum gap, then spread the space that's left evenly between them
+    const MIN_GAP = 64;
+    let used = 0, k = 0;
+    items = [];
+    while (true) {
+      const li = make(names[k % names.length], k >= names.length);
+      const w = li.offsetWidth;   // layout width (the ring's 3D transform would shrink a measured box)
+      if (k > 0 && used + w + (items.length + 1) * MIN_GAP > circ) { li.remove(); break; }
+      items.push({ li, w });
+      used += w;
+      k++;
     }
-    if (visible) requestAnimationFrame(tick);
-  }
+    const gap = (circ - used) / items.length;
+    let at = 0;
+    for (const it of items) {
+      it.angle = ((at + it.w / 2) / circ) * 360;
+      at += it.w + gap;
+      it.li.style.transform = `rotateY(${it.angle}deg) translateZ(${R}px)`;
+    }
+    update(performance.now());
+  };
+
+  const update = (now) => {
+    const spin = -(scrollY * 0.05) - (calm ? 0 : (now - t0) * 0.0012);
+    // move the ring back by R so the front name sits at the screen plane, tilt, then spin
+    ring.style.transform = `translateZ(${-R}px) rotateX(${-TILT}deg) rotateY(${spin}deg)`;
+    for (const it of items) {
+      const facing = Math.cos(((it.angle + spin) * Math.PI) / 180);   // 1 front, 0 at the sides
+      it.li.style.opacity = facing <= 0 ? 0 : (0.15 + 0.85 * facing ** 1.6).toFixed(3);
+    }
+  };
+
+  const tick = (now) => { update(now); if (visible) requestAnimationFrame(tick); };
+  new IntersectionObserver(([e]) => { visible = e.isIntersecting; if (visible) requestAnimationFrame(tick); }).observe(stage);
+  addEventListener("scroll", () => update(performance.now()), { passive: true });
+  addEventListener("resize", build);
+  document.fonts?.ready.then(build);
+  build();
 }
 
 // Waitlist
