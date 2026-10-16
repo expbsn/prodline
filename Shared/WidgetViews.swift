@@ -172,6 +172,8 @@ struct WMiniCard: View {
             }
             .clipShape(RoundedRectangle(cornerRadius: w * 0.14, style: .continuous))
         }
+        // Same as the Dash card: real project colors in dark mode too (graphite stays graphite).
+        .environment(\.colorScheme, .light)
     }
 }
 
@@ -412,7 +414,7 @@ struct ProjectWidgetView: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.inset))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
     }
 
     private func progressBar(_ value: Double, accent: Accent) -> some View {
