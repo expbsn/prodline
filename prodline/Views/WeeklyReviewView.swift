@@ -591,7 +591,7 @@ struct WeekSummaryCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.inset))
     }
 }
 

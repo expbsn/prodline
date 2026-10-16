@@ -47,6 +47,8 @@ enum Theme {
     static let inverse = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
     /// The thin highlight around project cards: bright on light, barely there on dark.
     static let rim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.14) : UIColor(white: 1, alpha: 0.7) })
+    /// Small tiles set into a card: a shade darker than the card in light mode, a shade lighter in dark.
+    static let inset = Color(light: 0xF2F2F5, dark: 0x2C2C2E)
     /// Switches when on: ink in light mode; in dark mode the white knob needs a colored track.
     static let switchOn = Color(light: 0x1C1C1E, dark: 0x34C759)
     /// Dark text that stays dark in both modes, for bright fills like yellow.
@@ -93,8 +95,15 @@ struct Accent: Equatable, Hashable {
         return Color(hue: h, saturation: min(s * 1.05, 1), brightness: b * 0.78)
     }
 
-    var tint: Color { base.opacity(0.14) }
-    var soft: Color { base.opacity(0.07) }
+    /// Washes of the accent; a little stronger in dark mode, where the light-mode amounts all but vanish.
+    var tint: Color { wash(light: 0.14, dark: 0.24) }
+    var soft: Color { wash(light: 0.07, dark: 0.12) }
+
+    private func wash(light: CGFloat, dark: CGFloat) -> Color {
+        let darkHex = isNeutral ? 0xF5F5F7 : isNearBlack ? 0xAEAEB2 : hex
+        return Color(UIColor { $0.userInterfaceStyle == .dark
+            ? UIColor(hex: darkHex).withAlphaComponent(dark) : UIColor(hex: hex).withAlphaComponent(light) })
+    }
 
     var luminance: Double {
         func lin(_ c: Double) -> Double { c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }

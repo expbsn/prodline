@@ -412,7 +412,7 @@ struct ProjectWidgetView: View {
         }
         .padding(9)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
+        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.inset))
     }
 
     private func progressBar(_ value: Double, accent: Accent) -> some View {

@@ -216,7 +216,7 @@ jobs:
         HStack(alignment: .top, spacing: 12) {
             Text("\(n)").font(.ui(13, .bold)).foregroundStyle(Theme.ink)
                 .frame(width: 22, height: 22)
-                .background(Circle().fill(Theme.background))
+                .background(Circle().fill(Theme.inset))
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
                 Text(LocalizedStringKey(text)).font(.ui(14)).foregroundStyle(Theme.secondary)
@@ -292,7 +292,7 @@ struct APISpecView: View {
                     .foregroundStyle(Theme.ink)
                     .padding(14)
             }
-            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.inset))
             Button {
                 UIPasteboard.general.string = Self.example
                 Haptics.success()
@@ -545,7 +545,7 @@ struct GoalsGuideView: View {
                         .foregroundStyle(Theme.ink)
                         .padding(14)
                 }
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.inset))
                 Button {
                     UIPasteboard.general.string = Self.example
                     Haptics.success()
@@ -566,7 +566,7 @@ struct GoalsGuideView: View {
                         .foregroundStyle(Theme.ink)
                         .padding(14)
                 }
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.background))
+                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.inset))
                 HStack(spacing: 18) {
                     Button {
                         UIPasteboard.general.string = Self.planFileExample
@@ -656,7 +656,7 @@ struct InstantUpdatesSection: View {
         HStack(alignment: .top, spacing: 10) {
             Text("\(n)").font(.ui(12, .bold)).foregroundStyle(Theme.secondary)
                 .frame(width: 22, height: 22)
-                .background(Circle().fill(Theme.background))
+                .background(Circle().fill(Theme.inset))
             Text(text).font(.ui(14)).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
         }
     }

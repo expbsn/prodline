@@ -350,7 +350,7 @@ struct MeView: View {
             .foregroundStyle(role == .destructive ? Theme.danger : Theme.ink)
             .padding(.horizontal, 14)
             .frame(height: 48)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.background))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.inset))
         }
         .buttonStyle(PressableStyle(scale: 0.97))
     }
@@ -715,7 +715,7 @@ struct OnboardingView: View {
                             } else {
                                 Text("Connect").font(.ui(14, .semibold)).foregroundStyle(Theme.ink)
                                     .padding(.horizontal, 12).padding(.vertical, 7)
-                                    .background(Capsule().fill(Theme.background))
+                                    .background(Capsule().fill(Theme.inset))
                             }
                         }
                     }

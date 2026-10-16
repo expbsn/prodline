@@ -111,7 +111,7 @@ struct CriterionRow: View {
             }
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.background)
+                    Capsule().fill(Theme.inset)
                     Capsule().fill(result.hit ? Theme.success : accent.base)
                         .frame(width: max(10, geo.size.width * result.progress))
                 }

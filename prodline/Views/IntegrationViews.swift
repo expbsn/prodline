@@ -259,7 +259,7 @@ struct IntegrationEditor: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text("\(n + 1)").font(.ui(12, .bold)).foregroundStyle(Theme.secondary)
                         .frame(width: 22, height: 22)
-                        .background(Circle().fill(Theme.background))
+                        .background(Circle().fill(Theme.inset))
                     Text(step).font(.ui(14)).foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
                 }

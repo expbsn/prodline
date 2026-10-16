@@ -1001,7 +1001,7 @@ struct ConnectionSheet: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundStyle(Theme.ink)
                 .frame(width: 44, height: 44)
-                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.background))
+                .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.inset))
             VStack(alignment: .leading, spacing: 2) {
                 Text(page.title).font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
                 Text(caption).font(.ui(13)).foregroundStyle(Theme.secondary).lineLimit(1)

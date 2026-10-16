@@ -8,7 +8,8 @@ struct DeadlineLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: DeadlineAttributes.self) { context in
             DeadlineLockScreen(attributes: context.attributes, state: context.state, isStale: context.isStale)
-                .activityBackgroundTint(.white)
+                // follows the Lock Screen's appearance, like the text colours on top of it
+                .activityBackgroundTint(Theme.card)
                 .activitySystemActionForegroundColor(Theme.ink)
                 .widgetURL(context.attributes.url)
         } dynamicIsland: { context in
