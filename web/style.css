@@ -147,12 +147,16 @@ h3 { font-size: 26px; line-height: 1.05; font-weight: 700; }
   color: var(--white);
 }
 .header-bg {
+  /* Full height, anchored right: the whole frame from wingtip to engine stays in view. On wide
+     screens the left edge fades into the background; on narrow ones the left part just runs off. */
   position: absolute;
-  inset: 0;
-  width: 100%;
+  top: 0;
+  right: 0;
   height: 100%;
-  object-fit: cover;
-  object-position: 78% 38%;
+  width: auto;
+  max-width: none;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 24%);
+  mask-image: linear-gradient(90deg, transparent, #000 24%);
   animation: settle 2.4s cubic-bezier(.2,.7,.2,1) both;
 }
 @keyframes settle { from { transform: scale(1.08); filter: blur(18px) brightness(.6); } to { transform: none; filter: none; } }
@@ -284,7 +288,6 @@ h3 { font-size: 26px; line-height: 1.05; font-weight: 700; }
   .squiggle { display: none; }
 }
 @media (max-width: 560px) {
-  .header-bg { object-position: 84% 50%; }
   .header::after { background: linear-gradient(0deg, rgba(7,8,11,.92) 0%, rgba(7,8,11,.5) 45%, rgba(7,8,11,0) 75%); }
   .cta-row { gap: 20px; }
   .block { padding-top: 88px; }
