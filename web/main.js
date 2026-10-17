@@ -232,48 +232,40 @@ if (bento) {
   even();
 }
 
-// Join: one line read left to right. Dots leave the Join button, flow into the logo's left dots, the P
-// draws itself (bar, bowl, stem) and the line leaves through the bottom dots, out of the card.
+// Join: one line. The logo's left dots appear, the P draws itself (bar, bowl, stem), its bottom dots
+// follow and the line carries on, in the logo's own rhythm, down and across to the Join button.
 const join = document.querySelector(".join");
 if (join && join.querySelector(".join-draw")) {
   const svg = join.querySelector(".join-draw");
   const logo = svg.querySelector(".jd-logo");
-  const [tIn, tOut] = [svg.querySelector(".t-in"), svg.querySelector(".t-out")];
-  const [rIn, rOut] = [svg.querySelector(".r-in"), svg.querySelector(".r-out")];
+  const trail = svg.querySelector(".t-out");
+  const reveal = svg.querySelector(".r-out");
   const art = join.querySelector(".join-art");
   const button = join.querySelector(".waitlist .btn");
-  const trail = (path, mask, d, s) => {
-    for (const p of [path, mask]) p.setAttribute("d", d);
-    path.setAttribute("stroke-width", 100 * s);
-    path.style.strokeDasharray = `0 ${136 * s}`;   // the logo's own rhythm: dot size 100, spacing 136
-    mask.setAttribute("stroke-width", 100 * s + 8);
-    mask.style.setProperty("--L", `${path.getTotalLength()}`);
-  };
   const place = () => {
     const box = join.getBoundingClientRect(), a = art.getBoundingClientRect(), b = button.getBoundingClientRect();
     if (!a.width) return;                                   // phones: no room, the drawing is hidden
     svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
-    // the mark spans x 60…920, y 140…970 in its own units; centre it in the right column
-    const size = Math.min(a.width * 0.6, 250), s = size / 860;
-    const ox = a.left - box.left + (a.width - size) / 2;
-    const oy = Math.max(24, a.top - box.top + (a.height - size) / 2 - 40);
+    // the mark spans x 60…920, y 140…970 in its own units; fit it into the top of the right column
+    const size = Math.min(a.width * 0.62, 260), s = size / 860;
+    const ox = a.left - box.left + (a.width - size) / 2, oy = a.top - box.top + 24;
     logo.setAttribute("transform", `translate(${ox - 60 * s} ${oy - 140 * s}) scale(${s})`);
     logo.querySelectorAll("path").forEach((p) => p.setAttribute("stroke-width", 100));
+    // the trail picks up the logo's rhythm: same dot size, same spacing, starting below its last dot
     const at = (x, y) => ({ x: ox + (x - 60) * s, y: oy + (y - 140) * s });
-    // in: from the button to one step before the logo's first dot
-    const from = { x: b.right - box.left + 24, y: b.top - box.top + b.height / 2 };
-    const into = at(106 - 136, 490);
-    const dx = (into.x - from.x) * 0.45;
-    trail(tIn, rIn, `M ${from.x} ${from.y} C ${from.x + dx} ${from.y}, ${into.x - dx} ${into.y}, ${into.x} ${into.y}`, s);
-    // out: on from below the last dot, straight down and out of the card
-    const out = at(490, 926 + 136);
-    trail(tOut, rOut, `M ${out.x} ${out.y} L ${out.x} ${box.height + 60}`, s);
+    const p0 = at(490, 926 + 136);
+    const end = { x: b.right - box.left + 30 * s + 18, y: b.top - box.top + b.height / 2 };
+    const d = `M ${p0.x} ${p0.y} C ${p0.x} ${p0.y + 220}, ${end.x + 260} ${end.y}, ${end.x} ${end.y}`;
+    for (const p of [trail, reveal]) p.setAttribute("d", d);
+    trail.setAttribute("stroke-width", 100 * s);
+    trail.style.strokeDasharray = `0 ${136 * s}`;
+    reveal.setAttribute("stroke-width", 100 * s + 8);
+    reveal.style.setProperty("--L", `${trail.getTotalLength()}`);
   };
   new IntersectionObserver(([e], o) => {
     if (!e.isIntersecting) return;
     o.disconnect();
-    join.classList.add("departing");                        // the line sets off from the button
-    setTimeout(() => join.classList.remove("departing"), 1300);
+    setTimeout(() => join.classList.add("arrived"), 3700);   // the dots reach the button
   }, { threshold: 0.35 }).observe(join);
   addEventListener("resize", place);
   document.fonts?.ready.then(place);

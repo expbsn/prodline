@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=31">
-  <script type="module" src="main.js?v=31"></script>
+  <link rel="stylesheet" href="style.css?v=32">
+  <script type="module" src="main.js?v=32"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -227,14 +227,9 @@
           <div class="store-row"><a class="btn store" href="faq.html" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a></div>
         </div>
         <div class="join-art" aria-hidden="true"></div>
-        <!-- One line, read left to right: dots leave the Join button, flow into the logo's left dots, draw the P
-             (bar, bowl, stem) and leave through its bottom dots, out of the card. -->
+        <!-- One line: the logo's left dots, the P drawn bar → bowl → stem, its bottom dots, then on to the Join button. -->
         <svg class="join-draw" aria-hidden="true">
-          <defs>
-            <mask id="jd-in-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-in"/></mask>
-            <mask id="jd-out-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-out"/></mask>
-          </defs>
-          <path class="jd-trail t-in" mask="url(#jd-in-mask)"/>
+          <defs><mask id="jd-out-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-out"/></mask></defs>
           <g class="jd-logo">
             <path class="jd-dot d1" d="M106 490 L106 490"/>
             <path class="jd-dot d2" d="M242 490 L266 490"/>
