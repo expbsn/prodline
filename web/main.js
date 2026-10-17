@@ -168,7 +168,7 @@ if (stage) {
   build();
 }
 
-// Features: the revenue counts up the first time it's seen; the Live Activity's countdown ticks.
+// Features: the revenue counts up the first time it's seen.
 const count = document.querySelector(".t-numbers .count");
 if (count) {
   const to = Number(count.dataset.to);
@@ -184,17 +184,6 @@ if (count) {
     requestAnimationFrame(step);
   }, { threshold: 0.4 }).observe(count);
 }
-const liveT = document.querySelector(".live-t");
-if (liveT) {
-  let left = 2 * 3600 - 1;
-  const show = () => {
-    const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60), sec = left % 60;
-    liveT.textContent = `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  };
-  show();
-  setInterval(() => { left = left > 0 ? left - 1 : 2 * 3600 - 1; show(); }, 1000);
-}
-
 // Nav: a pill slides to the link of the section you're looking at.
 const navLinks = [...document.querySelectorAll(".links a[href^='#']")];
 if (navLinks.length) {
