@@ -13,7 +13,8 @@ const seen = new IntersectionObserver((entries) => {
 document.querySelectorAll("[data-reveal], .draw").forEach((el) => seen.observe(el));
 
 // How it works: a dotted trail through the step numbers that draws itself as you scroll, numbers that
-// light up when it reaches them, and stickers that drift at their own speed.
+// light up when it reaches them, and stickers that drift at their own speed. On phones (narrow layout)
+// a plain dotted line runs down the numbers instead, and the stickers stay put.
 const flow = document.querySelector(".flow");
 if (flow) {
   const svg = flow.querySelector(".trail");
@@ -21,20 +22,34 @@ if (flow) {
   const dots = svg.querySelector(".trail-dots");
   const reveal = svg.querySelector(".trail-reveal");
   const head = svg.querySelector(".trail-head");
+  const line = flow.querySelector(".flow-line");
+  const fill = line.querySelector("i");
   const nodes = [...flow.querySelectorAll(".node")];
-  const stickers = [...flow.querySelectorAll(".stk")];
+  const stickers = [...flow.querySelectorAll(".stk")].map((el) => ({ el, speed: Number(el.style.getPropertyValue("--p")) || 0.15 }));
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  let length = 0;
-  let nodeLengths = [];
+  const narrow = matchMedia("(max-width: 700px)");
+  let length = 0, table = [], nodeLengths = [], nodeY = [];
 
-  // S-bends between the node centres (in the section's own coordinates), with a lead-in and a tail.
-  const build = () => {
+  const centres = () => {
     const box = flow.getBoundingClientRect();
-    const pts = nodes.map((n) => {
+    return { box, pts: nodes.map((n) => {
       const r = n.getBoundingClientRect();
       return { x: r.left + r.width / 2 - box.left, y: r.top + r.height / 2 - box.top };
-    });
+    }) };
+  };
+
+  const build = () => {
+    const { box, pts } = centres();
     if (!pts.length) return;
+    nodeY = pts.map((p) => p.y);
+    if (narrow.matches) {
+      // phones: one dotted line from the first number to the last
+      line.style.left = `${pts[0].x}px`;
+      line.style.top = `${pts[0].y}px`;
+      line.style.height = `${pts.at(-1).y - pts[0].y}px`;
+      update();
+      return;
+    }
     svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
     const start = { x: pts[0].x - 40, y: pts[0].y - 280 };
     const end = { x: pts.at(-1).x + 220, y: Math.min(box.height, pts.at(-1).y + 380) };
@@ -51,39 +66,47 @@ if (flow) {
     for (const p of [ghost, dots, reveal]) p.setAttribute("d", d);
     length = dots.getTotalLength();
     reveal.style.strokeDasharray = `${length}`;
-    // where along the trail each node sits
-    nodeLengths = pts.map((p) => lengthAtY(p.y));
+    // Measure the path once: points along it, so scrolling never has to ask the browser again.
+    const N = 400;
+    table = Array.from({ length: N + 1 }, (_, k) => { const p = dots.getPointAtLength((length * k) / N); return { l: (length * k) / N, x: p.x, y: p.y }; });
+    nodeLengths = pts.map((p) => at(p.y).l);
     update();
   };
 
-  // The trail only ever goes down, so the point at a given height can be found by bisection.
-  const lengthAtY = (y) => {
-    let lo = 0, hi = length;
-    for (let i = 0; i < 24; i++) {
-      const mid = (lo + hi) / 2;
-      if (dots.getPointAtLength(mid).y < y) lo = mid; else hi = mid;
-    }
-    return (lo + hi) / 2;
+  // The trail only ever goes down, so the point at a given height is a binary search in the table.
+  const at = (y) => {
+    if (!table.length) return { l: 0, x: 0, y: 0 };
+    if (y <= table[0].y) return table[0];
+    if (y >= table.at(-1).y) return table.at(-1);
+    let lo = 0, hi = table.length - 1;
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (table[mid].y < y) lo = mid; else hi = mid; }
+    const a = table[lo], b = table[hi], f = (y - a.y) / (b.y - a.y || 1);
+    return { l: a.l + (b.l - a.l) * f, x: a.x + (b.x - a.x) * f, y };
   };
 
   const update = () => {
+    const top = flow.getBoundingClientRect().top;
+    const tip = still ? Infinity : innerHeight * 0.62 - top;   // the trail's tip follows this height
+    if (narrow.matches) {
+      const h = Math.max(0, Math.min(line.offsetHeight, tip - nodeY[0]));
+      fill.style.height = `${h}px`;
+      nodes.forEach((n, i) => n.classList.toggle("lit", tip >= nodeY[i] - 4));
+      return;
+    }
     if (!length) return;
-    const box = flow.getBoundingClientRect();
-    const line = still ? Infinity : innerHeight * 0.62 - box.top;   // the trail's tip follows this height
-    const l = line === Infinity ? length : Math.max(0, Math.min(length, lengthAtY(line)));
-    reveal.style.strokeDashoffset = `${length - l}`;
-    const p = dots.getPointAtLength(l);
+    const p = tip === Infinity ? table.at(-1) : at(tip);
+    reveal.style.strokeDashoffset = `${length - p.l}`;
     head.setAttribute("cx", p.x);
     head.setAttribute("cy", p.y);
-    head.style.opacity = l > 2 && l < length - 2 ? 1 : 0;
-    nodes.forEach((n, i) => n.classList.toggle("lit", l >= nodeLengths[i] - 4));
+    head.style.opacity = p.l > 2 && p.l < length - 2 ? 1 : 0;
+    nodes.forEach((n, i) => n.classList.toggle("lit", p.l >= nodeLengths[i] - 4));
     if (!still) {
-      for (const s of stickers) {
-        const r = s.getBoundingClientRect();
-        const off = (r.top + r.height / 2 - innerHeight / 2) * -(Number(getComputedStyle(s).getPropertyValue("--p")) || 0.15);
-        // capped, so a sticker never drifts out of its own step (e.g. on a short phone screen)
-        s.style.setProperty("--py", `${Math.max(-48, Math.min(48, off)).toFixed(1)}px`);
-      }
+      // read every position first, then write: no layout thrashing
+      const mids = stickers.map(({ el }) => { const r = el.getBoundingClientRect(); return r.top + r.height / 2; });
+      stickers.forEach(({ el, speed }, i) => {
+        const off = Math.max(-48, Math.min(48, (mids[i] - innerHeight / 2) * -speed));
+        el.style.setProperty("--py", `${off.toFixed(1)}px`);
+      });
     }
   };
 
@@ -94,6 +117,7 @@ if (flow) {
     requestAnimationFrame(() => { queued = false; update(); });
   }, { passive: true });
   addEventListener("resize", build);
+  narrow.addEventListener?.("change", build);
   flow.querySelectorAll("img").forEach((img) => img.complete || img.addEventListener("load", build, { once: true }));
   document.fonts?.ready.then(build);
   build();
@@ -219,17 +243,25 @@ if (navLinks.length) {
 const bento = document.querySelector(".bento");
 if (bento) {
   const cols = [...bento.querySelectorAll(".col")];
-  const even = () => {
-    const stacked = getComputedStyle(bento).gridTemplateColumns.split(" ").length < 3;
+  let gaps = [], stacked = true;
+  const measure = () => {
+    stacked = getComputedStyle(bento).gridTemplateColumns.split(" ").length < 3;
     const hs = cols.map((c) => c.scrollHeight), max = Math.max(...hs);
+    gaps = hs.map((h) => max - h);
+    if (stacked) cols.forEach((c) => { c.style.transform = ""; });
+    even();
+  };
+  const even = () => {
+    if (stacked) return;
     const r = bento.getBoundingClientRect();
     // spread over the whole time the grid is on screen, at a steady pace: a gentle parallax, not a slide
-    const ease = Math.min(1, Math.max(0, (innerHeight - r.top) / (r.height + innerHeight)));
-    cols.forEach((c, i) => { c.style.transform = stacked ? "" : `translate3d(0, ${((max - hs[i]) * ease).toFixed(1)}px, 0)`; });
+    const t = Math.min(1, Math.max(0, (innerHeight - r.top) / (r.height + innerHeight)));
+    cols.forEach((c, i) => { c.style.transform = gaps[i] ? `translate3d(0, ${(gaps[i] * t).toFixed(1)}px, 0)` : ""; });
   };
   addEventListener("scroll", even, { passive: true });
-  addEventListener("resize", even);
-  even();
+  addEventListener("resize", measure);
+  addEventListener("load", measure);
+  measure();
 }
 
 // Join: one line. The logo's left dots appear, the P draws itself (bar, bowl, stem), its bottom dots
