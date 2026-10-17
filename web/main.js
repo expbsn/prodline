@@ -225,41 +225,66 @@ if (navLinks.length) {
   place();
 }
 
-// Join: the logo draws itself in the card's right half and its dotted line runs on to the Join button.
+// Features: the columns have different heights. They start level at the top and, while the section
+// scrolls by, the shorter ones slide down until all three bottoms meet, so the ragged edge never shows.
+const bento = document.querySelector(".bento");
+if (bento) {
+  const cols = [...bento.querySelectorAll(".col")];
+  const even = () => {
+    const stacked = getComputedStyle(bento).gridTemplateColumns.split(" ").length < 3;
+    const hs = cols.map((c) => c.scrollHeight), max = Math.max(...hs);
+    const r = bento.getBoundingClientRect();
+    // spread over the whole time the grid is on screen, at a steady pace: a gentle parallax, not a slide
+    const ease = Math.min(1, Math.max(0, (innerHeight - r.top) / (r.height + innerHeight)));
+    cols.forEach((c, i) => { c.style.transform = stacked ? "" : `translate3d(0, ${((max - hs[i]) * ease).toFixed(1)}px, 0)`; });
+  };
+  addEventListener("scroll", even, { passive: true });
+  addEventListener("resize", even);
+  even();
+}
+
+// Join: one line read left to right. Dots leave the Join button, flow into the logo's left dots, the P
+// draws itself (bar, bowl, stem) and the line leaves through the bottom dots, out of the card.
 const join = document.querySelector(".join");
 if (join && join.querySelector(".join-draw")) {
   const svg = join.querySelector(".join-draw");
   const logo = svg.querySelector(".jd-logo");
-  const trail = svg.querySelector(".jd-trail");
-  const reveal = svg.querySelector(".jd-reveal");
+  const [tIn, tOut] = [svg.querySelector(".t-in"), svg.querySelector(".t-out")];
+  const [rIn, rOut] = [svg.querySelector(".r-in"), svg.querySelector(".r-out")];
   const art = join.querySelector(".join-art");
-  const target = join.querySelector(".waitlist .btn");
+  const button = join.querySelector(".waitlist .btn");
+  const trail = (path, mask, d, s) => {
+    for (const p of [path, mask]) p.setAttribute("d", d);
+    path.setAttribute("stroke-width", 100 * s);
+    path.style.strokeDasharray = `0 ${136 * s}`;   // the logo's own rhythm: dot size 100, spacing 136
+    mask.setAttribute("stroke-width", 100 * s + 8);
+    mask.style.setProperty("--L", `${path.getTotalLength()}`);
+  };
   const place = () => {
-    const box = join.getBoundingClientRect(), a = art.getBoundingClientRect(), b = target.getBoundingClientRect();
+    const box = join.getBoundingClientRect(), a = art.getBoundingClientRect(), b = button.getBoundingClientRect();
     if (!a.width) return;                                   // phones: no room, the drawing is hidden
     svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
-    // the mark spans x 60…920, y 140…970 in its own units; fit it into the top of the right column
-    const size = Math.min(a.width * 0.62, 260), s = size / 860;
-    const ox = a.left - box.left + (a.width - size) / 2, oy = a.top - box.top + 24;
+    // the mark spans x 60…920, y 140…970 in its own units; centre it in the right column
+    const size = Math.min(a.width * 0.6, 250), s = size / 860;
+    const ox = a.left - box.left + (a.width - size) / 2;
+    const oy = Math.max(24, a.top - box.top + (a.height - size) / 2 - 40);
     logo.setAttribute("transform", `translate(${ox - 60 * s} ${oy - 140 * s}) scale(${s})`);
     logo.querySelectorAll("path").forEach((p) => p.setAttribute("stroke-width", 100));
-    // the trail picks up the logo's rhythm: same dot size, same spacing, starting below its last dot
     const at = (x, y) => ({ x: ox + (x - 60) * s, y: oy + (y - 140) * s });
-    const p0 = at(490, 926 + 136), gap = 136 * s;
-    const end = { x: b.right - box.left + 30 * s + 18, y: b.top - box.top + b.height / 2 };
-    const d = `M ${p0.x} ${p0.y} C ${p0.x} ${p0.y + 220}, ${end.x + 260} ${end.y}, ${end.x} ${end.y}`;
-    trail.setAttribute("d", d);
-    trail.setAttribute("stroke-width", 100 * s);
-    trail.style.strokeDasharray = `0 ${gap}`;
-    reveal.setAttribute("d", d);
-    reveal.setAttribute("stroke-width", 100 * s + 8);
-    const L = trail.getTotalLength();
-    reveal.style.setProperty("--L", `${L}`);
+    // in: from the button to one step before the logo's first dot
+    const from = { x: b.right - box.left + 24, y: b.top - box.top + b.height / 2 };
+    const into = at(106 - 136, 490);
+    const dx = (into.x - from.x) * 0.45;
+    trail(tIn, rIn, `M ${from.x} ${from.y} C ${from.x + dx} ${from.y}, ${into.x - dx} ${into.y}, ${into.x} ${into.y}`, s);
+    // out: on from below the last dot, straight down and out of the card
+    const out = at(490, 926 + 136);
+    trail(tOut, rOut, `M ${out.x} ${out.y} L ${out.x} ${box.height + 60}`, s);
   };
   new IntersectionObserver(([e], o) => {
     if (!e.isIntersecting) return;
     o.disconnect();
-    setTimeout(() => join.classList.add("arrived"), 3900);   // the dots reach the button
+    join.classList.add("departing");                        // the line sets off from the button
+    setTimeout(() => join.classList.remove("departing"), 1300);
   }, { threshold: 0.35 }).observe(join);
   addEventListener("resize", place);
   document.fonts?.ready.then(place);

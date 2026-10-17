@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=26">
-  <script type="module" src="main.js?v=26"></script>
+  <link rel="stylesheet" href="style.css?v=30">
+  <script type="module" src="main.js?v=30"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -24,6 +24,7 @@
       <a href="#how">How it works</a>
       <a href="#integrations">Integrations</a>
       <a href="#features">Features</a>
+      <a href="docs.html">Docs</a>
       <a href="faq.html">FAQ</a>
     </nav>
     <a class="btn light small" href="#join">Join the beta</a>
@@ -152,7 +153,7 @@
           <li>Bluesky</li>
         </ul>
       </div>
-      <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else.</p>
+      <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else. <a href="docs.html">Setup guide →</a></p>
     </section>
 
     <!-- Features: a grid of cards, each one showing the thing it describes -->
@@ -165,15 +166,13 @@
         <p class="lede" data-reveal style="--d:.08s">The fun part stays fun. Prodline quietly handles the rest, right where you already look.</p>
       </div>
 
-      <!-- Cards size to their content; three columns of different heights make a loose cluster. -->
+      <!-- Cards size to their content; three columns of different heights, evened out while you scroll (main.js). -->
       <div class="bento">
         <div class="col">
-          <article class="tile t-live" data-reveal>
-            <div class="live">
-              <img src="img/live.png" alt="Live Activity: Checkpoint 3 of Habit Hero is due today, one goal of two done" width="1082" height="407" loading="lazy">
-              <span class="live-t" aria-hidden="true">1:59:59</span>
-            </div>
-            <div class="tile-copy"><h3>On your Lock Screen</h3><p>When a checkpoint is due tonight, a Live Activity counts down the last four hours.</p></div>
+          <article class="tile t-numbers" data-reveal>
+            <div class="num-big"><span class="count" data-to="1284">$0</span><em>+$212 this week</em></div>
+            <svg class="spark" viewBox="0 0 240 70" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M0 62 L20 58 L40 60 L60 50 L80 53 L100 42 L120 45 L140 33 L160 36 L180 22 L200 26 L220 12 L240 6"/></svg>
+            <div class="tile-copy"><h3>Numbers on autopilot</h3><p>Data refreshes in the background, per day and per project.</p></div>
           </article>
           <article class="tile t-goals" data-reveal style="--d:.12s">
             <ul class="ticks" aria-hidden="true">
@@ -207,10 +206,12 @@
             </div>
             <div class="tile-copy"><h3>Widgets that keep score</h3><p>The next checkpoint, its goals and your numbers on the Home Screen.</p></div>
           </article>
-          <article class="tile t-numbers" data-reveal style="--d:.24s">
-            <div class="num-big"><span class="count" data-to="1284">$0</span><em>+$212 this week</em></div>
-            <svg class="spark" viewBox="0 0 240 70" preserveAspectRatio="none" aria-hidden="true"><path class="draw" pathLength="1" d="M0 62 L20 58 L40 60 L60 50 L80 53 L100 42 L120 45 L140 33 L160 36 L180 22 L200 26 L220 12 L240 6"/></svg>
-            <div class="tile-copy"><h3>Numbers on autopilot</h3><p>Data refreshes in the background, per day and per project.</p></div>
+          <article class="tile t-live" data-reveal style="--d:.24s">
+            <div class="live">
+              <img src="img/live.png" alt="Live Activity: Checkpoint 3 of Habit Hero is due today, one goal of two done" width="1082" height="407" loading="lazy">
+              <span class="live-t" aria-hidden="true">1:59:59</span>
+            </div>
+            <div class="tile-copy"><h3>On your Lock Screen</h3><p>When a checkpoint is due tonight, a Live Activity counts down the last four hours.</p></div>
           </article>
         </div>
       </div>
@@ -233,17 +234,22 @@
           <div class="store-row"><a class="btn store" href="faq.html" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a></div>
         </div>
         <div class="join-art" aria-hidden="true"></div>
-        <!-- The logo draws itself; its dotted line carries on across the card and ends at the Join button. -->
+        <!-- One line, read left to right: dots leave the Join button, flow into the logo's left dots, draw the P
+             (bar, bowl, stem) and leave through its bottom dots, out of the card. -->
         <svg class="join-draw" aria-hidden="true">
-          <defs><mask id="join-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal"/></mask></defs>
+          <defs>
+            <mask id="jd-in-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-in"/></mask>
+            <mask id="jd-out-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-out"/></mask>
+          </defs>
+          <path class="jd-trail t-in" mask="url(#jd-in-mask)"/>
           <g class="jd-logo">
-            <path class="jd-stroke" pathLength="1" d="M490 630 L490 390 C490 250 552 190 672 190 C792 190 856 262 856 342 C856 430 792 490 700 490 L402 490"/>
-            <path class="jd-dot d1" d="M266 490 L242 490"/>
-            <path class="jd-dot d2" d="M106 490 L106 490"/>
+            <path class="jd-dot d1" d="M106 490 L106 490"/>
+            <path class="jd-dot d2" d="M242 490 L266 490"/>
+            <path class="jd-stroke" pathLength="1" d="M402 490 L700 490 C792 490 856 430 856 342 C856 262 792 190 672 190 C552 190 490 250 490 390 L490 630"/>
             <path class="jd-dot d3" d="M490 766 L490 790"/>
             <path class="jd-dot d4" d="M490 926 L490 926"/>
           </g>
-          <path class="jd-trail" mask="url(#join-mask)"/>
+          <path class="jd-trail t-out" mask="url(#jd-out-mask)"/>
         </svg>
       </div>
     </section>
@@ -253,7 +259,7 @@
     <div class="foot-in">
       <a class="logo" href="#top"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
       <nav class="foot-links" aria-label="Footer">
-        <a href="#how">How it works</a><a href="#integrations">Integrations</a><a href="#features">Features</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="mailto:kianpal731@gmail.com">Contact</a>
+        <a href="#how">How it works</a><a href="#integrations">Integrations</a><a href="#features">Features</a><a href="docs.html">Docs</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="mailto:kianpal731@gmail.com">Contact</a>
       </nav>
       <p class="copy">© 2026 Prodline</p>
     </div>

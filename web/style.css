@@ -287,9 +287,7 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
 /* Features: cards sized to their content (visual on top, words under it), in three columns of different
    heights, so the section reads as a loose cluster */
 .bento { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
-.bento .col { display: flex; flex-direction: column; gap: 16px; }
-.bento .col:nth-child(2) { margin-top: 56px; }
-.bento .col:nth-child(3) { margin-top: 24px; }
+.bento .col { display: flex; flex-direction: column; gap: 16px; will-change: transform; }
 .tile {
   display: flex;
   flex-direction: column;
@@ -393,6 +391,8 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
 .intg .sec-head { margin-bottom: 24px; }
 .note.center { text-align: center; margin-top: 28px; }
 .note { margin: 20px 0 0; font-size: 14px; color: var(--faint); }
+.note a { color: var(--text); text-decoration: none; margin-left: 6px; }
+.note a:hover { text-decoration: underline; }
 
 /* Join */
 #join { padding-bottom: clamp(88px, 10vw, 140px); }
@@ -410,22 +410,25 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
 }
 .join-copy { position: relative; z-index: 1; }
 .join-copy h2 { margin-bottom: 22px; }
-.join { position: relative; padding-bottom: clamp(36px, 6vw, 80px); }
+.join { position: relative; overflow: hidden; padding-bottom: clamp(36px, 6vw, 80px); }
 .join-art { align-self: stretch; min-height: 340px; }
 /* the logo drawing itself, its dotted line running on to the Join button (main.js places it) */
 .join-draw { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
 .join-draw path { fill: none; stroke: var(--white); stroke-linecap: round; stroke-linejoin: round; }
-.jd-stroke { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.6s cubic-bezier(.6,.05,.3,1) .2s; }
-.jd-dot { opacity: 0; transition: opacity .2s; }
+/* timeline: in-trail 0.2–1.2 s, left dots, the P (bar → bowl → stem) 1.5–2.9 s, bottom dots, out-trail */
+.jd-stroke { stroke-dasharray: 1; stroke-dashoffset: 1; transition: stroke-dashoffset 1.4s cubic-bezier(.45,0,.25,1) 1.5s; }
+.jd-dot { opacity: 0; transition: opacity .18s; }
 .join.in .jd-stroke { stroke-dashoffset: 0; }
-.join.in .d1 { opacity: 1; transition-delay: 1.75s; }
-.join.in .d2 { opacity: 1; transition-delay: 1.9s; }
-.join.in .d3 { opacity: 1; transition-delay: 2.05s; }
-.join.in .d4 { opacity: 1; transition-delay: 2.2s; }
-.jd-reveal { stroke: #fff; stroke-dasharray: var(--L, 1); stroke-dashoffset: var(--L, 1); transition: stroke-dashoffset 1.5s cubic-bezier(.45,0,.3,1) 2.35s; }
+.join.in .d1 { opacity: 1; transition-delay: 1.2s; }
+.join.in .d2 { opacity: 1; transition-delay: 1.35s; }
+.join.in .d3 { opacity: 1; transition-delay: 2.95s; }
+.join.in .d4 { opacity: 1; transition-delay: 3.1s; }
+.jd-reveal { stroke: #fff; stroke-dasharray: var(--L, 1); stroke-dashoffset: var(--L, 1); }
+.r-in { transition: stroke-dashoffset 1s cubic-bezier(.45,0,.55,1) .2s; }
+.r-out { transition: stroke-dashoffset .9s cubic-bezier(.45,0,.55,1) 3.2s; }
 .join.in .jd-reveal { stroke-dashoffset: 0; }
 .join .waitlist .btn { transition: transform .15s cubic-bezier(.3,1.6,.5,1), background .2s, box-shadow .4s; }
-.join.arrived .waitlist .btn { box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 0 40px rgba(255,255,255,.35); }
+.join.departing .waitlist .btn { box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 0 40px rgba(255,255,255,.35); }
 .waitlist { display: flex; gap: 10px; max-width: 460px; margin-top: 32px; }
 .waitlist input[type=email] {
   flex: 1;
@@ -488,6 +491,47 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
 .policy li { margin: 6px 0; }
 .links a.on.solid { background: var(--white); color: var(--ink); }
 
+/* Docs: table of contents on the left, guide on the right */
+.docs { width: var(--page); margin: 0 auto; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 56px; }
+.docs-main { width: auto; margin: 0; max-width: 820px; }
+.docs-toc { position: sticky; top: calc(var(--nav-h) + 24px); align-self: start; padding-top: clamp(56px, 8vw, 110px); max-height: calc(100vh - var(--nav-h) - 24px); overflow: auto; }
+.docs-toc ol { margin: 0; padding: 0; list-style: none; }
+.docs-toc > ol > li { margin-top: 14px; }
+.docs-toc ol ol { margin: 6px 0 0; padding-left: 14px; border-left: 1px solid var(--border); }
+.docs-toc ol ol li { margin-top: 6px; }
+.docs-toc a { color: var(--muted); text-decoration: none; font-size: 14px; }
+.docs-toc > ol > li > a { color: var(--text); font-weight: 600; }
+.docs-toc a:hover { color: var(--text); }
+.label { margin: 0 0 8px; font: 600 11px/1 var(--ui); letter-spacing: .16em; text-transform: uppercase; color: var(--faint); }
+.docs-main section > h2 { margin: 72px 0 16px; font-size: clamp(30px, 3vw, 40px); font-weight: 560; letter-spacing: -.02em; color: var(--text); scroll-margin-top: calc(var(--nav-h) + 20px); }
+.docs-main h3 { margin: 40px 0 12px; font-size: 22px; font-weight: 600; scroll-margin-top: calc(var(--nav-h) + 20px); }
+.docs-main section, .doc-group, .intg-doc { scroll-margin-top: calc(var(--nav-h) + 20px); }
+.docs-main p, .docs-main li { color: var(--muted); font-size: 16px; line-height: 1.65; }
+.docs-main .label { font-size: 11px; line-height: 1; color: var(--faint); }
+.docs-main b { color: var(--text); font-weight: 600; }
+.docs-main code { padding: 2px 6px; border-radius: 6px; background: var(--surface-2); font: 500 13.5px/1 ui-monospace, "SF Mono", Menlo, monospace; color: var(--text); }
+.docs-main pre { margin: 16px 0; padding: 18px 20px; overflow-x: auto; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); }
+.docs-main pre code { padding: 0; background: none; font-size: 13.5px; line-height: 1.6; white-space: pre; }
+.ways { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0 18px; }
+.way { display: flex; flex-direction: column; gap: 8px; padding: 20px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); text-decoration: none !important; transition: border-color .2s, background .2s; }
+.way:hover { border-color: var(--border-strong); background: var(--surface-2); }
+.way b { font: 600 19px/1.1 var(--display); }
+.way span { font-size: 14px; line-height: 1.5; color: var(--muted); }
+.intg-doc { margin-top: 14px; padding: 22px 24px; border: 1px solid var(--border); border-radius: 22px; background: var(--surface); }
+.intg-doc header { display: flex; align-items: center; gap: 10px; }
+.intg-doc h4 { margin: 0; font: 600 21px/1.1 var(--display); }
+.tag { padding: 5px 9px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font: 600 11px/1 var(--ui); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.provides { margin: 6px 0 0 !important; }
+.intg-cols { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px; margin-top: 18px; }
+.need { margin: 0; padding: 0; list-style: none; }
+.need li { padding: 7px 0; border-top: 1px solid var(--border); font-size: 15px !important; color: var(--text) !important; }
+.need li span { display: block; font-size: 12px; color: var(--faint); }
+.steps { margin: 0; padding-left: 22px; }
+.steps li { margin: 0 0 8px; padding-left: 4px; font-size: 15px !important; }
+.steps li::marker { color: var(--faint); font-weight: 600; }
+.plain { padding-left: 20px; }
+.plain li { margin: 6px 0; }
+
 /* Footer */
 .foot { border-top: 1px solid var(--border); }
 .foot-in { width: var(--page); margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 36px 0 44px; }
@@ -504,6 +548,10 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   .links { display: none; }
 }
 @media (max-width: 860px) {
+  .docs { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .docs-toc { display: none; }
+  .ways, .intg-cols { grid-template-columns: 1fr; }
+  .intg-cols { gap: 14px; }
   .flow-step, .flow-step.flip { grid-template-columns: 1fr; min-height: 0; gap: 28px; }
   .flow-step + .flow-step { margin-top: 72px; }
   .flow-step.flip .flow-copy { order: 0; }
