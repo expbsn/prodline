@@ -225,6 +225,47 @@ if (navLinks.length) {
   place();
 }
 
+// Join: the logo draws itself in the card's right half and its dotted line runs on to the Join button.
+const join = document.querySelector(".join");
+if (join && join.querySelector(".join-draw")) {
+  const svg = join.querySelector(".join-draw");
+  const logo = svg.querySelector(".jd-logo");
+  const trail = svg.querySelector(".jd-trail");
+  const reveal = svg.querySelector(".jd-reveal");
+  const art = join.querySelector(".join-art");
+  const target = join.querySelector(".waitlist .btn");
+  const place = () => {
+    const box = join.getBoundingClientRect(), a = art.getBoundingClientRect(), b = target.getBoundingClientRect();
+    if (!a.width) return;                                   // phones: no room, the drawing is hidden
+    svg.setAttribute("viewBox", `0 0 ${box.width} ${box.height}`);
+    // the mark spans x 60…920, y 140…970 in its own units; fit it into the top of the right column
+    const size = Math.min(a.width * 0.62, 260), s = size / 860;
+    const ox = a.left - box.left + (a.width - size) / 2, oy = a.top - box.top + 24;
+    logo.setAttribute("transform", `translate(${ox - 60 * s} ${oy - 140 * s}) scale(${s})`);
+    logo.querySelectorAll("path").forEach((p) => p.setAttribute("stroke-width", 100));
+    // the trail picks up the logo's rhythm: same dot size, same spacing, starting below its last dot
+    const at = (x, y) => ({ x: ox + (x - 60) * s, y: oy + (y - 140) * s });
+    const p0 = at(490, 926 + 136), gap = 136 * s;
+    const end = { x: b.right - box.left + 30 * s + 18, y: b.top - box.top + b.height / 2 };
+    const d = `M ${p0.x} ${p0.y} C ${p0.x} ${p0.y + 220}, ${end.x + 260} ${end.y}, ${end.x} ${end.y}`;
+    trail.setAttribute("d", d);
+    trail.setAttribute("stroke-width", 100 * s);
+    trail.style.strokeDasharray = `0 ${gap}`;
+    reveal.setAttribute("d", d);
+    reveal.setAttribute("stroke-width", 100 * s + 8);
+    const L = trail.getTotalLength();
+    reveal.style.setProperty("--L", `${L}`);
+  };
+  new IntersectionObserver(([e], o) => {
+    if (!e.isIntersecting) return;
+    o.disconnect();
+    setTimeout(() => join.classList.add("arrived"), 3900);   // the dots reach the button
+  }, { threshold: 0.35 }).observe(join);
+  addEventListener("resize", place);
+  document.fonts?.ready.then(place);
+  place();
+}
+
 // Waitlist
 const form = document.getElementById("waitlist");
 const note = document.getElementById("form-note");

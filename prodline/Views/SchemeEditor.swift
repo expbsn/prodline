@@ -182,7 +182,11 @@ struct MeView: View {
 
                 configurationCard.padding(.horizontal, 16)
 
+                #if DEBUG
                 developerCard.padding(.horizontal, 16)
+                #endif
+
+                dataCard.padding(.horizontal, 16)
             }
             .padding(.bottom, 24)
         }
@@ -241,7 +245,9 @@ struct MeView: View {
             toggleRow("Suggested goals", GoalPlanner.isAvailable
                       ? "Drafted on this iPhone with Apple Intelligence."
                       : "Needs Apple Intelligence on this iPhone.", $suggestions)
+            #if DEBUG
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
+            #endif
             toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
             toggleRow("Win notifications", "A push when a goal, checkpoint or streak lands while the app is closed, e.g. ticked by a commit.", $cheers)
             optionRow("Relay for instant updates", "Pushes to linked repos sync within seconds. Leave empty for Prodline's relay, or type off.") {
@@ -355,6 +361,22 @@ struct MeView: View {
         .buttonStyle(PressableStyle(scale: 0.97))
     }
 
+    /// In every build: the user's own data.
+    private var dataCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionTitle("Your data")
+            Text("Projects live on this iPhone and in your iCloud. Deleting removes them everywhere you're signed in.")
+                .font(.ui(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                devButton("Reset XP and streaks", "arrow.uturn.backward", role: .destructive) { confirm = .resetProgress }
+                devButton("Delete all data", "trash", role: .destructive) { confirm = .deleteAll }
+            }
+        }
+        .card()
+    }
+
+    /// Debug builds only (see body): mock server, demo projects and replays.
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Demo & testing")
@@ -425,8 +447,6 @@ struct MeView: View {
                     profile.onboarded = false
                     try? context.save()
                 }
-                devButton("Reset XP and streaks", "arrow.uturn.backward", role: .destructive) { confirm = .resetProgress }
-                devButton("Delete all data", "trash", role: .destructive) { confirm = .deleteAll }
             }
         }
         .card()

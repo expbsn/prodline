@@ -56,8 +56,8 @@
     {"id": "dark-mode", "title": "Add dark mode with an Appearance setting", "day": 11, "done": true},
 
     {"id": "landing-page", "title": "Build the landing page with tester waitlist", "day": 12, "done": false},
-    {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": false},
-    {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": false},
+    {"id": "hide-demo-tools", "title": "Hide Demo & testing in release builds", "day": 12, "done": true},
+    {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": true},
     {"id": "testflight-build", "title": "Upload first TestFlight build", "day": 12, "done": false},
 
     {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": false},

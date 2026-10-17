@@ -30,8 +30,12 @@ enum AppSettings {
     nonisolated static var commitWatch: Bool { bool(Key.commitWatch, true) }
     /// On-device goal suggestions.
     nonisolated static var suggestions: Bool { bool(Key.suggestions, true) }
-    /// Sample numbers for projects without an endpoint.
+    /// Sample numbers for projects without an endpoint. Development only: release builds never invent numbers.
+    #if DEBUG
     nonisolated static var sampleData: Bool { bool(Key.sampleData, true) }
+    #else
+    nonisolated static var sampleData: Bool { false }
+    #endif
     nonisolated static var haptics: Bool { bool(Key.haptics, true) }
     /// Push notifications for goals, checkpoints and the streak when they happen with the app closed.
     nonisolated static var cheers: Bool { bool(Key.cheers, true) }
