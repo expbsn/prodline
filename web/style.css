@@ -569,7 +569,8 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   .header-bg, .header::after { display: none; }
   .header-in { height: auto; justify-content: flex-start; padding-bottom: 24px; }
   .header h1 { font-size: clamp(44px, 15.4vw, 70px); }
-  .header .lede { position: relative; z-index: 5; margin-top: -18vw; }
+  /* just below the engine's lowest point (about 95% down the photo) */
+  .header .lede { position: relative; z-index: 5; margin-top: -3vw; }
   .cta-row { gap: 10px; margin-top: 28px; flex-wrap: nowrap; }
   .cta-row .btn { flex: 1; padding: 0 14px; }
   .cta-row .more { display: none; }
@@ -589,7 +590,7 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   .m-vignette { position: absolute; inset: 0; z-index: 4; pointer-events: none;
     background: radial-gradient(46% 30% at 100% 97%, rgba(7,8,11,1), rgba(7,8,11,.85) 45%, transparent 100%); }
   /* the headline in the middle of the photo; "off" slips under the top left of the engine */
-  .header h1 { position: relative; z-index: 2; align-self: end; margin-bottom: var(--h1-lift, 44vw); }
+  .header h1 { position: relative; z-index: 2; align-self: end; margin-bottom: var(--h1-lift, 41.5vw); }
   /* a soft dark backdrop behind the words, under the engine */
   .header h1::before { content: ""; position: absolute; z-index: -1; inset: -34% -12% -30% -10%; pointer-events: none;
     background: radial-gradient(closest-side, rgba(0,0,0,.62), rgba(0,0,0,.35) 55%, transparent); }
