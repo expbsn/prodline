@@ -568,21 +568,28 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   .header { height: auto; min-height: 0; overflow: visible; }
   .header-bg, .header::after { display: none; }
   .header-in { height: auto; justify-content: flex-start; padding-bottom: 24px; }
-  .header h1 { font-size: clamp(44px, 13.6vw, 64px); }
+  .header h1 { font-size: clamp(44px, 15.4vw, 70px); }
   .header .lede { margin-top: 18px; }
   .cta-row { gap: 10px; margin-top: 28px; flex-wrap: nowrap; }
   .cta-row .btn { flex: 1; padding: 0 14px; }
   .cta-row .more { display: none; }
   .header-in { padding-top: 0; }
   .header .eyebrow { display: none; }
-  .m-photo { display: block; position: relative; width: 100vw; margin: 0 calc(50% - 50vw) -22vw; aspect-ratio: 720 / 990; }
+  /* the photo and the headline share the first cell; the rest follows below the photo */
+  .header-in { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .m-photo, .header h1 { grid-area: 1 / 1; }
+  .m-photo { display: block; position: relative; width: 100vw; margin: 0 calc(50% - 50vw); aspect-ratio: 720 / 990; }
   .m-base { display: block; width: 100%; height: 100%; }
   /* fade into the page at the bottom (where the headline sits) and a little at the top for the nav */
   .m-photo::after { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background: linear-gradient(180deg, rgba(7,8,11,.55) 0%, rgba(7,8,11,0) 16%, rgba(7,8,11,0) 62%, rgba(7,8,11,.7) 84%, var(--bg) 100%); }
   /* the engine, cut out, over the headline: same box as in the photo (316,573 → 720,938 of 720×990) */
   .m-engine { position: absolute; z-index: 3; left: 43.889%; top: 57.879%; width: 56.111%; height: auto; }
-  .header h1 { position: relative; z-index: 2; }
+  /* the headline in the middle of the photo; "off" slips under the top left of the engine */
+  .header h1 { position: relative; z-index: 2; align-self: end; margin-bottom: var(--h1-lift, 28vw); }
+  /* a soft dark backdrop behind the words, under the engine */
+  .header h1::before { content: ""; position: absolute; z-index: -1; inset: -34% -12% -30% -10%; pointer-events: none;
+    background: radial-gradient(closest-side, rgba(0,0,0,.62), rgba(0,0,0,.35) 55%, transparent); }
 
   /* how it works: a light timeline */
   .trail { display: none; }
