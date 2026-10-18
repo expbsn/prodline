@@ -11,8 +11,8 @@
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=33">
-  <script type="module" src="main.js?v=33"></script>
+  <link rel="stylesheet" href="style.css?v=37">
+  <script type="module" src="main.js?v=37"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -33,12 +33,17 @@
   <main>
     <!-- Header -->
     <section class="header" aria-labelledby="h-top">
-      <!-- phones skip the wide photo entirely (a 1px stand-in) and get the window view below the text -->
+      <!-- phones skip the wide photo entirely (a 1px stand-in) and use .m-photo below -->
       <picture>
         <source media="(max-width: 700px)" srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
         <img class="header-bg" src="img/header.jpg" alt="" width="3600" height="2688" fetchpriority="high">
       </picture>
       <div class="header-in">
+        <!-- phones: the photo full width on top; the headline slides into it and the engine, cut out, sits over the words -->
+        <div class="m-photo" aria-hidden="true">
+          <img class="m-base" src="img/header-window.jpg" alt="" width="720" height="990" loading="lazy">
+          <img class="m-engine" src="img/engine.png" alt="" width="404" height="365" loading="lazy">
+        </div>
         <p class="eyebrow up" style="--d:.15s">Prodline for iPhone · Beta</p>
         <h1 id="h-top" class="up" style="--d:.25s">Watch your projects<br>take off.</h1>
         <p class="lede up" style="--d:.38s">Short plans, one tick a day, and the numbers that prove it worked. Prodline gets your side projects out of the drawer and into the air.</p>
@@ -47,7 +52,6 @@
           <a class="btn store" href="#join" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a>
           <a class="more" href="#how">How it works <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M6 13l6 6 6-6"/></svg></a>
         </div>
-        <figure class="window" aria-hidden="true"><img src="img/header-window.jpg" alt="" width="720" height="990"></figure>
       </div>
     </section>
 
