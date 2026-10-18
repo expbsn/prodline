@@ -11,7 +11,7 @@
 //   POST   /github/:hook              GitHub webhook (X-Hub-Signature-256)
 //   POST   /devices/:dev/start-token {deviceSecret, startToken}      Live Activity push-to-start token
 //   PUT    /schedules                {device, deviceSecret, items}     deadline activities to start later
-//   POST   /waitlist                 {email, website?}                  join the tester waitlist (landing page)
+//   POST   /waitlist                 {email, website?, source?}         join the tester waitlist (landing page)
 //   GET    /waitlist/metrics         Bearer WAITLIST_KEY (if set)       signups, in the Prodline endpoint format
 //   GET    /health
 //   cron (every 5 min): starts scheduled Live Activities whose time has come
@@ -19,7 +19,8 @@
 // Storage (KV namespace RELAY):  device:<id> → {secretHash, token, env, startToken?}
 //                                sched:<device> → {items: [{id, at, attributes, state, alert, sent?}]}
 //                                hook:<id>   → {secret, devices: [ids]}
-//                                wait:<sha256(email)> → {email, at};  waitcount → number
+//                                wait:<sha256(email)> → {email, at, source};  waitcount → number;
+//                                waitsrc:<source> → number (signups per ?ref= tag)
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
 // A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
 // APNS_KEY_PROD + APNS_KEY_ID_PROD (or use one "Sandbox & Production" key as APNS_KEY for both).
@@ -186,6 +187,12 @@ const EMAIL = /^[^\s@]{1,64}@[^\s@]{1,190}\.[^\s@]{2,24}$/;
 const CORS = { "access-control-allow-origin": "*", "access-control-allow-methods": "POST, GET, OPTIONS",
   "access-control-allow-headers": "content-type, authorization", "access-control-max-age": "86400" };
 
+/// The ?ref= tag a signup came with: lowercase letters, digits and underscores, or "direct".
+export function waitSource(raw) {
+  const s = String(raw ?? "").toLowerCase().replace(/[^a-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 32);
+  return s || "direct";
+}
+
 async function waitlist(request, env, parts, method) {
   if (method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
 
@@ -197,9 +204,12 @@ async function waitlist(request, env, parts, method) {
     if (!EMAIL.test(email)) throw new HttpError(400, "bad email");
     const key = `wait:${await sha256(email)}`;
     if (await env.RELAY.get(key)) return (json({ ok: true, already: true }));
-    await env.RELAY.put(key, JSON.stringify({ email, at: new Date().toISOString() }));
+    const source = waitSource(body.source);
+    await env.RELAY.put(key, JSON.stringify({ email, at: new Date().toISOString(), source }));
     const count = Number(await env.RELAY.get("waitcount") ?? 0) + 1;
     await env.RELAY.put("waitcount", String(count));
+    const srcKey = `waitsrc:${source}`;
+    await env.RELAY.put(srcKey, String(Number(await env.RELAY.get(srcKey) ?? 0) + 1));
     return (json({ ok: true, count }));
   }
 
@@ -209,8 +219,13 @@ async function waitlist(request, env, parts, method) {
       if (!timingSafeEqual(auth, `Bearer ${env.WAITLIST_KEY}`)) throw new HttpError(401, "unauthorized");
     }
     const count = Number(await env.RELAY.get("waitcount") ?? 0);
-    return (json({ schemaVersion: 1, project: "Prodline", asOf: new Date().toISOString(),
-      metrics: [{ key: "signups", value: count }] }));
+    const metrics = [{ key: "signups", value: count }];
+    // one number per ?ref= source, e.g. signups_from_sideproject
+    const { keys } = await env.RELAY.list({ prefix: "waitsrc:" });
+    for (const { name } of keys) {
+      metrics.push({ key: `signups_from_${name.slice("waitsrc:".length)}`, value: Number(await env.RELAY.get(name) ?? 0) });
+    }
+    return (json({ schemaVersion: 1, project: "Prodline", asOf: new Date().toISOString(), metrics }));
   }
   throw new HttpError(404, "not found");
 }

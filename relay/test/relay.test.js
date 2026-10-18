@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { route, validSignature, apnsToken, apnsKey, runSchedules, liveActivityStartPayload } from "../src/index.js";
+import { route, validSignature, apnsToken, apnsKey, runSchedules, liveActivityStartPayload, waitSource } from "../src/index.js";
 
 /// In-memory stand-in for the KV namespace.
 function kv() {
@@ -186,10 +186,26 @@ test("waitlist: signs up once, ignores bots, reports signups", async () => {
   r = await route(req("/waitlist", "OPTIONS"), env);
   assert.equal(r.status, 204);
   r = await route(new Request(BASE + "/waitlist/metrics"), env);
-  assert.deepEqual((await r.json()).metrics, [{ key: "signups", value: 1 }]);
+  assert.deepEqual((await r.json()).metrics, [{ key: "signups", value: 1 }, { key: "signups_from_direct", value: 1 }]);
   const locked = { ...env, WAITLIST_KEY: "k".repeat(20) };
   r = await route(new Request(BASE + "/waitlist/metrics"), locked);
   assert.equal(r.status, 401);
   r = await route(new Request(BASE + "/waitlist/metrics", { headers: { authorization: "Bearer " + "k".repeat(20) } }), locked);
   assert.equal(r.status, 200);
+});
+
+test("waitlist: counts signups per ?ref= source", async () => {
+  const env = { RELAY: kv() };
+  await route(req("/waitlist", "POST", { email: "a@x.com", source: "SideProject" }), env);
+  await route(req("/waitlist", "POST", { email: "b@x.com", source: "sideproject" }), env);
+  await route(req("/waitlist", "POST", { email: "c@x.com", source: "indie hackers!" }), env);
+  await route(req("/waitlist", "POST", { email: "a@x.com", source: "x" }), env); // already on the list: not counted again
+  const r = await route(new Request(BASE + "/waitlist/metrics"), env);
+  const m = Object.fromEntries((await r.json()).metrics.map((x) => [x.key, x.value]));
+  assert.equal(m.signups, 3);
+  assert.equal(m.signups_from_sideproject, 2);
+  assert.equal(m.signups_from_indie_hackers, 1);
+  assert.equal(m.signups_from_x, undefined);
+  assert.equal(waitSource("  "), "direct");
+  assert.equal(waitSource("../../etc"), "etc");
 });

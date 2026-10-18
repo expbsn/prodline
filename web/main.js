@@ -2,6 +2,18 @@
 
 const RELAY = "https://prodline-relay.prodline-relay.workers.dev";
 
+// Where a visitor came from: the ?ref= tag of the link they followed (prodline.build/?ref=sideproject),
+// kept for the visit so it survives a detour through the docs or FAQ. Sent along with a waitlist signup.
+const source = (() => {
+  const ref = new URLSearchParams(location.search).get("ref");
+  try {
+    if (ref) sessionStorage.setItem("prodline.ref", ref);
+    return ref || sessionStorage.getItem("prodline.ref") || "";
+  } catch {
+    return ref || "";
+  }
+})();
+
 // Blur-in reveals and lines that draw themselves when they come into view.
 const seen = new IntersectionObserver((entries) => {
   for (const e of entries) {
@@ -325,7 +337,7 @@ form?.addEventListener("submit", async (e) => {
     const r = await fetch(`${RELAY}/waitlist`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email, website: form.website.value }),
+      body: JSON.stringify({ email, website: form.website.value, source }),
     });
     if (!r.ok) throw new Error(String(r.status));
     const body = await r.json();

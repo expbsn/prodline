@@ -46,16 +46,17 @@ def paged(path, token=None, accept="application/vnd.github+json"):
 
 
 def waitlist_signups():
-    """Tester waitlist signups from the relay (landing page); None when it can't be reached."""
+    """Tester waitlist numbers from the relay (landing page): `signups` plus `signups_from_<ref>` per source.
+    Empty when the relay can't be reached."""
     headers = {"User-Agent": "prodline-metrics"}
     if os.environ.get("WAITLIST_KEY"):
         headers["Authorization"] = "Bearer " + os.environ["WAITLIST_KEY"]
     try:
         with urllib.request.urlopen(urllib.request.Request(WAITLIST, headers=headers), timeout=10) as r:
             body = json.load(r)
-        return next((m["value"] for m in body.get("metrics", []) if m.get("key") == "signups"), None)
+        return [m for m in body.get("metrics", []) if str(m.get("key", "")).startswith("signups")]
     except Exception:
-        return None
+        return []
 
 
 def day(d):
@@ -135,9 +136,9 @@ def main():
     current.append({"key": "open_issues", "value": repo.get("open_issues_count", 0)})
     current.append({"key": "goals_done", "value": goals_done})
     current.append({"key": "goals_open", "value": goals_open})
-    signups = waitlist_signups()
-    if signups is not None:
-        current.append({"key": "signups", "value": signups})
+    # waitlist: the total, and one number per ?ref= source (signups_from_sideproject, …)
+    for m in waitlist_signups():
+        current.append({"key": m["key"], "value": m["value"]})
     # Stars from the repo itself are authoritative (the list can lag).
     for m in current:
         if m["key"] == "github_stars":

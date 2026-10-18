@@ -25,3 +25,9 @@ Live at https://prodline-site.prodline-relay.workers.dev until a domain is conne
 - Support contact (FAQ, privacy page, footer): `kianpal731@gmail.com`.
 - The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
   "Download on the App Store" badge (unmodified, from Apple's marketing tools) linking to the product page.
+
+## Where signups come from
+
+Link to the site with a tag, e.g. `prodline.build/?ref=sideproject`. The page keeps the tag for the visit and
+sends it with a waitlist signup; the relay counts signups per tag, and `tools/prodline_metrics.py` reports
+them in Prodline's own feed as `signups_from_<tag>` next to `signups` (no tag counts as `direct`).
