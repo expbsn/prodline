@@ -586,7 +586,7 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   /* the engine, cut out, over the headline: same box as in the photo (316,573 → 720,938 of 720×990) */
   .m-engine { position: absolute; z-index: 3; left: 43.889%; top: 57.879%; width: 56.111%; height: auto; }
   /* the headline in the middle of the photo; "off" slips under the top left of the engine */
-  .header h1 { position: relative; z-index: 2; align-self: end; margin-bottom: var(--h1-lift, 28vw); }
+  .header h1 { position: relative; z-index: 2; align-self: end; margin-bottom: var(--h1-lift, 33vw); }
   /* a soft dark backdrop behind the words, under the engine */
   .header h1::before { content: ""; position: absolute; z-index: -1; inset: -34% -12% -30% -10%; pointer-events: none;
     background: radial-gradient(closest-side, rgba(0,0,0,.62), rgba(0,0,0,.35) 55%, transparent); }
