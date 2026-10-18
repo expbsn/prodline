@@ -270,7 +270,15 @@ struct MainShell: View {
     /// The idea the create flow starts from, if any.
     @State private var startingIdea: Idea?
     @State private var opened: Opened?
+    /// Feedback sheet (from Dash, or with the screen a screenshot was just taken of).
+    @State private var feedback: FeedbackRequest?
+    @State private var screenshotPrompt: UIImage?
     @Namespace private var zoom
+
+    struct FeedbackRequest: Identifiable {
+        let id = UUID()
+        var screenshot: UIImage?
+    }
 
     private func tabPage<Content: View>(_ t: AppTab, @ViewBuilder _ content: () -> Content) -> some View {
         let active = tab == t
@@ -293,7 +301,8 @@ struct MainShell: View {
                 tabPage(.projects) {
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
                              onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { requestCreate() },
-                             onStreak: { tab = .me }, onReview: { showReview = true })
+                             onStreak: { tab = .me }, onReview: { showReview = true },
+                             onFeedback: { feedback = FeedbackRequest() })
                 }
                 tabPage(.plan) {
                     PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { requestCreate() },
@@ -323,6 +332,16 @@ struct MainShell: View {
             FloatingTabBar(selection: $tab, onAdd: { requestCreate() })
                 .padding(.bottom, 2)
 
+            if screenshotPrompt != nil {
+                ScreenshotFeedbackPrompt(onSend: {
+                    feedback = FeedbackRequest(screenshot: screenshotPrompt)
+                    withAnimation(.snappy) { screenshotPrompt = nil }
+                }, onDismiss: { withAnimation(.snappy) { screenshotPrompt = nil } })
+                .padding(.bottom, 96)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .zIndex(20)
+            }
+
             if let o = opened {
                 ProjectDetailView(project: o.project, cardFrame: o.cardFrame, onClose: { opened = nil })
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -330,6 +349,17 @@ struct MainShell: View {
             }
         }
         .ignoresSafeArea(.keyboard)
+        .sheet(item: $feedback) { FeedbackSheet(screenshot: $0.screenshot) }
+        // A screenshot in the app: offer to send that screen as feedback, briefly (the capture is ours, taken
+        // right after, so the prompt itself is never in it).
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.userDidTakeScreenshotNotification)) { _ in
+            guard feedback == nil, let shot = Feedback.captureScreen() else { return }
+            withAnimation(.snappy) { screenshotPrompt = shot }
+            Task {
+                try? await Task.sleep(for: .seconds(6))
+                withAnimation(.snappy) { if screenshotPrompt === shot { screenshotPrompt = nil } }
+            }
+        }
         // Widget taps: prodline://project/<id> opens that project, prodline://data/<metric> the Data tab.
         .onOpenURL { url in
             guard url.scheme == "prodline" else { return }

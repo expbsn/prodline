@@ -60,7 +60,7 @@
     {"id": "privacy-manifest", "title": "Add privacy manifest and App Store privacy details", "day": 12, "done": true},
     {"id": "testflight-build", "title": "Upload first TestFlight build", "day": 12, "done": true},
 
-    {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": false},
+    {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": true},
     {"id": "tester-posts", "title": "Post the tester waitlist on r/SideProject and Indie Hackers", "day": 13, "done": false},
     {"id": "testers", "title": "Invite the first wave of testers from the waitlist", "day": 13, "done": false},
     {"id": "waitlist-50", "title": "Reach 50 waitlist signups", "day": 13, "done": false, "metric": {"key": "signups", "target": 50}},

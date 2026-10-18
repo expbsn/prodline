@@ -31,6 +31,7 @@ struct HomeView: View {
     var onCreate: () -> Void
     var onStreak: () -> Void
     var onReview: () -> Void = {}
+    var onFeedback: () -> Void = {}
 
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
@@ -57,6 +58,7 @@ struct HomeView: View {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") {
                         HStack(alignment: .top, spacing: 10) {
                             if reviewWaiting { reviewChip.transition(.scale.combined(with: .opacity)) }
+                            feedbackChip
                             streakBadge
                         }
                     }
@@ -128,6 +130,32 @@ struct HomeView: View {
         }
         .buttonStyle(PressableStyle(scale: 0.92))
         .accessibilityLabel("Weekly review ready")
+    }
+
+    /// Beta: feedback to the developer, in the same style as the review chip.
+    private var feedbackChip: some View {
+        Button {
+            Haptics.select()
+            onFeedback()
+        } label: {
+            VStack(spacing: -6) {
+                ZStack {
+                    Circle().fill(Theme.card)
+                    Circle().strokeBorder(Theme.line, lineWidth: 2.5)
+                    Image(systemName: "bubble.left.and.text.bubble.right.fill").font(.system(size: 16)).foregroundStyle(Theme.ink)
+                }
+                .frame(width: 46, height: 46)
+                Text("Feedback")
+                    .display(11, 800)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 8).padding(.vertical, 1)
+                    .background(Capsule().fill(Theme.card))
+                    .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 2))
+                    .fixedSize()
+            }
+        }
+        .buttonStyle(PressableStyle(scale: 0.92))
+        .accessibilityLabel("Send feedback")
     }
 
     private var streakBadge: some View {
