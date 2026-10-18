@@ -132,7 +132,7 @@ struct HomeView: View {
         .accessibilityLabel("Weekly review ready")
     }
 
-    /// Beta: feedback to the developer, in the same style as the review chip.
+    /// Beta: feedback to the developer, built exactly like the streak badge next to it.
     private var feedbackChip: some View {
         Button {
             Haptics.select()
@@ -142,13 +142,16 @@ struct HomeView: View {
                 ZStack {
                     Circle().fill(Theme.card)
                     Circle().strokeBorder(Theme.line, lineWidth: 2.5)
-                    Image(systemName: "bubble.left.and.text.bubble.right.fill").font(.system(size: 16)).foregroundStyle(Theme.ink)
+                    Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                        .font(.system(size: 19, weight: .semibold)).foregroundStyle(Theme.ink)
+                        .frame(height: 23)
                 }
                 .frame(width: 46, height: 46)
+                // same label as the streak badge: size, weight and padding
                 Text("Feedback")
-                    .display(11, 800)
+                    .display(13, 800)
                     .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 8).padding(.vertical, 1)
+                    .padding(.horizontal, 10).padding(.vertical, 1)
                     .background(Capsule().fill(Theme.card))
                     .overlay(Capsule().strokeBorder(Theme.line, lineWidth: 2))
                     .fixedSize()
