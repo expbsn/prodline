@@ -109,7 +109,7 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
   mask-image: linear-gradient(#000 25%, rgba(0,0,0,.6) 55%, transparent);
   pointer-events: none;
 }
-.logo { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font: 800 24px/1 var(--display); }
+.logo { display: inline-flex; align-items: center; gap: 9px; text-decoration: none; font: 680 24px/1 var(--display); }
 .links { position: relative; display: flex; gap: 6px; padding: 5px; border-radius: 999px; background: rgba(255,255,255,.08); }
 /* the pill behind the link of the section you're in; main.js moves it */
 .pill-ind { position: absolute; left: 0; top: 5px; bottom: 5px; width: 0; border-radius: 999px; background: var(--white); opacity: 0;
