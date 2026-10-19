@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SWIFT = (ROOT / "prodline/Services/Integrations.swift").read_text()
 OUT = ROOT / "web/docs.html"
-SUPPORT = "kianpal731@gmail.com"
+SUPPORT = "exp.bsn@gmail.com"
 
 STR = r'"((?:[^"\\]|\\.)*)"'
 
@@ -293,7 +293,7 @@ app.get("/api/prodline", (req, res) => {{
     <div class="foot-in">
       <a class="logo" href="index.html"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
       <nav class="foot-links" aria-label="Footer">
-        <a href="index.html#how">How it works</a><a href="index.html#features">Features</a><a href="docs.html">Docs</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="mailto:{SUPPORT}">Contact</a>
+        <a href="index.html#how">How it works</a><a href="index.html#features">Features</a><a href="docs.html">Docs</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="impressum.html">Impressum</a><a href="mailto:{SUPPORT}">Contact</a>
       </nav>
       <p class="copy">© 2026 Prodline</p>
     </div>

@@ -3,6 +3,6 @@
 set -e
 cd "$(dirname "$0")"
 rm -rf ../build/site && mkdir -p ../build/site
-cp -R index.html docs.html faq.html privacy.html terms.html style.css main.js mark.svg mark-light.svg fonts img shots ../build/site/
+cp -R index.html docs.html faq.html privacy.html terms.html impressum.html style.css main.js mark.svg mark-light.svg fonts img shots ../build/site/
 set -a; . ../relay/.env; set +a
 npx --prefix ../relay wrangler deploy
