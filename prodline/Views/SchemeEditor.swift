@@ -474,6 +474,8 @@ struct MeView: View {
 
 struct OnboardingView: View {
     @Bindable var profile: Profile
+    /// Wide windows (the Mac): two panes, a big visual of the step on the left and the step on the right.
+    var wide = false
     @Environment(\.modelContext) private var context
     @Environment(CelebrationCenter.self) private var celebration
     @Environment(DataRefresher.self) private var refresher
@@ -496,11 +498,189 @@ struct OnboardingView: View {
 
     var body: some View {
         if step == 0 {
-            // Selling the idea: the scroll story. The setup steps follow.
-            StoryOnboarding { next() }
-                .transition(.opacity)
+            // Selling the idea: the scroll story (a welcome screen on wide windows). The setup steps follow.
+            if wide {
+                wideWelcome.transition(.opacity)
+            } else {
+                StoryOnboarding { next() }
+                    .transition(.opacity)
+            }
+        } else if wide {
+            wideSetup
         } else {
             setup
+        }
+    }
+
+    // MARK: Wide layout
+
+    private var wideWelcome: some View {
+        HStack(spacing: 0) {
+            ZStack {
+                Theme.card
+                AccentGlow(accent: Accent(hex: 0x5B5BF0))
+                let specs = DemoData.projects.prefix(3)
+                ZStack {
+                    ForEach(Array(specs.enumerated()), id: \.offset) { i, spec in
+                        ProjectCardFace(name: spec.name, initial: String(spec.name.prefix(1)), accent: Accent(hex: spec.accent),
+                                        cover: spec.cover, cornerLabel: ["Day", "Visits", "Day"][i],
+                                        cornerValue: ["9", "5.3K", "2"][i], footnote: ["Building · 5d left", "Observing · day 10", "Building · 12d left"][i])
+                            .frame(width: 230)
+                            .cardFloorShadow(width: 230)
+                            .rotationEffect(.degrees([-11, 0, 11][i]))
+                            .offset(x: [-170, 0, 170][i], y: [30, -10, 30][i])
+                            .zIndex(i == 1 ? 1 : 0)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipped()
+
+            VStack(alignment: .leading, spacing: 22) {
+                Text("Prodline").eyebrow()
+                Text("Watch your projects take off.").display(54, 800).foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("Plan a side project in checkpoints, plug in where its numbers live, and let the goals tick themselves off. When it's done, decide: keep, pivot or kill.")
+                    .font(.ui(18)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Get started", action: next)
+                    .buttonStyle(.chunky)
+                    .environment(\.accent, .neutral)
+                    .frame(width: 280)
+                    .padding(.top, 10)
+            }
+            .padding(56)
+            .frame(width: 560)
+            .frame(maxHeight: .infinity)
+            .background(Theme.background)
+        }
+    }
+
+    private var wideSetup: some View {
+        HStack(spacing: 0) {
+            wideVisual
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background {
+                    ZStack {
+                        Theme.card
+                        AccentGlow(accent: visualAccent)
+                    }
+                }
+                .clipped()
+                .animation(.spring(response: 0.5, dampingFraction: 0.85), value: step)
+
+            VStack(spacing: 0) {
+                HStack(spacing: 14) {
+                    if step > 1 {
+                        Button {
+                            Haptics.soft()
+                            withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) {
+                                step -= (step == 4 && skippedProject) ? 2 : 1
+                            }
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 17, weight: .bold)).foregroundStyle(Theme.secondary)
+                                .frame(width: 36, height: 36)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    ChunkyProgressBar(value: Double(step) / Double(lastStep), color: Theme.ink, height: 12)
+                }
+                .padding(.horizontal, 44).padding(.top, 30)
+                .frame(height: 72)
+
+                ScrollView(showsIndicators: false) {
+                    Group {
+                        switch step {
+                        case 1: firstProject
+                        case 2: success
+                        case 3: integrations
+                        case 4: workHours
+                        default: scheme
+                        }
+                    }
+                    .padding(.horizontal, 44).padding(.vertical, 20)
+                    .id(step)
+                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                            removal: .move(edge: .leading).combined(with: .opacity)))
+                }
+                .scrollBounceBehavior(.basedOnSize)
+
+                VStack(spacing: 8) { bottomBar }
+                    .padding(.horizontal, 44).padding(.bottom, 30).padding(.top, 8)
+            }
+            .frame(width: 540)
+            .background(Theme.background)
+        }
+        .sheet(item: $editing) { i in
+            if let draft {
+                IntegrationEditor(project: draft, integration: i, isNew: !draft.integrations.contains { $0.id == i.id }, live: false)
+                    .frame(width: 480, height: 720)
+            }
+        }
+    }
+
+    private var visualAccent: Accent {
+        switch step {
+        case 1: Accent(hex: accentHex)
+        case 2: Accent(hex: profile.successFocus?.hex ?? 0x5B5BF0)
+        case 3: Accent(hex: 0x1CB0F6)
+        case 4: Accent(hex: 0xFF9600)
+        default: Accent(hex: 0x58CC02)
+        }
+    }
+
+    /// What the step is about, big: the card being made, the win, the services, the flame, the rhythm.
+    @ViewBuilder
+    private var wideVisual: some View {
+        switch step {
+        case 1:
+            CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
+                            accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                            footnote: "Building · \(profile.buildDays)d")
+                .frame(width: 300)
+                .environment(\.accent, Accent(hex: accentHex))
+        case 2:
+            if let f = profile.successFocus {
+                let a = Accent(hex: f.hex)
+                VStack(spacing: 22) {
+                    Image(systemName: f.symbol).font(.system(size: 80, weight: .bold)).foregroundStyle(a.on)
+                        .frame(width: 190, height: 190)
+                        .background(Circle().fill(a.base))
+                        .shadow(color: a.base.opacity(0.4), radius: 30, y: 12)
+                    Text(f.title).display(36, 800).foregroundStyle(Theme.ink)
+                }
+                .id(f)
+                .transition(.scale(scale: 0.8).combined(with: .opacity))
+            } else {
+                HStack(spacing: -24) {
+                    ForEach(SuccessFocus.allCases) { f in
+                        Image(systemName: f.symbol).font(.system(size: 34, weight: .bold)).foregroundStyle(Accent(hex: f.hex).on)
+                            .frame(width: 96, height: 96)
+                            .background(Circle().fill(Accent(hex: f.hex).base))
+                            .overlay(Circle().strokeBorder(Theme.card, lineWidth: 5))
+                    }
+                }
+            }
+        case 3:
+            let connected = Set((draft?.integrations ?? []).map(\.kind))
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(76), spacing: 22), count: 4), spacing: 22) {
+                ForEach(onboardingKinds) { kind in
+                    IntegrationIcon(kind: kind, size: 76)
+                        .overlay(alignment: .bottomTrailing) {
+                            if connected.contains(kind) {
+                                Image(systemName: "checkmark.circle.fill").font(.system(size: 26)).foregroundStyle(Theme.success)
+                                    .background(Circle().fill(Theme.card))
+                                    .offset(x: 8, y: 8)
+                            }
+                        }
+                        .opacity(connected.isEmpty || connected.contains(kind) ? 1 : 0.45)
+                }
+            }
+        case 4:
+            BurningFlame(grow: 1, bright: 1, width: 190, alive: .now)
+        default:
+            RhythmBeat(p: 1).frame(width: 420)
         }
     }
 
@@ -617,11 +797,14 @@ struct OnboardingView: View {
                 .submitLabel(.done)
                 .inputField(focused: nameFocused)
             AccentSlider(accentHex: $accentHex, locked: $lockedToPhoto, photoHex: photoHex)
-            CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
-                            accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                            footnote: "Building · \(profile.buildDays)d")
-                .frame(width: 210)
-                .frame(maxWidth: .infinity)
+            // Wide: the card is the big visual on the left.
+            if !wide {
+                CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
+                                accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                                footnote: "Building · \(profile.buildDays)d")
+                    .frame(width: 210)
+                    .frame(maxWidth: .infinity)
+            }
         }
         .environment(\.accent, Accent(hex: accentHex))
     }

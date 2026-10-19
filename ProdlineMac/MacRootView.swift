@@ -22,9 +22,7 @@ struct MacRootView: View {
                 if profile.onboarded {
                     MacShell(profile: profile)
                 } else {
-                    OnboardingView(profile: profile)
-                        .frame(maxWidth: 480)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    OnboardingView(profile: profile, wide: true)
                 }
             }
         }
@@ -82,13 +80,11 @@ struct MacShell: View {
     let profile: Profile
     @Query(sort: \Project.startDate) private var projects: [Project]
     @State private var page: MacPage? = .tab(.projects)
-    @State private var focusedID: UUID?
     @State private var showCreate = false
     @State private var showLimit = false
     @State private var showIdeas = false
     @State private var showReview = false
     @State private var startingIdea: Idea?
-    @Namespace private var zoom
 
     private var activeProjects: [Project] { projects.filter { $0.phase() != .finished }.reversed() }
     private var finishedProjects: [Project] { projects.filter { $0.phase() == .finished }.reversed() }
@@ -181,12 +177,8 @@ struct MacShell: View {
     private var detail: some View {
         switch page {
         case .tab(.projects), nil:
-            column(560) {
-                HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
-                         onOpen: { p, _ in page = .project(p.id) }, onCreate: { requestCreate() },
-                         onStreak: { page = .tab(.me) }, onReview: { showReview = true },
-                         onFeedback: { NSWorkspace.shared.open(URL(string: "mailto:info@prodline.build?subject=Prodline%20for%20Mac%20feedback")!) })
-            }
+            MacOverview(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
+                        onReview: { showReview = true })
         case .tab(.plan):
             column(640) {
                 PlanView(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
@@ -198,10 +190,7 @@ struct MacShell: View {
             column(600) { MeView(profile: profile) }
         case .project(let id):
             if let p = projects.first(where: { $0.id == id }) {
-                column(620) {
-                    ProjectDetailView(project: p, cardFrame: nil, onClose: { page = .tab(.projects) })
-                        .id(p.id)
-                }
+                MacProjectDashboard(project: p).id(p.id)
             } else {
                 ContentUnavailableView("Project not found", systemImage: "questionmark.folder")
             }

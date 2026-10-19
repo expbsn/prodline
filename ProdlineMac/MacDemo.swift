@@ -54,14 +54,28 @@ enum MacDemo {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
-            @MainActor func write(_ view: some View, _ suffix: String, scheme: ColorScheme) {
-                let r = ImageRenderer(content: view.environment(\.colorScheme, scheme).modelContainer(container))
-                r.scale = 2
+            @MainActor func write(_ view: some View, _ suffix: String, width: CGFloat, scheme: ColorScheme) {
+                let r = ImageRenderer(content: view
+                    .frame(width: width)
+                    .environment(\.macSnapshot, true)
+                    .environment(\.colorScheme, scheme)
+                    .environment(DataRefresher())
+                    .environment(CelebrationCenter())
+                    .environment(GitHubService())
+                    .modelContainer(container))
+                r.scale = 1.5
                 guard let img = r.nsImage, let tiff = img.tiffRepresentation,
                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
                 try? png.write(to: URL(fileURLWithPath: path + suffix))
             }
-            write(MenuBarPanel().background(Theme.card), "-menu.png", scheme: .dark)
+            let profile = (try? context.fetch(FetchDescriptor<Profile>()))?.first ?? Profile()
+            let scheme: ColorScheme = UserDefaults.standard.string(forKey: "PRODLINE_SNAPSHOT_SCHEME") == "light" ? .light : .dark
+            write(MacOverview(profile: profile, onOpen: { _ in }, onCreate: {}, onReview: {}), "-overview.png", width: 1180, scheme: scheme)
+            if let p = projects.first(where: { $0.name == "Pixel Quest" }) ?? projects.first {
+                write(MacProjectDashboard(project: p), "-project.png", width: 1180, scheme: scheme)
+            }
+            write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
+            write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)
         }
     }
 }
