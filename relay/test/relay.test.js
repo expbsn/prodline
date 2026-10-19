@@ -295,3 +295,22 @@ test("TikTok refresh uses the client secret", async () => {
   assert.match(calls[0][1], /grant_type=refresh_token/);
   assert.match(calls[0][1], /client_secret=cs/);
 });
+
+test("Meta data deletion and deauthorize check the signature", async () => {
+  const env = { RELAY: kv(), INSTAGRAM_APP_SECRET: "ig-secret" };
+  const b64 = (buf) => Buffer.from(buf).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const payload = b64(JSON.stringify({ algorithm: "HMAC-SHA256", user_id: "1784" }));
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode("ig-secret"), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const signed = `${b64(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload)))}.${payload}`;
+  const form = (v) => new Request(`${BASE}/oauth/meta/delete`, { method: "POST", body: new URLSearchParams({ signed_request: v }) });
+
+  let r = await route(form(signed), env);
+  const body = await r.json();
+  assert.equal(r.status, 200);
+  assert.match(body.url, /\/oauth\/meta\/delete\?code=/);
+  assert.equal(body.confirmation_code.length, 16);
+  assert.equal((await route(form(`AAAA.${payload}`), env)).status, 400);
+  r = await route(new Request(`${BASE}/oauth/meta/deauthorize`, { method: "POST", body: new URLSearchParams({ signed_request: signed }) }), env);
+  assert.equal(r.status, 200);
+  assert.equal((await route(new Request(body.url), env)).status, 200);
+});

@@ -17,6 +17,8 @@
 //   GET    /oauth/:provider/callback  the provider sends the browser back here; redirects to prodline://oauth/…
 //   POST   /oauth/handoff             {state, verifier}                  the tokens, once (then they're gone)
 //   POST   /oauth/tiktok/refresh      {refresh_token}                    a new TikTok access token
+//   POST   /oauth/meta/deauthorize    Meta: app removed (signed_request)   nothing stored, just confirms
+//   POST   /oauth/meta/delete         Meta: data deletion (signed_request) answers {url, confirmation_code}
 //   GET    /health
 //   cron (every 5 min): starts scheduled Live Activities whose time has come
 //
@@ -285,6 +287,23 @@ async function oauth(request, env, parts, method, http) {
     return json({ provider: entry.provider, ...entry.tokens });
   }
 
+  // Meta calls these when someone removes Prodline from Instagram or Threads, or asks for their data to
+  // be deleted. The relay keeps no Instagram or Threads data, so there's nothing to remove: check that
+  // the request is Meta's and confirm it.
+  if (parts.length === 3 && parts[1] === "meta" && (parts[2] === "deauthorize" || parts[2] === "delete")) {
+    if (method === "GET" && parts[2] === "delete") {
+      return new Response("Prodline keeps no Instagram or Threads data on its servers, so there is nothing left to delete. " +
+        "Data in the app lives on your iPhone: remove the integration or use Me > Delete all data.", { headers: { "content-type": "text/plain" } });
+    }
+    if (method !== "POST") throw new HttpError(405, "method not allowed");
+    const form = await request.formData().catch(() => null);
+    const user = await metaSignedRequest(env, form?.get("signed_request"));
+    if (!user) throw new HttpError(400, "bad signed_request");
+    if (parts[2] === "deauthorize") return json({ ok: true });
+    const code = (await sha256(`${user}:${Date.now()}`)).slice(0, 16);
+    return json({ url: `${url.origin}/oauth/meta/delete?code=${code}`, confirmation_code: code });
+  }
+
   if (method === "POST" && parts.length === 3 && parts[1] === "tiktok" && parts[2] === "refresh") {
     configured(env, "tiktok");
     const body = await readJSON(request);
@@ -333,6 +352,24 @@ async function oauth(request, env, parts, method, http) {
   }
 
   throw new HttpError(404, "not found");
+}
+
+/// The user ID in a Meta signed_request ("<base64url HMAC-SHA256>.<base64url JSON>"), if it was signed
+/// with the Instagram or Threads app secret.
+export async function metaSignedRequest(env, value) {
+  if (typeof value !== "string" || !value.includes(".")) return null;
+  const [sig, payload] = value.split(".", 2);
+  for (const secret of [env.INSTAGRAM_APP_SECRET, env.THREADS_APP_SECRET].filter(Boolean)) {
+    const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const expected = b64url(await crypto.subtle.sign("HMAC", key, enc.encode(payload)));
+    if (timingSafeEqual(expected, sig.replace(/=+$/, ""))) {
+      try {
+        const data = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(payload.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0))));
+        return String(data.user_id ?? "");
+      } catch { return null; }
+    }
+  }
+  return null;
 }
 
 function configured(env, name) {
