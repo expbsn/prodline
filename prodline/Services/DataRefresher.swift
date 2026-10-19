@@ -5,6 +5,7 @@ import BackgroundTasks
 
 /// Pulls metrics from every active project.
 /// - Foreground: every `AppSettings.refreshSeconds` (default 30 s) while active, plus immediately on activation.
+///   Integrations reuse a service's answer for 15 minutes (`IntegrationCache`); pull to refresh asks again.
 /// - Background: opportunistic BGAppRefresh (iOS decides when; typically 15+ min).
 /// - Failing endpoints back off exponentially (30 s … 15 min) or honor `Retry-After`.
 @Observable
@@ -57,10 +58,14 @@ final class DataRefresher {
     }
 
     func refresh(projects: [Project], context: ModelContext, force: Bool = false, now: Date = .now) async {
+        // A poll is running: a refresh the user asked for waits for it instead of being dropped.
+        if force { while isRefreshing { try? await Task.sleep(for: .milliseconds(150)) } }
         guard !isRefreshing else { return }
         if !force, let last = lastRefresh, now.timeIntervalSince(last) < Self.minGap { return }
         isRefreshing = true
         defer { isRefreshing = false }
+        // Integrations answer from a 15-minute cache during polls; asked for, they're asked again.
+        if force { await IntegrationCache.shared.expire(olderThan: 60) }
 
         let due = projects.filter { p in
             guard p.phase(on: now) == .building || p.phase(on: now) == .observing else { return false }

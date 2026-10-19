@@ -583,7 +583,7 @@ nonisolated enum DayKey {
     static func utcString(_ d: Date) -> String { string(d) }
 }
 
-// MARK: - Cache: the foreground poll runs every 30 s; services get asked every 15 minutes at most
+// MARK: - Cache: the foreground poll runs every 30 s; services get asked every 15 minutes at most (social: 2–10)
 
 actor IntegrationCache {
     static let shared = IntegrationCache()
@@ -598,12 +598,29 @@ actor IntegrationCache {
         FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?.appendingPathComponent("integration-days.json")
     }
 
+    /// How long a service's answer is reused. Social numbers move fast and their limits allow more; Threads
+    /// takes one request per post, so it's asked less often.
+    static func ttl(for kind: IntegrationKind) -> TimeInterval {
+        switch kind {
+        case .tiktok, .instagram, .bluesky, .youtube: 2 * 60
+        case .threads: 10 * 60
+        default: ttl
+        }
+    }
+
     func result(for integration: Integration, secret: String, start: Date, session: URLSession, force: Bool = false) async throws -> SourceResult {
         let key = cacheKey(integration, secret: secret, start: start)
-        if !force, let hit = memory[key], Date().timeIntervalSince(hit.at) < Self.ttl { return hit.result }
+        if !force, let hit = memory[key], Date().timeIntervalSince(hit.at) < Self.ttl(for: integration.kind) { return hit.result }
         let r = try await IntegrationSources.fetch(integration, secret: secret, start: start, session: session, cache: self)
         memory[key] = (Date(), r)
         return r
+    }
+
+    /// A refresh the user asked for (pull to refresh, saving an integration) asks the services again,
+    /// unless they just answered.
+    func expire(olderThan age: TimeInterval) {
+        let now = Date()
+        memory = memory.filter { now.timeIntervalSince($0.value.at) < age }
     }
 
     func forget(_ integration: Integration) {

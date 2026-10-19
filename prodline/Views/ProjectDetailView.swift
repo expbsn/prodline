@@ -35,6 +35,7 @@ struct ProjectDetailView: View {
     @State private var scrolledAway = false
     /// How far the page is pulled down past the top; the glow stretches to fill it.
     @State private var overscroll: CGFloat = 0
+    @State private var updating = false
 
     private var accent: Accent { project.accent }
     /// Same size and spot as on Dash, also when opened from elsewhere.
@@ -101,6 +102,16 @@ struct ProjectDetailView: View {
         .onAppear { reveal(true) }
         .environment(\.accent, accent)
         .refreshable { await refresher.refresh(projects: [project], context: context, force: true) }
+        // Opening a project asks its services for fresh numbers (unless they answered in the last minute).
+        .task {
+            withAnimation(.easeOut(duration: 0.2)) { updating = true }
+            let started = Date()
+            await refresher.refresh(projects: [project], context: context, force: true)
+            // Long enough to see, even when the answer is instant.
+            let left = 0.8 - Date().timeIntervalSince(started)
+            if left > 0 { try? await Task.sleep(for: .seconds(left)) }
+            withAnimation(.easeOut(duration: 0.2)) { updating = false }
+        }
         #if DEBUG
         .onAppear {
             switch UserDefaults.standard.string(forKey: "PRODLINE_SHEET") {
@@ -141,6 +152,15 @@ struct ProjectDetailView: View {
         HStack {
             CircleIconButton(systemName: "xmark") { close() }
             Spacer()
+            if updating {
+                ProgressView().tint(Theme.ink)
+                    .frame(width: 40, height: 40)
+                    .background(Circle().fill(Theme.card))
+                    .shadow(color: .black.opacity(0.08), radius: 8, y: 3)
+                    .transition(.scale(scale: 0.6).combined(with: .opacity))
+                    .accessibilityLabel("Updating")
+                Spacer()
+            }
             Menu {
                 Button("Share card", systemImage: "square.and.arrow.up") { showShare = true }
                 Button("Edit project & schedule", systemImage: "paintbrush") { showEdit = true }
