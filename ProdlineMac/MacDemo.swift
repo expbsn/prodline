@@ -40,9 +40,17 @@ enum MacDemo {
                     if m.isDone || (i == 1 && n == 0) { g.setDone(true) }
                 }
             }
-            let s = MetricSnapshot(date: .now.addingTimeInterval(-600), visits: nums.0, socialViews: nums.1, revenue: nums.2, extras: extras)
-            context.insert(s)
-            s.project = p
+            // Two weeks of history, growing toward today's numbers, so charts have something to draw.
+            for d in stride(from: 14, through: 0, by: -1) {
+                let f = pow(Double(15 - d) / 15, 1.6)
+                let wobble = 1 + 0.06 * sin(Double(d) * 1.3)
+                let s = MetricSnapshot(date: .now.addingTimeInterval(-Double(d) * 86_400 - 600),
+                                       visits: (nums.0 * f * wobble).rounded(), socialViews: (nums.1 * f * wobble).rounded(),
+                                       revenue: (nums.2 * f * 100).rounded() / 100,
+                                       extras: extras.mapValues { ($0 * f).rounded() })
+                context.insert(s)
+                s.project = p
+            }
         }
         try? context.save()
     }
@@ -70,9 +78,11 @@ enum MacDemo {
             }
             let profile = (try? context.fetch(FetchDescriptor<Profile>()))?.first ?? Profile()
             let scheme: ColorScheme = UserDefaults.standard.string(forKey: "PRODLINE_SNAPSHOT_SCHEME") == "light" ? .light : .dark
-            write(MacOverview(profile: profile, onOpen: { _ in }, onCreate: {}, onReview: {}), "-overview.png", width: 1180, scheme: scheme)
-            if let p = projects.first(where: { $0.name == "Pixel Quest" }) ?? projects.first {
-                write(MacProjectDashboard(project: p), "-project.png", width: 1180, scheme: scheme)
+            for (w, tag) in [(CGFloat(1180), ""), (CGFloat(700), "-narrow")] {
+                write(MacOverview(profile: profile, onOpen: { _ in }, onCreate: {}, onReview: {}), "-overview\(tag).png", width: w, scheme: scheme)
+                if let p = projects.first(where: { $0.name == "Pixel Quest" }) ?? projects.first {
+                    write(MacProjectDashboard(project: p), "-project\(tag).png", width: w, scheme: scheme)
+                }
             }
             write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
             write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)

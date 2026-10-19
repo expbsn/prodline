@@ -120,11 +120,8 @@ struct MacShell: View {
                 .background(Theme.background)
                 .environment(\.isActiveTab, true)
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { requestCreate() } label: { Image(systemName: "plus") }.help("New project")
-            }
-        }
+        // No toolbar: "New project" lives in the sidebar, and pages reach up to the window's top edge.
+        .toolbar(removing: .sidebarToggle)
         .sheet(isPresented: $showCreate, onDismiss: { startingIdea = nil }) {
             CreateProjectFlow(profile: profile, idea: startingIdea) { newID in
                 page = .project(newID)

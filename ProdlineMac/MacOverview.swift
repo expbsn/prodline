@@ -28,7 +28,7 @@ struct MacOverview: View {
                 if !focus.isEmpty {
                     VStack(alignment: .leading, spacing: 14) {
                         SectionTitle("Up next", trailing: "\(focus.filter { $0.isDueToday || $0.isOverdue }.count) due today")
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 300), spacing: 18)], alignment: .leading, spacing: 18) {
+                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
                             ForEach(focus) { m in MacFocusCard(milestone: m, onOpen: { if let p = m.project { onOpen(p) } }) }
                         }
                     }
@@ -44,7 +44,7 @@ struct MacOverview: View {
                     }
                 }
             }
-            .padding(.horizontal, 40).padding(.vertical, 32)
+            .padding(.horizontal, 40).padding(.top, 34).padding(.bottom, 40)
             .frame(maxWidth: 1320, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
@@ -60,25 +60,43 @@ struct MacOverview: View {
     }
 
     private var header: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day())).eyebrow()
-                Text(greeting).display(44, 750).foregroundStyle(Theme.ink)
+        // Buttons beside the greeting while there's room, under it when the window is narrow.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .bottom, spacing: 16) {
+                greetingBlock
+                Spacer(minLength: 16)
+                headerButtons
             }
-            Spacer()
+            VStack(alignment: .leading, spacing: 18) {
+                greetingBlock
+                headerButtons
+            }
+        }
+    }
+
+    private var greetingBlock: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day())).eyebrow().lineLimit(1)
+            Text(greeting).display(44, 750).foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
+        }
+    }
+
+    private var headerButtons: some View {
+        HStack(spacing: 10) {
             Button(action: onReview) { Label("Weekly wrap", systemImage: "play.rectangle.fill") }
-                .buttonStyle(.chunky(.neutral, height: 44, fullWidth: false))
+                .buttonStyle(.chunky(.neutral, height: 42, fullWidth: false))
             Button(action: onCreate) { Label("New project", systemImage: "plus") }
-                .buttonStyle(.chunky(.accent, height: 44, fullWidth: false))
+                .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
                 .environment(\.accent, .neutral)
         }
+        .fixedSize()
     }
 
     private var stats: some View {
         let ms = active.flatMap(\.sortedMilestones)
         let today = Date.now.startOfDay
         let onTime = profile.onTimeRate.map { "\(Int(($0 * 100).rounded()))%" } ?? "–"
-        return HStack(spacing: 18) {
+        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16)], spacing: 16) {
             MacStatCard(title: "Streak", value: "\(profile.streak)", detail: profile.streak == 1 ? "day" : "days",
                         tint: Theme.flame) {
                 FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 26)
@@ -90,14 +108,14 @@ struct MacOverview: View {
                         tint: Theme.success) {
                 Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
             }
-            MacStatCard(title: "On time", value: onTime, detail: "of finished checkpoints", tint: Theme.ink) {
+            MacStatCard(title: "On time", value: onTime, detail: "of checkpoints", tint: Theme.ink) {
                 Image(systemName: "clock.fill").font(.system(size: 22)).foregroundStyle(Theme.secondary)
             }
         }
     }
 
     private func cardGrid(_ ps: [Project], withCreate: Bool) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 200, maximum: 250), spacing: 30)], alignment: .leading, spacing: 34) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 215), spacing: 26, alignment: .top)], alignment: .leading, spacing: 32) {
             ForEach(ps) { p in MacProjectTile(project: p) { onOpen(p) } }
             if withCreate {
                 Button(action: onCreate) {
@@ -123,9 +141,10 @@ struct MacStatCard<Accessory: View>: View {
     var body: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 6) {
-                Text(title).eyebrow(size: 11)
+                Text(title).eyebrow(size: 11).lineLimit(1)
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(value).display(32, 750).foregroundStyle(Theme.ink).contentTransition(.numericText())
+                        .lineLimit(1).fixedSize()
                     Text(detail).font(.ui(13, .medium)).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
             }
@@ -199,42 +218,44 @@ struct MacFocusCard: View {
         let accent = milestone.project?.accent ?? .neutral
         VStack(alignment: .leading, spacing: 14) {
             HStack(spacing: 12) {
-                if let p = milestone.project { ProjectThumb(project: p, size: 40) }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(milestone.project?.name ?? "").eyebrow(size: 10)
-                    Text(milestone.title).display(20, 750).foregroundStyle(Theme.ink).lineLimit(1)
+                Button(action: onOpen) {
+                    HStack(spacing: 12) {
+                        if let p = milestone.project { ProjectThumb(project: p, size: 40) }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(milestone.project?.name ?? "").eyebrow(size: 10).lineLimit(1)
+                            Text(milestone.title).display(20, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                        }
+                    }
+                    .contentShape(Rectangle())
                 }
-                Spacer()
-                CheckpointRing(milestone: milestone, size: 32)
+                .buttonStyle(.plain)
+                .help("Open \(milestone.project?.name ?? "project")")
+                Spacer(minLength: 8)
+                CheckpointRing(milestone: milestone, size: 30)
             }
             Text(milestone.macSubtitle)
+                .lineLimit(1)
                 .font(.ui(13, .semibold))
                 .foregroundStyle(milestone.isOverdue ? Theme.danger : milestone.isDueToday ? Theme.flame : Theme.secondary)
             if milestone.hasGoals {
                 VStack(alignment: .leading, spacing: 9) {
                     ForEach(milestone.displayGoals.prefix(5)) { g in
-                        MacGoalRow(goal: g) {
+                        MacGoalRow(goal: g, compact: true) {
                             MacActions.toggle(g, profile: profiles.first, projects: projects, celebration: celebration, context: context)
                         }
+                    }
+                    if (milestone.goals ?? []).count > 5 {
+                        Text("+\((milestone.goals ?? []).count - 5) more").font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
                     }
                 }
             } else {
                 Button("Mark done") {
                     MacActions.complete(milestone, profile: profiles.first, projects: projects, celebration: celebration, context: context)
                 }
-                .buttonStyle(.chunky(.accent, height: 40))
+                .buttonStyle(.chunky(.accent, height: 38))
             }
-            Spacer(minLength: 0)
-            Button(action: onOpen) {
-                HStack(spacing: 4) {
-                    Text("Open project")
-                    Image(systemName: "arrow.right")
-                }
-                .font(.ui(13, .semibold)).foregroundStyle(accent.text)
-            }
-            .buttonStyle(.plain)
         }
-        .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
         .card(padding: 20, radius: 24)
         .environment(\.accent, accent)
     }

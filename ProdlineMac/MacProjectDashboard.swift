@@ -2,8 +2,9 @@ import SwiftUI
 import SwiftData
 import Charts
 
-/// One project as a desktop dashboard: the card and its connections on the left, traction across the
-/// top, timeline, momentum and targets in a row, and the checkpoints as a board you work through.
+/// One project as a desktop page. Wide: the card next to traction, the project's connections and timeline
+/// next to its targets, then the checkpoints full width with their goals, like on the iPhone. Narrow
+/// windows get the same parts in one column.
 struct MacProjectDashboard: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var context
@@ -12,6 +13,7 @@ struct MacProjectDashboard: View {
     @Query(sort: \Profile.createdAt) private var profiles: [Profile]
     @Query private var allProjects: [Project]
 
+    @State private var width: CGFloat = 1000
     @State private var metric = ""
     @State private var showEdit = false
     @State private var showShare = false
@@ -21,41 +23,35 @@ struct MacProjectDashboard: View {
     @State private var checkpointSheet: Milestone??
     @State private var editingIntegration: Integration?
     @State private var pickingIntegration = false
-    @State private var reopening: Milestone?
 
     private var accent: Accent { project.accent }
+    /// Two columns once there's room for the card next to a usable chart.
+    private var wide: Bool { width >= 780 }
+    private let cardWidth: CGFloat = 250
+    private var cardHeight: CGFloat { cardWidth * 7 / 5 }
 
     var body: some View {
         MacScroll {
-            VStack(alignment: .leading, spacing: 28) {
+            VStack(alignment: .leading, spacing: 26) {
                 header
-                HStack(alignment: .top, spacing: 28) {
-                    rail.frame(width: 280)
-                    VStack(alignment: .leading, spacing: 24) {
-                        if ScheduleEngine.canShip(project) { shipBanner }
-                        tractionCard
-                        HStack(alignment: .top, spacing: 24) {
-                            if project.phase() == .building || project.phase() == .upcoming {
-                                MomentumCard(project: project, onConnect: { showConnection = true })
-                                    .frame(maxWidth: .infinity)
-                            }
-                            SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
-                                        onUndo: undoVerdict)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                checkpointBoard
+                if ScheduleEngine.canShip(project) { shipBanner }
+                if wide { wideTop } else { narrowTop }
+                MacCheckpointList(project: project, onEdit: { checkpointSheet = .some($0) }, onAdd: { checkpointSheet = .some(nil) })
             }
-            .padding(.horizontal, 40).padding(.vertical, 28)
-            .frame(maxWidth: 1360, alignment: .leading)
+            .padding(.horizontal, wide ? 40 : 24).padding(.top, 30).padding(.bottom, 40)
+            .frame(maxWidth: 1180, alignment: .leading)
             .frame(maxWidth: .infinity)
+            // The project's color washes the top of the page only, and scrolls away with it (as on the iPhone).
+            .background(alignment: .top) {
+                AccentGlow(accent: accent)
+                    .frame(height: 440)
+                    .padding(.top, -60)
+                    .allowsHitTesting(false)
+            }
         }
-        .background(alignment: .top) {
-            AccentGlow(accent: accent).frame(height: 420).allowsHitTesting(false)
-        }
-        .background(Theme.background)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+        .background(Theme.background.ignoresSafeArea())
+        .ignoresSafeArea(edges: .top)
         .environment(\.accent, accent)
         .sheet(isPresented: $showEdit) { EditProjectSheet(project: project).frame(width: 480, height: 720) }
         .sheet(isPresented: $showShare) { ShareCardSheet(project: project).frame(width: 460, height: 780) }
@@ -79,15 +75,6 @@ struct MacProjectDashboard: View {
             IntegrationEditor(project: project, integration: i, isNew: !project.integrations.contains { $0.id == i.id })
                 .frame(width: 480, height: 720)
         }
-        .confirmationDialog(reopening.map { "Reopen \($0.title)?" } ?? "", isPresented: Binding(get: { reopening != nil }, set: { if !$0 { reopening = nil } }),
-                            titleVisibility: .visible) {
-            Button("Mark as not done", role: .destructive) {
-                if let m = reopening { MacActions.reopen(m, profile: profiles.first, projects: allProjects, context: context) }
-                reopening = nil
-            }
-        } message: {
-            Text((reopening?.xpEarned ?? 0) > 0 ? "You'll lose the \(reopening?.xpEarned ?? 0) XP it earned." : "It goes back to open.")
-        }
         // Opening a project asks its services for fresh numbers.
         .task(id: project.id) { await refresher.refresh(projects: [project], context: context, force: true) }
     }
@@ -95,23 +82,40 @@ struct MacProjectDashboard: View {
     // MARK: Header
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
+        HStack(alignment: .bottom, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 7) {
                     Image(systemName: project.phase().symbol)
-                    Text(phaseLine)
+                    Text(phaseLine).lineLimit(1)
                 }
                 .font(.ui(13, .semibold))
                 .foregroundStyle(accent.on)
                 .padding(.horizontal, 12).padding(.vertical, 6)
                 .background(Capsule().fill(accent.base))
-                Text(project.name).display(46, 800).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(project.name).display(44, 800).foregroundStyle(Theme.ink)
+                    .lineLimit(1).minimumScaleFactor(0.55)
             }
-            Spacer()
-            Button { showShare = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
-                .buttonStyle(.chunky(.neutral, height: 42, fullWidth: false))
-            Button { showEdit = true } label: { Label("Edit", systemImage: "paintbrush") }
-                .buttonStyle(.chunky(.neutral, height: 42, fullWidth: false))
+            .layoutPriority(1)
+            Spacer(minLength: 12)
+            // Labels while they fit, icons when the window gets narrow.
+            ViewThatFits(in: .horizontal) {
+                actions(labels: true)
+                actions(labels: false)
+            }
+        }
+    }
+
+    private func actions(labels: Bool) -> some View {
+        HStack(spacing: 10) {
+            if labels {
+                Button { showShare = true } label: { Label("Share", systemImage: "square.and.arrow.up") }
+                    .buttonStyle(.chunky(.neutral, height: 40, fullWidth: false))
+                Button { showEdit = true } label: { Label("Edit", systemImage: "paintbrush") }
+                    .buttonStyle(.chunky(.neutral, height: 40, fullWidth: false))
+            } else {
+                MacRoundButton(symbol: "square.and.arrow.up", help: "Share") { showShare = true }
+                MacRoundButton(symbol: "paintbrush", help: "Edit") { showEdit = true }
+            }
             Menu {
                 Button("Connection", systemImage: "bolt.horizontal") { showConnection = true }
                 Button("Success targets", systemImage: "target") { showCriteria = true }
@@ -120,12 +124,12 @@ struct MacProjectDashboard: View {
                 }
             } label: {
                 Image(systemName: "ellipsis").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.ink)
-                    .frame(width: 42, height: 42)
+                    .frame(width: 40, height: 40)
                     .background(Circle().fill(Theme.card))
             }
-            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden)
-            .fixedSize()
+            .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize()
         }
+        .fixedSize()
     }
 
     private var phaseLine: String {
@@ -137,54 +141,100 @@ struct MacProjectDashboard: View {
         }
     }
 
-    // MARK: Left rail
+    // MARK: Layouts
 
-    private var rail: some View {
-        VStack(alignment: .leading, spacing: 22) {
-            ProjectCardFace(project: project, refresher: refresher)
-                .frame(width: 280, height: 392)
-                .cardFloorShadow(width: 280)
-                .padding(.bottom, 18)
-            if !project.details.isEmpty {
-                Text(project.details).font(.ui(15)).foregroundStyle(Theme.inkSoft)
-                    .fixedSize(horizontal: false, vertical: true)
+    /// Row 1: card | traction (same height). Row 2: connections and timeline | targets and momentum.
+    private var wideTop: some View {
+        Grid(alignment: .topLeading, horizontalSpacing: 26, verticalSpacing: 26) {
+            GridRow {
+                projectCard
+                tractionCard.frame(height: cardHeight)
             }
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Connected").eyebrow(size: 11)
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(40), spacing: 10), count: 5), alignment: .leading, spacing: 10) {
-                    ForEach(project.integrations) { i in
-                        Button { editingIntegration = i } label: { IntegrationIcon(kind: i.kind, size: 40) }
-                            .buttonStyle(MacLiftStyle())
-                            .help(i.kind.title)
-                    }
-                    Button { pickingIntegration = true } label: {
-                        Image(systemName: "plus").font(.system(size: 15, weight: .bold)).foregroundStyle(Theme.secondary)
-                            .frame(width: 40, height: 40)
-                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.inset))
-                            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])))
-                    }
-                    .buttonStyle(MacLiftStyle())
-                    .help("Add integration")
+            GridRow {
+                VStack(spacing: 18) {
+                    connectedCard
+                    timelineCard
                 }
-                if !project.githubRepo.isEmpty {
-                    Label(project.githubRepo, systemImage: "chevron.left.forwardslash.chevron.right")
-                        .font(.ui(13, .medium)).foregroundStyle(Theme.secondary)
+                .frame(width: cardWidth)
+                VStack(spacing: 18) {
+                    SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
+                                onUndo: undoVerdict)
+                    if project.phase() == .building || project.phase() == .upcoming {
+                        MomentumCard(project: project, onConnect: { showConnection = true })
+                    }
                 }
             }
-            .card(padding: 18, radius: 22)
-            timelineCard
         }
+    }
+
+    private var narrowTop: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .top, spacing: 18) {
+                ProjectCardFace(project: project, refresher: refresher)
+                    .frame(width: 170, height: 238)
+                VStack(alignment: .leading, spacing: 18) {
+                    connectedCard
+                    if !project.details.isEmpty {
+                        Text(project.details).font(.ui(14)).foregroundStyle(Theme.inkSoft).lineLimit(3)
+                    }
+                }
+            }
+            tractionCard.frame(height: 330)
+            timelineCard
+            SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true }, onUndo: undoVerdict)
+            if project.phase() == .building || project.phase() == .upcoming {
+                MomentumCard(project: project, onConnect: { showConnection = true })
+            }
+        }
+    }
+
+    private var projectCard: some View {
+        ProjectCardFace(project: project, refresher: refresher)
+            .frame(width: cardWidth, height: cardHeight)
+            .shadow(color: .black.opacity(0.18), radius: 22, y: 12)
+    }
+
+    // MARK: Cards
+
+    private var connectedCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Connected").eyebrow(size: 11)
+                Spacer()
+                if !project.githubRepo.isEmpty {
+                    Image(systemName: "chevron.left.forwardslash.chevron.right").font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Theme.secondary).help("GitHub: \(project.githubRepo)")
+                }
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 36, maximum: 36), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(project.integrations) { i in
+                    Button { editingIntegration = i } label: { IntegrationIcon(kind: i.kind, size: 36) }
+                        .buttonStyle(MacLiftStyle())
+                        .help(i.kind.title)
+                }
+                Button { pickingIntegration = true } label: {
+                    Image(systemName: "plus").font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.secondary)
+                        .frame(width: 36, height: 36)
+                        .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.inset))
+                        .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous)
+                            .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])))
+                }
+                .buttonStyle(MacLiftStyle())
+                .help("Add integration")
+            }
+        }
+        .card(padding: 16, radius: 22)
     }
 
     private var timelineCard: some View {
         let total = Double(project.buildDays + project.observeDays)
         let buildFrac = Double(project.buildDays) / total
         return VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Timeline").font(.display(18, 750)).foregroundStyle(Theme.ink)
-                Spacer()
-                Text("Day \(max(Date.days(from: project.startDate, to: .now) + 1, 0)) of \(Int(total))").eyebrow(size: 10)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Timeline").font(.display(17, 750)).foregroundStyle(Theme.ink)
+                Spacer(minLength: 6)
+                Text("Day \(min(max(Date.days(from: project.startDate, to: .now) + 1, 0), Int(total))) of \(Int(total))")
+                    .eyebrow(size: 10).lineLimit(1)
             }
             GeometryReader { geo in
                 let w = geo.size.width
@@ -193,60 +243,70 @@ struct MacProjectDashboard: View {
                         Capsule().fill(accent.base).frame(width: max(w * buildFrac - 1.5, 0))
                         Capsule().fill(accent.base.opacity(0.3))
                     }
-                    .frame(height: 12)
+                    .frame(height: 10)
                     if project.phase() == .building || project.phase() == .observing {
-                        RoundedRectangle(cornerRadius: 2).fill(Theme.ink).frame(width: 4, height: 24)
+                        RoundedRectangle(cornerRadius: 2).fill(Theme.ink).frame(width: 4, height: 22)
                             .offset(x: max(0, min(w - 4, w * project.overallProgress - 2)))
                     }
                 }
-                .frame(height: 24)
+                .frame(height: 22)
             }
-            .frame(height: 24)
+            .frame(height: 22)
             HStack {
                 dateLabel("Start", project.startDate)
-                Spacer()
+                Spacer(minLength: 4)
                 dateLabel("Launch", project.launchDay)
-                Spacer()
+                Spacer(minLength: 4)
                 dateLabel("End", project.observeEnd.adding(days: -1))
             }
         }
-        .card(padding: 18, radius: 22)
+        .card(padding: 16, radius: 22)
     }
 
     private func dateLabel(_ title: String, _ date: Date) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).eyebrow(size: 9)
-            Text(date.dayMonth).font(.ui(13, .semibold)).foregroundStyle(Theme.ink)
+            Text(date.dayMonth).font(.ui(13, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
         }
     }
 
     // MARK: Traction
 
+    /// Three numbers, ones that actually have a value first (the picked ones when there are more).
+    private var tractionKeys: (shown: [String], available: [String]) {
+        let available = refresher.availableMetrics(for: project)
+        let withValue = available.filter { (refresher.value($0, for: project) ?? 0) > 0 }
+        let pool = withValue.count >= 3 ? withValue : withValue + available.filter { !withValue.contains($0) }
+        var out: [String] = []
+        for k in project.pickedMetrics + pool where out.count < 3 && pool.contains(k) && !out.contains(k) { out.append(k) }
+        return (out, available)
+    }
+
     private var tractionCard: some View {
-        let shown = refresher.availableMetrics(for: project)
+        let (shown, available) = tractionKeys
         let current = shown.contains(metric) ? metric : (shown.first ?? MetricKey.visits.rawValue)
         let series = project.sortedSnapshots.compactMap { s in s.valueIfPresent(current).map { (date: s.date, value: $0) } }
-        return VStack(alignment: .leading, spacing: 18) {
+        return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Traction").display(26, 750).foregroundStyle(Theme.ink)
+                Text("Traction").display(24, 750).foregroundStyle(Theme.ink)
                 Spacer()
                 statusLabel
             }
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 130), spacing: 10)], spacing: 10) {
-                ForEach(shown, id: \.self) { key in metricTile(key, selected: key == current) }
+            HStack(spacing: 10) {
+                ForEach(shown, id: \.self) { key in metricTile(key, selected: key == current, shown: shown, available: available) }
             }
             if series.count < 2 {
                 VStack(spacing: 8) {
-                    Image(systemName: "chart.xyaxis.line").font(.system(size: 30)).foregroundStyle(Theme.tertiary)
-                    Text(project.hasDataSource ? "The chart fills in after a couple of syncs." : "Connect a service to see this project's numbers here.")
-                        .font(.ui(14)).foregroundStyle(Theme.secondary)
+                    Image(systemName: "chart.xyaxis.line").font(.system(size: 28)).foregroundStyle(Theme.tertiary)
+                    Text(project.hasDataSource ? "The chart fills in after a couple of syncs." : "Connect a service and the chart fills in from here.")
+                        .font(.ui(14)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.8)
                     if !project.hasDataSource {
                         Button("Add integration") { pickingIntegration = true }
-                            .buttonStyle(.chunky(.accent, height: 40, fullWidth: false))
+                            .buttonStyle(.chunky(.accent, height: 38, fullWidth: false))
                             .padding(.top, 4)
                     }
                 }
-                .frame(maxWidth: .infinity, minHeight: 220)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Chart(Array(series.enumerated()), id: \.offset) { _, s in
                     AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
@@ -259,38 +319,63 @@ struct MacProjectDashboard: View {
                         .foregroundStyle(accent.base)
                 }
                 .chartYAxis {
-                    AxisMarks(position: .trailing) { v in
+                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
                         AxisGridLine().foregroundStyle(Theme.line)
-                        AxisValueLabel { if let d = v.as(Double.self) { Text(Stat.format(current, d)) } }
+                        AxisValueLabel { if let d = v.as(Double.self) { Text(axisLabel(current, d)) } }
                     }
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 6)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
-                .frame(height: 240)
+                .chartXAxis {
+                    AxisMarks(values: .automatic(desiredCount: wide ? 6 : 4)) { _ in
+                        AxisValueLabel(format: .dateTime.month(.abbreviated).day(), collisionResolution: .greedy)
+                    }
+                }
+                .frame(maxHeight: .infinity)
                 .animation(.easeInOut, value: current)
             }
         }
-        .card(padding: 22, radius: 26)
+        .padding(22)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.card))
+        .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
     }
 
-    private func metricTile(_ key: String, selected: Bool) -> some View {
+    /// Axis labels without cents: $400, 1.2K.
+    private func axisLabel(_ key: String, _ v: Double) -> String {
+        guard key == Stat.revenue else { return Stat.format(key, v) }
+        return v >= 10_000 ? MetricKey.money(v) : "$" + Int(v.rounded()).formatted()
+    }
+
+    /// Click to chart it; right-click to swap it for another number the project gets.
+    private func metricTile(_ key: String, selected: Bool, shown: [String], available: [String]) -> some View {
         Button {
             Haptics.select()
             withAnimation(.snappy) { metric = key }
         } label: {
-            VStack(alignment: .leading, spacing: 6) {
-                Image(systemName: Stat.symbol(key)).font(.system(size: 14, weight: .semibold))
-                Text(refresher.value(key, for: project).map { Stat.format(key, $0) } ?? "–")
-                    .display(24, 750).lineLimit(1).minimumScaleFactor(0.6)
-                    .contentTransition(.numericText())
-                Text(Stat.title(key)).font(.ui(11, .semibold)).opacity(0.75).lineLimit(1)
+            HStack(spacing: 10) {
+                Image(systemName: Stat.symbol(key)).font(.system(size: 15, weight: .semibold))
+                    .frame(width: 20)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(refresher.value(key, for: project).map { Stat.format(key, $0) } ?? "–")
+                        .display(22, 750).lineLimit(1).minimumScaleFactor(0.6)
+                        .contentTransition(.numericText())
+                    Text(Stat.title(key)).font(.ui(11, .semibold)).opacity(0.75).lineLimit(1).minimumScaleFactor(0.8)
+                }
+                Spacer(minLength: 0)
             }
             .foregroundStyle(selected ? accent.on : Theme.ink)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(14)
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .frame(maxWidth: .infinity)
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(selected ? accent.base : Theme.background))
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(PressableStyle(scale: 0.96))
+        .contextMenu {
+            MetricSwapMenu(key: key, shown: shown, available: available, value: { refresher.value($0, for: project) }) { new in
+                project.pickedMetrics = Stat.swap(key, for: new, shown: shown)
+                try? context.save()
+                withAnimation(.snappy) { metric = new }
+            }
+        }
     }
 
     @ViewBuilder
@@ -301,7 +386,7 @@ struct MacProjectDashboard: View {
                 Circle().fill(Theme.success).frame(width: 7, height: 7)
                 Text("Live · ") + Text(at, style: .relative)
             }
-            .font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
+            .font(.ui(12, .semibold)).foregroundStyle(Theme.secondary).lineLimit(1)
         case .failing(let why, _):
             HStack(spacing: 5) {
                 Circle().fill(Theme.danger).frame(width: 7, height: 7)
@@ -318,102 +403,21 @@ struct MacProjectDashboard: View {
         let early = Date.days(from: .now, to: project.launchDay)
         return HStack(spacing: 16) {
             Image(systemName: "paperplane.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(accent.on)
-                .frame(width: 48, height: 48).background(Circle().fill(accent.base))
+                .frame(width: 46, height: 46).background(Circle().fill(accent.base))
             VStack(alignment: .leading, spacing: 2) {
-                Text("Ready to ship").display(22, 750).foregroundStyle(Theme.ink)
+                Text("Ready to ship").display(21, 750).foregroundStyle(Theme.ink)
                 Text(early > 0 ? "Every goal is done. Ship today and you're \(early) day\(early == 1 ? "" : "s") early."
                                : "Every goal is done, and it's launch day.")
-                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .font(.ui(14)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.85)
             }
-            Spacer()
+            Spacer(minLength: 12)
             Button("Let's ship") {
                 guard let profile = profiles.first else { return }
                 ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
             }
-            .buttonStyle(.chunky(.accent, height: 48, fullWidth: false))
+            .buttonStyle(.chunky(.accent, height: 46, fullWidth: false))
         }
-        .card(padding: 20, radius: 24)
-    }
-
-    // MARK: Checkpoints
-
-    private var checkpointBoard: some View {
-        let ms = project.sortedMilestones
-        let done = ms.filter(\.isDone).count
-        let fromFile = project.followsPlanFile
-        return VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Checkpoints").display(26, 750).foregroundStyle(Theme.ink)
-                Text("\(done) of \(ms.count) done").eyebrow(size: 11)
-                Spacer()
-                if fromFile {
-                    Label("Follows prodline.json in \(project.githubRepo)", systemImage: "doc.text")
-                        .font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
-                } else {
-                    Button { checkpointSheet = .some(nil) } label: { Label("Add checkpoint", systemImage: "plus") }
-                        .buttonStyle(.chunky(.neutral, height: 38, fullWidth: false))
-                }
-            }
-            ChunkyProgressBar(value: ms.isEmpty ? 0 : Double(done) / Double(ms.count), height: 10)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 270), spacing: 16, alignment: .top)], alignment: .leading, spacing: 16) {
-                ForEach(ms) { m in checkpointColumn(m, fromFile: fromFile) }
-            }
-        }
-    }
-
-    private func checkpointColumn(_ m: Milestone, fromFile: Bool) -> some View {
-        let isNext = m.id == project.nextMilestone?.id
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(alignment: .top, spacing: 12) {
-                Button {
-                    if m.isDone { reopening = m }
-                    else { MacActions.complete(m, profile: profiles.first, projects: allProjects, celebration: celebration, context: context) }
-                } label: { CheckpointRing(milestone: m, size: 32) }
-                .buttonStyle(PressableStyle(scale: 0.85))
-                .disabled(fromFile && m.hasGoals)
-                .help(m.isDone ? "Done. Click to reopen" : "Mark \(m.title) done")
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 6) {
-                        Text(m.title).font(.ui(16, .semibold)).foregroundStyle(m.isDone ? Theme.secondary : Theme.ink).lineLimit(1)
-                        if m.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 12)).foregroundStyle(accent.text) }
-                    }
-                    Text(m.macSubtitle).font(.ui(12)).foregroundStyle(m.isOverdue ? Theme.danger : Theme.secondary)
-                }
-                Spacer(minLength: 0)
-                if !fromFile && !m.isDone {
-                    Button { checkpointSheet = .some(m) } label: {
-                        Image(systemName: "pencil").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.tertiary)
-                    }
-                    .buttonStyle(.plain).help("Edit checkpoint")
-                }
-            }
-            if m.hasGoals {
-                VStack(alignment: .leading, spacing: 10) {
-                    ForEach(m.displayGoals) { g in
-                        MacGoalRow(goal: g) {
-                            MacActions.toggle(g, profile: profiles.first, projects: allProjects, celebration: celebration, context: context)
-                        }
-                    }
-                }
-            } else if !m.isDone {
-                Text("No goals yet. The checkpoint finishes when you tick it.").font(.ui(13)).foregroundStyle(Theme.tertiary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-            if !fromFile && !m.isDone {
-                Button { checkpointSheet = .some(m) } label: {
-                    Label("Add goal", systemImage: "plus.circle").font(.ui(13, .semibold)).foregroundStyle(accent.text)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(18)
-        .frame(maxWidth: .infinity, minHeight: 210, alignment: .topLeading)
-        .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.card))
-        .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
-            .strokeBorder(isNext ? accent.base : .clear, lineWidth: 2.5))
-        .opacity(m.isDone ? 0.75 : 1)
-        .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+        .card(padding: 18, radius: 24)
     }
 
     private func undoVerdict() {
@@ -421,5 +425,21 @@ struct MacProjectDashboard: View {
         Haptics.warning()
         withAnimation(.snappy) { VerdictEngine.reopen(project, profile: profile) }
         try? context.save()
+    }
+}
+
+/// Round icon button in the page header (narrow windows).
+struct MacRoundButton: View {
+    let symbol: String
+    let help: String
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: symbol).font(.system(size: 14, weight: .bold)).foregroundStyle(Theme.ink)
+                .frame(width: 40, height: 40)
+                .background(Circle().fill(Theme.card))
+        }
+        .buttonStyle(PressableStyle(scale: 0.9))
+        .help(help)
     }
 }

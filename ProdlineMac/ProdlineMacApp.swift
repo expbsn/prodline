@@ -42,7 +42,7 @@ struct ProdlineMacApp: App {
                 .preferredColorScheme(scheme)
         }
         .modelContainer(Self.container)
-        .windowToolbarStyle(.unified(showsTitle: false))
+        .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 1180, height: 820)
         .commands {
             CommandGroup(replacing: .newItem) {

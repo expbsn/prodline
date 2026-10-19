@@ -69,7 +69,7 @@ struct MacGoalRow: View {
                         .foregroundStyle(goal.isDone ? Theme.secondary : Theme.ink)
                         .strikethrough(goal.isDone, color: Theme.secondary)
                         .multilineTextAlignment(.leading)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(compact ? 1 : 2)
                     if goal.source.isAutomatic && !compact {
                         Label(goal.source.label, systemImage: goal.source.symbol)
                             .font(.ui(11, .medium)).foregroundStyle(Theme.tertiary)
@@ -100,12 +100,12 @@ struct CheckpointRing: View {
     var body: some View {
         ZStack {
             if milestone.hasGoals && !milestone.isDone {
-                Circle().stroke(Theme.line, lineWidth: size * 0.1)
+                Circle().stroke(accent.tint, lineWidth: size * 0.1)
                 Circle().trim(from: 0, to: progress)
                     .stroke(accent.base, style: StrokeStyle(lineWidth: size * 0.1, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             } else {
-                Circle().strokeBorder(milestone.isDone ? accent.base : milestone.isOverdue ? Theme.danger : Theme.tertiary,
+                Circle().strokeBorder(milestone.isDone ? accent.base : milestone.isOverdue ? Theme.danger : accent.base.opacity(0.45),
                                       lineWidth: size * 0.083)
             }
             if milestone.isDone {
