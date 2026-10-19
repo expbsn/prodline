@@ -24,11 +24,14 @@ extension View {
 }
 
 /// "iPhone" or "Mac", for copy that names this device.
-enum ThisDevice {
+nonisolated enum ThisDevice {
     #if os(macOS)
     static let name = "Mac"
+    /// "Click" on the Mac, "Tap" on the iPhone.
+    static let tap = "Click"
     #else
     static let name = "iPhone"
+    static let tap = "Tap"
     #endif
 }
 

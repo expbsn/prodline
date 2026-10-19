@@ -174,9 +174,9 @@ struct MacShell: View {
     }
 
     private func projectRow(_ p: Project) -> some View {
-        MacSidebarRow(selected: page == .project(p.id)) { page = .project(p.id) } label: {
-            ProjectThumb(project: p, size: 22)
-            Text(p.name).font(.ui(14, .medium)).lineLimit(1)
+        MacSidebarRow(selected: page == .project(p.id), height: 44) { page = .project(p.id) } label: {
+            ProjectThumb(project: p, size: 30)
+            Text(p.name).font(.ui(14, .semibold)).lineLimit(1)
             Spacer(minLength: 0)
             if let m = p.nextMilestone, m.isDueToday || m.isOverdue {
                 Circle().fill(m.isOverdue ? Theme.danger : Theme.flame).frame(width: 7, height: 7)
@@ -238,6 +238,7 @@ struct StreakBadge: View {
 /// A sidebar row: grey fill when selected, a lighter one on hover.
 struct MacSidebarRow<Label: View>: View {
     let selected: Bool
+    var height: CGFloat = 36
     var action: () -> Void
     @ViewBuilder var label: Label
     @State private var hover = false
@@ -247,7 +248,7 @@ struct MacSidebarRow<Label: View>: View {
             HStack(spacing: 10) { label }
                 .foregroundStyle(selected ? Theme.ink : Theme.inkSoft)
                 .padding(.horizontal, 10)
-                .frame(height: 34)
+                .frame(height: height)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(selected ? Color(light: 0xE3E3E8, dark: 0x3A3A3C) : hover ? Color(light: 0xEDEDF0, dark: 0x2C2C2E) : .clear))

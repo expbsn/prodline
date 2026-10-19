@@ -312,7 +312,11 @@ struct MeView: View {
             #if DEBUG
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
             #endif
+            #if os(macOS)
+            toggleRow("Haptics", "A light tick on a Force Touch trackpad for buttons, sliders and wins.", $haptics)
+            #else
             toggleRow("Haptics", "Taps and buzzes on buttons, sliders and wins.", $haptics)
+            #endif
             toggleRow("Win notifications", "A push when a goal, checkpoint or streak lands while the app is closed, e.g. ticked by a commit.", $cheers)
             optionRow("Relay for instant updates", "Pushes to linked repos sync within seconds. Leave empty for Prodline's relay, or type off.") {
                 TextField(AppSettings.defaultRelayURL, text: $relayURL)

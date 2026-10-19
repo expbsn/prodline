@@ -425,18 +425,18 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
             "Followers is the account's total right now.",
         ]
         case .tiktok: [
-            "Tap Continue with TikTok and sign in to the account you post from.",
+            "\(ThisDevice.tap) Continue with TikTok and sign in to the account you post from.",
             "Prodline only gets read access to your profile stats and video list. It can't post or change anything.",
             "Views add up over videos posted since the project's start. Followers is the account's total right now.",
         ]
         case .instagram: [
             "Instagram only shares insights for professional accounts. If yours is personal, switch to Creator or Business in Instagram's settings first (free).",
-            "Tap Continue with Instagram and sign in. Prodline only gets read access to your insights.",
+            "\(ThisDevice.tap) Continue with Instagram and sign in. Prodline only gets read access to your insights.",
             "Views are Instagram's daily account views, which can lag up to two days.",
             "The sign-in lasts 60 days and renews itself while you use Prodline.",
         ]
         case .threads: [
-            "Tap Continue with Threads and sign in. Prodline only gets read access to your insights.",
+            "\(ThisDevice.tap) Continue with Threads and sign in. Prodline only gets read access to your insights.",
             "Views add up over posts since the project's start. Followers is the account's total right now.",
             "The sign-in lasts 60 days and renews itself while you use Prodline.",
         ]

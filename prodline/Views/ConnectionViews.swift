@@ -534,7 +534,7 @@ struct GoalsGuideView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             item("checkmark.circle", "Goals complete checkpoints",
-                 "Each checkpoint can hold a few concrete goals. When all are done, the checkpoint completes itself, with XP and streak as if you tapped it. Checkpoints without goals are ticked by hand.")
+                 "Each checkpoint can hold a few concrete goals. When all are done, the checkpoint completes itself, with XP and streak as if you'd finished it yourself. Checkpoints without goals are ticked by hand.")
 
             item("bolt.fill", "From your API",
                  "Add a `goals` list to the same JSON your endpoint returns. `checkpoint` is the position in the project's deadlines (checkpoints, then Ship it, then Traction review). Use `due` instead to place it by date. `done: true` ticks it. A `metric` target ticks itself when the number gets there. Goals you remove from the list disappear unless already done.")

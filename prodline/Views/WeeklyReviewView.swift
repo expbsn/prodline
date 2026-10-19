@@ -117,7 +117,7 @@ struct WeeklyReviewView: View {
                 .id(index)
                 .transition(.opacity)
                 Spacer(minLength: 0)
-                Text(scene == .outro ? " " : "Tap for next · hold to pause")
+                Text(scene == .outro ? " " : "\(ThisDevice.tap) for next · hold to pause")
                     .font(.ui(13, .medium)).foregroundStyle(Theme.tertiary)
                     .padding(.bottom, 12)
                     .opacity(index == 0 ? 1 : 0)

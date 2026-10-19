@@ -28,8 +28,16 @@ struct MetricSwapMenu: View {
 
 /// The small note under the tiles when there are more numbers than fit.
 struct MetricSwapHint: View {
+    #if os(macOS)
+    private static let text = "Click a number with two fingers to swap it for another one"
+    private static let symbol = "cursorarrow.click.2"
+    #else
+    private static let text = "Hold a number to swap it for another one"
+    private static let symbol = "hand.tap.fill"
+    #endif
+
     var body: some View {
-        Label("Hold a number to swap it for another one", systemImage: "hand.tap.fill")
+        Label(Self.text, systemImage: Self.symbol)
             .font(.ui(12, .medium))
             .foregroundStyle(Theme.secondary)
             .labelStyle(.titleAndIcon)

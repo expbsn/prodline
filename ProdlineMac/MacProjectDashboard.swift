@@ -46,6 +46,8 @@ struct MacProjectDashboard: View {
                 AccentGlow(accent: accent)
                     .frame(height: 440)
                     .padding(.top, -60)
+                    // Reaches under the sidebar's glass too, so the color spans the whole window top.
+                    .backgroundExtensionEffect()
                     .allowsHitTesting(false)
             }
         }
