@@ -14,21 +14,43 @@ struct MacRootView: View {
     @Environment(DataRefresher.self) private var refresher
     @Environment(GitHubService.self) private var github
     @Environment(CelebrationCenter.self) private var celebration
+    /// Launch: the static mark for a moment, then it blurs away while the dashboard sharpens in.
+    @State private var showSplash = true
+    @State private var reveal: Double = 0
 
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
+            // No onboarding on the Mac: straight to the dashboard. (The "onboarded" flag is left alone,
+            // since it syncs and the iPhone still shows its onboarding on first launch.)
             if let profile = profiles.first {
-                if profile.onboarded {
-                    MacShell(profile: profile)
-                } else {
-                    OnboardingView(profile: profile, wide: true)
-                }
+                MacShell(profile: profile)
             }
         }
+        .blur(radius: (1 - reveal) * 14)
+        .opacity(0.3 + 0.7 * reveal)
         .overlay { ShipOverlay() }
         .overlay { StreakOverlay() }
         .overlay { CelebrationOverlay() }
+        .overlay {
+            if showSplash {
+                ZStack {
+                    Theme.background
+                    Image("LaunchMark").resizable().scaledToFit().frame(width: 96, height: 96)
+                }
+                .ignoresSafeArea()
+                .opacity(1 - reveal)
+                .blur(radius: reveal * 18)
+                .scaleEffect(1 + reveal * 0.06)
+                .allowsHitTesting(false)
+            }
+        }
+        .task {
+            try? await Task.sleep(for: .milliseconds(1100))
+            withAnimation(.easeInOut(duration: 0.7)) { reveal = 1 }
+            try? await Task.sleep(for: .milliseconds(700))
+            showSplash = false
+        }
         .onAppear {
             if profiles.isEmpty {
                 context.insert(Profile())
@@ -47,14 +69,14 @@ struct MacRootView: View {
             while !Task.isCancelled {
                 await refresher.refresh(projects: projects, context: context)
                 await syncGitHub()
-                if let profile = profiles.first, profile.onboarded {
+                if let profile = profiles.first {
                     GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
                                             celebration: celebration, context: context)
                 }
                 if firstPass {
                     firstPass = false
                     celebration.endCollecting(awayTitle: false)
-                    if let profile = profiles.first, profile.onboarded {
+                    if let profile = profiles.first {
                         ScheduleEngine.evaluateMissed(projects: projects, profile: profile)
                     }
                 }

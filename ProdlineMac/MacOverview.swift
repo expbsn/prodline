@@ -83,8 +83,13 @@ struct MacOverview: View {
 
     private var headerButtons: some View {
         HStack(spacing: 10) {
-            Button(action: onReview) { Label("Weekly wrap", systemImage: "play.rectangle.fill") }
-                .buttonStyle(.chunky(.neutral, height: 42, fullWidth: false))
+            // Like on the iPhone: only from Sunday evening until this week's wrap is watched.
+            if WeeklyReview.isWaiting() {
+                Button(action: onReview) { Label("Weekly wrap", systemImage: "play.rectangle.fill") }
+                    .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
+                    .environment(\.accent, Accent(hex: 0x5B5BF0))
+                    .transition(.scale.combined(with: .opacity))
+            }
             Button(action: onCreate) { Label("New project", systemImage: "plus") }
                 .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
                 .environment(\.accent, .neutral)
