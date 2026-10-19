@@ -1,7 +1,11 @@
 import Foundation
 import CryptoKit
 import AuthenticationServices
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+#endif
 
 // MARK: - TikTok, Instagram and Threads
 //
@@ -152,8 +156,12 @@ private final class WebSignIn: NSObject, ASWebAuthenticationPresentationContextP
     }
 
     func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        #if canImport(UIKit)
         UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
             .flatMap(\.windows).first(where: \.isKeyWindow) ?? ASPresentationAnchor()
+        #else
+        NSApp.keyWindow ?? NSApp.windows.first ?? ASPresentationAnchor()
+        #endif
     }
 }
 

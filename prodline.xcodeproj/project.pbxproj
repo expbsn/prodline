@@ -53,6 +53,7 @@
 		77B3B70E307271C400D4F28B /* prodlineTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = prodlineTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		77B3B718307271C400D4F28B /* prodlineUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = prodlineUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0FFEE000000000000000001 /* ProdlineWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ProdlineWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		D00D00000000000000000001 /* ProdlineMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProdlineMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -70,6 +71,65 @@
 			);
 			target = C0FFEE000000000000000002 /* ProdlineWidgets */;
 		};
+		D00D00000000000000000003 /* Exceptions for "prodline" folder in "ProdlineMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Design/Archive/LaunchAnimation.swift,
+				Design/CardEditor.swift,
+				Design/Components.swift,
+				Design/FlameShape.swift,
+				Design/ImageTools.swift,
+				Design/LaunchView.swift,
+				Design/MetricSwap.swift,
+				Design/ProjectCard.swift,
+				Design/StreakOverlay.swift,
+				Design/TabBar.swift,
+				Design/Theme.swift,
+				Info.plist,
+				PrivacyInfo.xcprivacy,
+				Services/DataRefresher.swift,
+				Services/DemoData.swift,
+				Services/GitHub.swift,
+				Services/GoalEngine.swift,
+				Services/GoalPlanner.swift,
+				Services/LiveActivities.swift,
+				Services/MockServerFinder.swift,
+				Services/ProjectLimit.swift,
+				Services/Relay.swift,
+				Services/WidgetPublisher.swift,
+				Views/ConnectionViews.swift,
+				Views/CreateProjectFlow.swift,
+				Views/FeedbackView.swift,
+				Views/HomeView.swift,
+				Views/IdeaViews.swift,
+				Views/InsightsView.swift,
+				Views/IntegrationViews.swift,
+				Views/MomentumCard.swift,
+				Views/PlanView.swift,
+				Views/ProjectDetailView.swift,
+				Views/RootView.swift,
+				Views/SchemeEditor.swift,
+				Views/ShareCard.swift,
+				Views/StoryOnboarding.swift,
+				Views/VerdictViews.swift,
+				Views/WeeklyReviewView.swift,
+				Views/WidgetGalleryView.swift,
+				en.lproj/InfoPlist.strings,
+				prodline.entitlements,
+				prodlineApp.swift,
+			);
+			target = D00D00000000000000000005 /* ProdlineMac */;
+		};
+		D00D00000000000000000004 /* Exceptions for "Shared" folder in "ProdlineMac" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				DeadlineActivity.swift,
+				WidgetData.swift,
+				WidgetTicks.swift,
+				WidgetViews.swift,
+			);
+			target = D00D00000000000000000005 /* ProdlineMac */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -77,6 +137,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				77B3B720307271C400D4F28B /* Exceptions for "prodline" folder in "prodline" target */,
+				D00D00000000000000000003 /* Exceptions for "prodline" folder in "ProdlineMac" target */,
 			);
 			path = prodline;
 			sourceTree = "<group>";
@@ -101,7 +162,15 @@
 		};
 		C0FFEE00000000000000000B /* Shared */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				D00D00000000000000000004 /* Exceptions for "Shared" folder in "ProdlineMac" target */,
+			);
 			path = Shared;
+			sourceTree = "<group>";
+		};
+		D00D00000000000000000002 /* ProdlineMac */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ProdlineMac;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -135,6 +204,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D00D00000000000000000007 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -144,6 +220,7 @@
 				77B3B6FF307271C200D4F28B /* prodline */,
 				C0FFEE00000000000000000B /* Shared */,
 				C0FFEE000000000000000009 /* ProdlineWidgets */,
+				D00D00000000000000000002 /* ProdlineMac */,
 				77B3B711307271C400D4F28B /* prodlineTests */,
 				77B3B71B307271C400D4F28B /* prodlineUITests */,
 				77B3B6FE307271C200D4F28B /* Products */,
@@ -157,6 +234,7 @@
 				77B3B70E307271C400D4F28B /* prodlineTests.xctest */,
 				77B3B718307271C400D4F28B /* prodlineUITests.xctest */,
 				C0FFEE000000000000000001 /* ProdlineWidgets.appex */,
+				D00D00000000000000000001 /* ProdlineMac.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -258,6 +336,30 @@
 			productReference = C0FFEE000000000000000001 /* ProdlineWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		D00D00000000000000000005 /* ProdlineMac */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = D00D00000000000000000009 /* Build configuration list for PBXNativeTarget "ProdlineMac" */;
+			buildPhases = (
+				D00D00000000000000000006 /* Sources */,
+				D00D00000000000000000007 /* Frameworks */,
+				D00D00000000000000000008 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				D00D00000000000000000002 /* ProdlineMac */,
+				77B3B6FF307271C200D4F28B /* prodline */,
+				C0FFEE00000000000000000B /* Shared */,
+			);
+			name = ProdlineMac;
+			packageProductDependencies = (
+			);
+			productName = ProdlineMac;
+			productReference = D00D00000000000000000001 /* ProdlineMac.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -282,6 +384,9 @@
 					C0FFEE000000000000000002 = {
 						CreatedOnToolsVersion = 26.0.1;
 					};
+					D00D00000000000000000005 = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 				};
 			};
 			buildConfigurationList = 77B3B6F8307271C200D4F28B /* Build configuration list for PBXProject "prodline" */;
@@ -302,6 +407,7 @@
 				77B3B70D307271C400D4F28B /* prodlineTests */,
 				77B3B717307271C400D4F28B /* prodlineUITests */,
 				C0FFEE000000000000000002 /* ProdlineWidgets */,
+				D00D00000000000000000005 /* ProdlineMac */,
 			);
 		};
 /* End PBXProject section */
@@ -335,6 +441,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D00D00000000000000000008 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -360,6 +473,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		C0FFEE000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		D00D00000000000000000006 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -722,6 +842,78 @@
 			};
 			name = Release;
 		};
+		D00D0000000000000000000A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProdlineMac/ProdlineMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 839Y52U6BY;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Prodline;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = expbsn.app.prodline.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		D00D0000000000000000000B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ProdlineMac/ProdlineMac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 839Y52U6BY;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Prodline;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = expbsn.app.prodline.mac;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -766,6 +958,15 @@
 			buildConfigurations = (
 				C0FFEE000000000000000007 /* Debug */,
 				C0FFEE000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		D00D00000000000000000009 /* Build configuration list for PBXNativeTarget "ProdlineMac" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D00D0000000000000000000A /* Debug */,
+				D00D0000000000000000000B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

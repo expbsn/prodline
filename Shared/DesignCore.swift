@@ -1,8 +1,27 @@
 import SwiftUI
-import UIKit
 import CoreText
+#if canImport(UIKit)
+import UIKit
+typealias PlatformColor = UIColor
+typealias PlatformFont = UIFont
+#else
+import AppKit
+typealias PlatformColor = NSColor
+typealias PlatformFont = NSFont
+#endif
 
-// Design primitives shared by the app and the widget extension (both compile this folder).
+// Design primitives shared by the app, the widget extension and the Mac app (all compile this file).
+
+extension PlatformColor {
+    /// One color in light appearance, another in dark.
+    static func dynamic(_ pick: @escaping (_ dark: Bool) -> PlatformColor) -> PlatformColor {
+        #if canImport(UIKit)
+        UIColor { pick($0.userInterfaceStyle == .dark) }
+        #else
+        NSColor(name: nil) { pick($0.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua) }
+        #endif
+    }
+}
 
 extension Color {
     init(hex: Int) {
@@ -15,19 +34,23 @@ extension Color {
 
     /// One color in light mode, another in dark mode.
     init(light: Int, dark: Int) {
-        self.init(UIColor { $0.userInterfaceStyle == .dark ? UIColor(hex: dark) : UIColor(hex: light) })
+        self.init(PlatformColor.dynamic { $0 ? PlatformColor(hex: dark) : PlatformColor(hex: light) })
     }
 
     /// 0xRRGGBB of a resolved color.
     var hex: Int {
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if canImport(UIKit)
         UIColor(self).getRed(&r, green: &g, blue: &b, alpha: &a)
+        #else
+        (NSColor(self).usingColorSpace(.sRGB) ?? .black).getRed(&r, green: &g, blue: &b, alpha: &a)
+        #endif
         func c(_ v: CGFloat) -> Int { Int((min(max(v, 0), 1) * 255).rounded()) }
         return c(r) << 16 | c(g) << 8 | c(b)
     }
 }
 
-extension UIColor {
+extension PlatformColor {
     convenience init(hex: Int) {
         self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
                   blue: CGFloat(hex & 0xFF) / 255, alpha: 1)
@@ -46,7 +69,7 @@ enum Theme {
     /// Text and icons on an `ink` fill (selected chips, the dark tile): white in light mode, near-black in dark.
     static let inverse = Color(light: 0xFFFFFF, dark: 0x1C1C1E)
     /// The thin highlight around project cards: bright on light, barely there on dark.
-    static let rim = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.14) : UIColor(white: 1, alpha: 0.7) })
+    static let rim = Color(PlatformColor.dynamic { PlatformColor(white: 1, alpha: $0 ? 0.14 : 0.7) })
     /// Small tiles set into a card: a shade darker than the card in light mode, a shade lighter in dark.
     static let inset = Color(light: 0xF2F2F5, dark: 0x2C2C2E)
     /// Switches when on: ink in light mode; in dark mode the white knob needs a colored track.
@@ -90,7 +113,11 @@ struct Accent: Equatable, Hashable {
         if isNeutral { return Color(light: 0x000000, dark: 0xAEAEB2) }
         if isNearBlack { return Color(light: 0x000000, dark: 0x7C7C80) }
         var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if canImport(UIKit)
         UIColor(hex: hex).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        #else
+        (NSColor(hex: hex).usingColorSpace(.sRGB) ?? .black).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        #endif
         if b < 0.25 { return .black }
         return Color(hue: h, saturation: min(s * 1.05, 1), brightness: b * 0.78)
     }
@@ -101,8 +128,8 @@ struct Accent: Equatable, Hashable {
 
     private func wash(light: CGFloat, dark: CGFloat) -> Color {
         let darkHex = isNeutral ? 0xF5F5F7 : isNearBlack ? 0xAEAEB2 : hex
-        return Color(UIColor { $0.userInterfaceStyle == .dark
-            ? UIColor(hex: darkHex).withAlphaComponent(dark) : UIColor(hex: hex).withAlphaComponent(light) })
+        return Color(PlatformColor.dynamic { $0
+            ? PlatformColor(hex: darkHex).withAlphaComponent(dark) : PlatformColor(hex: hex).withAlphaComponent(light) })
     }
 
     var luminance: Double {
@@ -123,18 +150,26 @@ struct Accent: Equatable, Hashable {
 // MARK: - Typography
 
 enum DisplayFont {
-    private static var cache: [String: UIFont] = [:]
+    private static var cache: [String: PlatformFont] = [:]
 
     /// Afacad Flux is a variable font; pick the weight via the `wght` axis.
-    static func ui(_ size: CGFloat, weight: CGFloat) -> UIFont {
+    static func ui(_ size: CGFloat, weight: CGFloat) -> PlatformFont {
         let key = "\(size)-\(weight)"
         if let f = cache[key] { return f }
         let wght = 0x77676874 // 'wght'
+        #if canImport(UIKit)
         let desc = UIFontDescriptor(fontAttributes: [
             .name: "AfacadFlux-Regular",
             UIFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [wght: weight],
         ])
         let font = UIFont(descriptor: desc, size: size)
+        #else
+        let desc = NSFontDescriptor(fontAttributes: [
+            .name: "AfacadFlux-Regular",
+            NSFontDescriptor.AttributeName(rawValue: kCTFontVariationAttribute as String): [wght: weight],
+        ])
+        let font = NSFont(descriptor: desc, size: size) ?? .systemFont(ofSize: size, weight: .bold)
+        #endif
         cache[key] = font
         return font
     }
