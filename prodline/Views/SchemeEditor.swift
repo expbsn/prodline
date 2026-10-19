@@ -89,12 +89,14 @@ struct MeView: View {
     @State private var demoVisible = false
     @Environment(\.isActiveTab) private var isActiveTab
     /// Widget previews use your projects; without any, the sample ones.
+    #if os(iOS)
     private var widgetData: WidgetData {
         for p in projects { WidgetCovers.overrides[p.id.uuidString] = p.cover }
         return projects.isEmpty ? .sample()
             : WidgetData(generatedAt: .now, streak: profile.streak,
                          projects: projects.map { WidgetPublisher.make($0, refresher: refresher, now: .now) })
     }
+    #endif
     private var isSimulator: Bool {
         #if targetEnvironment(simulator)
         true
@@ -111,7 +113,9 @@ struct MeView: View {
     @AppStorage(AppSettings.Key.relayURL) private var relayURL = ""
     @AppStorage(AppSettings.Key.cheers) private var cheers = true
     @AppStorage(AppSettings.Key.appearance) private var appearance = "system"
+    #if os(iOS)
     @AppStorage(LiveActivities.enabledKey) private var liveActivity = true
+    #endif
     @State private var confirm: Confirm?
 
     private enum Confirm: Identifiable {
@@ -178,7 +182,9 @@ struct MeView: View {
                 .card()
                 .padding(.horizontal, 16)
 
+                #if os(iOS)
                 WidgetsCard(data: widgetData).padding(.horizontal, 16)
+                #endif
 
                 configurationCard.padding(.horizontal, 16)
 
@@ -257,11 +263,17 @@ struct MeView: View {
                     .inputField()
                     .onSubmit {
                         guard AppSettings.relayURL != nil else { return }
+                        #if os(iOS)
                         UIApplication.shared.registerForRemoteNotifications()
+                        #else
+                        NSApplication.shared.registerForRemoteNotifications()
+                        #endif
                     }
             }
+            #if os(iOS)
             toggleRow("Deadline Live Activity", "On the Lock Screen and in the Dynamic Island when a checkpoint is due today and still has open goals.", $liveActivity)
                 .onChange(of: liveActivity) { Task { await LiveActivities.sync(projects) } }
+            #endif
         }
         .card()
         .environment(\.accent, .neutral)

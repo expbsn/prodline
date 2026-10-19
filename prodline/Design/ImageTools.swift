@@ -1,4 +1,8 @@
+#if canImport(UIKit)
 import UIKit
+#else
+import AppKit
+#endif
 
 enum ImageTools {
     /// Center-crops to a square and downsizes for storage.
@@ -13,12 +17,25 @@ enum ImageTools {
         let target = min(side, s)
         let scale = target / s
         let drawSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let rect = CGRect(x: (target - drawSize.width) / 2, y: (target - drawSize.height) / 2,
+                          width: drawSize.width, height: drawSize.height)
+        #if canImport(UIKit)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
         let out = UIGraphicsImageRenderer(size: CGSize(width: target, height: target), format: format).image { _ in
-            image.draw(in: CGRect(x: (target - drawSize.width) / 2, y: (target - drawSize.height) / 2,
-                                  width: drawSize.width, height: drawSize.height))
+            image.draw(in: rect)
         }
+        #else
+        guard let rep = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: Int(target), pixelsHigh: Int(target), bitsPerSample: 8,
+                                         samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                         bytesPerRow: 0, bitsPerPixel: 0) else { return nil }
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
+        image.draw(in: rect)
+        NSGraphicsContext.restoreGraphicsState()
+        let out = NSImage(size: CGSize(width: target, height: target))
+        out.addRepresentation(rep)
+        #endif
         return out.jpegData(compressionQuality: 0.85)
     }
 
@@ -83,8 +100,8 @@ enum ImageTools {
         }
         guard n > 0 else { return nil }
         var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
-        UIColor(red: r / n / 255, green: g / n / 255, blue: b / n / 255, alpha: 1).getHue(&h, saturation: &s, brightness: &v, alpha: &a)
-        let out = UIColor(hue: h, saturation: min(s, 0.18), brightness: 0.27, alpha: 1)
+        PlatformColor(red: r / n / 255, green: g / n / 255, blue: b / n / 255, alpha: 1).srgb.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
+        let out = PlatformColor(hue: h, saturation: min(s, 0.18), brightness: 0.27, alpha: 1).srgb
         var rr: CGFloat = 0, gg: CGFloat = 0, bb: CGFloat = 0
         out.getRed(&rr, green: &gg, blue: &bb, alpha: &a)
         return Int(rr * 255) << 16 | Int(gg * 255) << 8 | Int(bb * 255)
@@ -92,13 +109,13 @@ enum ImageTools {
 
     /// Keeps hue, pushes saturation/brightness into a range that reads well as a UI accent.
     static func normalize(r: Double, g: Double, b: Double) -> Int {
-        let ui = UIColor(red: r, green: g, blue: b, alpha: 1)
+        let ui = PlatformColor(red: r, green: g, blue: b, alpha: 1).srgb
         var h: CGFloat = 0, s: CGFloat = 0, v: CGFloat = 0, a: CGFloat = 0
         ui.getHue(&h, saturation: &s, brightness: &v, alpha: &a)
         // Photos average out muddy; lift toward the punchy range the hand-picked accents live in.
         let ns = min(max(s * 1.1, 0.7), 0.95)
         let nv = min(max(v, 0.74), 0.92)
-        let out = UIColor(hue: h, saturation: ns, brightness: nv, alpha: 1)
+        let out = PlatformColor(hue: h, saturation: ns, brightness: nv, alpha: 1).srgb
         var rr: CGFloat = 0, gg: CGFloat = 0, bb: CGFloat = 0
         out.getRed(&rr, green: &gg, blue: &bb, alpha: &a)
         return Int(rr * 255) << 16 | Int(gg * 255) << 8 | Int(bb * 255)
@@ -116,5 +133,16 @@ enum CoverCache {
         guard let img = UIImage(data: data) else { return nil }
         cache.setObject(img, forKey: k)
         return img
+    }
+}
+
+private extension PlatformColor {
+    /// Component access needs an RGB color on the Mac.
+    var srgb: PlatformColor {
+        #if canImport(UIKit)
+        self
+        #else
+        usingColorSpace(.sRGB) ?? self
+        #endif
     }
 }

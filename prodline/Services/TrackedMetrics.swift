@@ -117,7 +117,6 @@ extension Project {
     }
 }
 
-#if os(iOS)
 extension DataRefresher {
     func value(_ key: String, for project: Project) -> Double? {
         if let k = MetricKey(rawValue: key) { return value(k, for: project) }
@@ -139,4 +138,3 @@ extension DataRefresher {
         Stat.shown(available: availableMetrics(for: project), picked: project.pickedMetrics)
     }
 }
-#endif

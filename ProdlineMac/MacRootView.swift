@@ -2,103 +2,241 @@ import SwiftUI
 import SwiftData
 import AppKit
 
+/// The Mac window: a sidebar with the iPhone app's tabs and your projects; the content is the iPhone
+/// app's own screens, so the design is the same. Runs the same sync loop as the iPhone (integrations,
+/// GitHub, goals, XP), so the Mac works on its own; iCloud keeps both in step.
 struct MacRootView: View {
-    @Query(sort: \Project.startDate, order: .reverse) private var projects: [Project]
-    @Query private var profiles: [Profile]
-    @State private var selection: UUID?
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var phase
+    @Query(sort: \Profile.createdAt) private var profiles: [Profile]
+    @Query(sort: \Project.startDate) private var projects: [Project]
+
+    @Environment(DataRefresher.self) private var refresher
+    @Environment(GitHubService.self) private var github
     @Environment(CelebrationCenter.self) private var celebration
 
-    private var groups: [(Phase, [Project])] {
-        [Phase.building, .observing, .upcoming, .finished].compactMap { phase in
-            let ps = projects.filter { $0.phase() == phase }
-            return ps.isEmpty ? nil : (phase, ps)
-        }
-    }
-
     var body: some View {
-        NavigationSplitView {
-            List(selection: $selection) {
-                ForEach(groups, id: \.0) { phase, ps in
-                    Section(phase.title) {
-                        ForEach(ps) { p in SidebarRow(project: p).tag(p.id) }
-                    }
+        ZStack {
+            Theme.background.ignoresSafeArea()
+            if let profile = profiles.first {
+                if profile.onboarded {
+                    MacShell(profile: profile)
+                } else {
+                    OnboardingView(profile: profile)
+                        .frame(maxWidth: 480)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 220, ideal: 250)
-            .overlay {
-                if projects.isEmpty {
-                    ContentUnavailableView("No projects yet", systemImage: "square.stack.3d.up",
-                                           description: Text("Projects you create on your iPhone show up here through iCloud."))
-                }
-            }
-        } detail: {
-            if let p = projects.first(where: { $0.id == selection }) {
-                ProjectPane(project: p)
-            } else {
-                ContentUnavailableView("Pick a project", systemImage: "sidebar.left")
-            }
         }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) { StreakBadge(streak: profiles.first?.streak ?? 0) }
-        }
-        .overlay(alignment: .top) {
-            if let b = celebration.banner { CelebrationBanner(banner: b).padding(.top, 12).transition(.move(edge: .top).combined(with: .opacity)) }
-        }
+        .overlay { ShipOverlay() }
+        .overlay { StreakOverlay() }
+        .overlay { CelebrationOverlay() }
         .onAppear {
+            if profiles.isEmpty {
+                context.insert(Profile())
+                try? context.save()
+            }
             #if DEBUG
             MacDemo.seedIfNeeded(context)
             MacDemo.snapshotIfAsked(context, container: ProdlineMacApp.container)
             #endif
-            if selection == nil { selection = groups.first?.1.first?.id }
         }
-        .onChange(of: projects.count) { if selection == nil { selection = groups.first?.1.first?.id } }
-    }
-}
-
-struct SidebarRow: View {
-    let project: Project
-
-    var body: some View {
-        HStack(spacing: 10) {
-            ProjectThumb(project: project, size: 28)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(project.name).font(.system(size: 13, weight: .semibold)).lineLimit(1)
-                Text(project.isActive ? "Day \(project.dayInPhase) of \(project.phaseLength)" : project.phase().title)
-                    .font(.system(size: 11)).foregroundStyle(.secondary)
+        .onChange(of: phase, initial: true) { Cheer.appIsOpen = phase == .active }
+        // While a window is open: numbers, GitHub and goals every few seconds, like the iPhone in the foreground.
+        .task {
+            var firstPass = true
+            celebration.beginCollecting()
+            while !Task.isCancelled {
+                await refresher.refresh(projects: projects, context: context)
+                await syncGitHub()
+                if let profile = profiles.first, profile.onboarded {
+                    GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher,
+                                            celebration: celebration, context: context)
+                }
+                if firstPass {
+                    firstPass = false
+                    celebration.endCollecting(awayTitle: false)
+                    if let profile = profiles.first, profile.onboarded {
+                        ScheduleEngine.evaluateMissed(projects: projects, profile: profile)
+                    }
+                }
+                try? await Task.sleep(for: .seconds(AppSettings.refreshSeconds))
             }
         }
-        .padding(.vertical, 2)
+    }
+
+    private func syncGitHub() async {
+        let changed = await github.refresh(projects: projects, force: false)
+        for p in changed {
+            if let snap = github.snapshots[p.id] { GoalEngine.syncGitHub(snap, project: p, context: context) }
+        }
     }
 }
 
-/// Cover photo, or the initial on the project color.
-struct ProjectThumb: View {
-    let project: Project
-    var size: CGFloat
+enum MacPage: Hashable {
+    case tab(AppTab)
+    case project(UUID)
+}
+
+struct MacShell: View {
+    let profile: Profile
+    @Query(sort: \Project.startDate) private var projects: [Project]
+    @State private var page: MacPage? = .tab(.projects)
+    @State private var focusedID: UUID?
+    @State private var showCreate = false
+    @State private var showLimit = false
+    @State private var showIdeas = false
+    @State private var showReview = false
+    @State private var startingIdea: Idea?
+    @Namespace private var zoom
+
+    private var activeProjects: [Project] { projects.filter { $0.phase() != .finished }.reversed() }
+    private var finishedProjects: [Project] { projects.filter { $0.phase() == .finished }.reversed() }
 
     var body: some View {
-        Group {
-            if let data = project.coverImage, let img = NSImage(data: data) {
-                Image(nsImage: img).resizable().scaledToFill()
-            } else {
-                project.accent.base.overlay {
-                    Text(project.initial).font(.display(size * 0.5, 750)).foregroundStyle(project.accent.on)
+        NavigationSplitView {
+            List(selection: $page) {
+                Section {
+                    ForEach(AppTab.allCases) { t in
+                        Label(t.title, systemImage: t.symbol(selected: page == .tab(t))).tag(MacPage.tab(t))
+                    }
+                }
+                Section("Projects") {
+                    ForEach(activeProjects) { p in projectRow(p) }
+                }
+                if !finishedProjects.isEmpty {
+                    Section("Finished") {
+                        ForEach(finishedProjects) { p in projectRow(p) }
+                    }
                 }
             }
+            .navigationSplitViewColumnWidth(min: 210, ideal: 240)
+            .safeAreaInset(edge: .bottom) {
+                Button { requestCreate() } label: {
+                    Label("New project", systemImage: "plus").frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.chunky(.accent, height: 40))
+                .environment(\.accent, .neutral)
+                .padding(12)
+            }
+        } detail: {
+            detail
+                .background(Theme.background)
+                .environment(\.isActiveTab, true)
         }
-        .frame(width: size, height: size)
-        .clipShape(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous))
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button { requestCreate() } label: { Image(systemName: "plus") }.help("New project")
+            }
+        }
+        .sheet(isPresented: $showCreate, onDismiss: { startingIdea = nil }) {
+            CreateProjectFlow(profile: profile, idea: startingIdea) { newID in
+                page = .project(newID)
+            }
+            .frame(width: 460, height: 760)
+        }
+        .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile).frame(width: 460, height: 560) }
+        .sheet(isPresented: $showIdeas) {
+            IdeaInboxSheet(profile: profile) { idea in
+                showIdeas = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(400))
+                    requestCreate(from: idea)
+                }
+            }
+            .frame(width: 460, height: 640)
+        }
+        .sheet(isPresented: $showReview) {
+            WeeklyReviewView(stats: WeeklyReview.make(projects: projects, profile: profile, weekStart: WeeklyReview.reviewWeekStart()),
+                             profile: profile) { showReview = false }
+                .frame(width: 440, height: 820)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WeeklyReview.open)) { _ in showReview = true }
+        .onReceive(NotificationCenter.default.publisher(for: .macNewProject)) { _ in requestCreate() }
+        #if DEBUG
+        .onAppear {
+            if let name = UserDefaults.standard.string(forKey: "PRODLINE_OPEN"), let p = projects.first(where: { $0.name == name }) {
+                page = .project(p.id)
+            }
+            if let t = UserDefaults.standard.string(forKey: "PRODLINE_TAB").flatMap(AppTab.init(rawValue:)) { page = .tab(t) }
+        }
+        #endif
     }
+
+    private func projectRow(_ p: Project) -> some View {
+        HStack(spacing: 10) {
+            ProjectThumb(project: p, size: 24)
+            Text(p.name).lineLimit(1)
+            Spacer(minLength: 0)
+            if let m = p.nextMilestone, m.isDueToday || m.isOverdue {
+                Circle().fill(m.isOverdue ? Theme.danger : Theme.flame).frame(width: 7, height: 7)
+                    .help(m.isOverdue ? "Checkpoint overdue" : "Checkpoint due today")
+            }
+        }
+        .tag(MacPage.project(p.id))
+    }
+
+    /// The iPhone screens are made for a phone's width; on the Mac they sit in a centered column.
+    @ViewBuilder
+    private var detail: some View {
+        switch page {
+        case .tab(.projects), nil:
+            column(560) {
+                HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
+                         onOpen: { p, _ in page = .project(p.id) }, onCreate: { requestCreate() },
+                         onStreak: { page = .tab(.me) }, onReview: { showReview = true },
+                         onFeedback: { NSWorkspace.shared.open(URL(string: "mailto:info@prodline.build?subject=Prodline%20for%20Mac%20feedback")!) })
+            }
+        case .tab(.plan):
+            column(640) {
+                PlanView(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
+                         onIdeas: { showIdeas = true })
+            }
+        case .tab(.insights):
+            column(640) { InsightsView() }
+        case .tab(.me):
+            column(600) { MeView(profile: profile) }
+        case .project(let id):
+            if let p = projects.first(where: { $0.id == id }) {
+                column(620) {
+                    ProjectDetailView(project: p, cardFrame: nil, onClose: { page = .tab(.projects) })
+                        .id(p.id)
+                }
+            } else {
+                ContentUnavailableView("Project not found", systemImage: "questionmark.folder")
+            }
+        }
+    }
+
+    private func column<C: View>(_ width: CGFloat, @ViewBuilder _ content: () -> C) -> some View {
+        content()
+            .frame(maxWidth: width)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private func requestCreate(from idea: Idea? = nil) {
+        if ProjectLimit.isFull(projects, profile: profile) {
+            showLimit = true
+        } else {
+            startingIdea = idea
+            showCreate = true
+        }
+    }
+}
+
+extension Notification.Name {
+    static let macNewProject = Notification.Name("prodline.mac.newProject")
 }
 
 struct StreakBadge: View {
     let streak: Int
     var body: some View {
-        Label("\(streak)", systemImage: "flame.fill")
-            .labelStyle(.titleAndIcon)
-            .foregroundStyle(streak > 0 ? Theme.flame : .secondary)
-            .font(.system(size: 13, weight: .bold))
-            .help("\(streak)-day streak")
+        HStack(spacing: 4) {
+            Image(systemName: "flame.fill")
+            Text("\(streak)").monospacedDigit()
+        }
+        .foregroundStyle(streak > 0 ? Theme.flame : Theme.secondary)
+        .font(.display(15, 750))
+        .help("\(streak)-day streak")
     }
 }

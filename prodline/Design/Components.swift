@@ -619,9 +619,7 @@ struct AccentGlow: View {
     let accent: Accent
 
     var body: some View {
-        let ui = UIColor(accent.base)
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        ui.getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        let (h, s, b, _) = PlatformColor(accent.base).hsba
         return TimelineView(.animation(minimumInterval: 1 / 30)) { tl in
             let t = tl.date.timeIntervalSinceReferenceDate
             MeshGradient(width: 3, height: 3, points: points(t), colors: colors(t, h: h, s: s, b: b))

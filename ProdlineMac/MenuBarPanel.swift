@@ -93,3 +93,39 @@ struct MenuBarPanel: View {
         return "Day \(p.dayInPhase)"
     }
 }
+
+/// A goal with the iPhone app's round check.
+struct GoalToggle: View {
+    @Bindable var goal: Goal
+    let accent: Accent
+    @State private var hover = false
+
+    var body: some View {
+        Button {
+            Haptics.tap()
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) { goal.setDone(!goal.isDone) }
+        } label: {
+            HStack(spacing: 8) {
+                ZStack {
+                    Circle().strokeBorder(goal.isDone ? accent.base : Theme.tertiary, lineWidth: 1.5)
+                        .background(Circle().fill(goal.isDone ? accent.base : hover ? accent.soft : .clear))
+                    if goal.isDone {
+                        Image(systemName: "checkmark").font(.system(size: 9, weight: .heavy)).foregroundStyle(accent.on)
+                    }
+                }
+                .frame(width: 18, height: 18)
+                Text(goal.title).strikethrough(goal.isDone).foregroundStyle(goal.isDone ? Theme.secondary : Theme.ink)
+                    .lineLimit(1)
+                if goal.source.isAutomatic {
+                    Image(systemName: goal.source.symbol).font(.system(size: 10)).foregroundStyle(Theme.tertiary)
+                        .help("Ticks itself: \(goal.source.label)")
+                }
+            }
+            .font(.ui(13))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(goal.source.isAutomatic)
+        .onHover { hover = $0 }
+    }
+}

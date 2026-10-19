@@ -403,7 +403,9 @@ struct ProjectDetailView: View {
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(selected ? accent.base : Theme.background))
             .contentShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            #if os(iOS)
             .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 18, style: .continuous))
+            #endif
         }
         .buttonStyle(PressableStyle(scale: 0.95))
         .contextMenu {
@@ -1002,7 +1004,7 @@ struct ConnectionSheet: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.background.ignoresSafeArea())
-            .toolbar(.hidden, for: .navigationBar)
+            .hiddenNavigationBar()
             .navigationDestination(for: ConnectionPage.self) { page in
                 Group {
                     switch page {
@@ -1113,7 +1115,7 @@ struct ConnectionPageView<Content: View, Bar: View>: View {
             .bottomActionBar { bar }
         }
         .background(Theme.background.ignoresSafeArea())
-        .toolbar(.hidden, for: .navigationBar)
+        .hiddenNavigationBar()
         .navigationBarBackButtonHidden()
     }
 }

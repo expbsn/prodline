@@ -69,7 +69,6 @@ enum VerdictEngine {
         var hit: Bool { actual >= criterion.target }
     }
 
-    #if os(iOS)
     /// Keys a target can use: the three main numbers plus whatever the project reports.
     static func availableKeys(_ project: Project, refresher: DataRefresher) -> [String] {
         let base = MetricKey.allCases.map(\.rawValue)
@@ -77,7 +76,6 @@ enum VerdictEngine {
         var seen = Set<String>()
         return (base + ["downloads", "mrr", "active_subscriptions", "sales"] + extras).filter { seen.insert($0).inserted }
     }
-    #endif
 
     static func title(_ key: String) -> String {
         MetricKey(rawValue: key)?.title ?? IntegrationMetric.title(key)
@@ -87,7 +85,6 @@ enum VerdictEngine {
         key == MetricKey.revenue.rawValue ? MetricKey.money(v) : IntegrationMetric.format(key, v)
     }
 
-    #if os(iOS)
     static func value(_ key: String, project: Project, refresher: DataRefresher) -> Double {
         if let k = MetricKey(rawValue: key) { return refresher.value(k, for: project) ?? 0 }
         return refresher.extras(for: project).first { $0.key == key }?.value ?? 0
@@ -96,7 +93,6 @@ enum VerdictEngine {
     static func results(_ project: Project, refresher: DataRefresher) -> [Result] {
         project.criteria.map { Result(criterion: $0, actual: value($0.key, project: project, refresher: refresher)) }
     }
-    #endif
 
     /// All targets hit: keep. Close, or one hit: pivot. Far off: kill. nil without targets.
     static func suggestion(_ results: [Result]) -> Verdict? {

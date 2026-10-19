@@ -267,10 +267,15 @@ enum Keychain {
     private static let service = "expbsn.app.prodline"
 
     private static func base(_ account: String) -> [String: Any] {
-        [kSecClass as String: kSecClassGenericPassword,
-         kSecAttrService as String: service,
-         kSecAttrAccount as String: account,
-         kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
+        var q: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                                kSecAttrService as String: service,
+                                kSecAttrAccount as String: account,
+                                kSecAttrSynchronizable as String: kSecAttrSynchronizableAny]
+        #if os(macOS)
+        // The Mac's iOS-style keychain: needed for iCloud Keychain items, and what the sandbox expects.
+        q[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        return q
     }
 
     /// `synced: false` keeps the item on this device (e.g. the relay's per-device secret).

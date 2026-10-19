@@ -100,9 +100,7 @@ final class Project {
 
     var accent: Accent { Accent(hex: accentHex) }
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
-    #if canImport(UIKit)
     var cover: UIImage? { CoverCache.image(coverImage, key: id.uuidString) }
-    #endif
 
     var criteria: [SuccessCriterion] {
         get { criteriaData.flatMap { try? JSONDecoder().decode([SuccessCriterion].self, from: $0) } ?? [] }

@@ -1,6 +1,8 @@
 import Foundation
 import SwiftData
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Instant updates through the relay (relay/ in the repo): GitHub calls it on every push, and it sends a
 /// silent push here, so goals, ticks and the streak refresh right away, even while the app is closed.
@@ -130,7 +132,9 @@ enum Relay {
             let refresher = DataRefresher()
             GoalEngine.afterRefresh(projects: projects, profile: profile, refresher: refresher, celebration: nil, context: context)
             StreakNudge.schedule(profile)
+            #if os(iOS)
             WidgetPublisher.publish(projects: projects, profile: profile, refresher: refresher)
+            #endif
         }
         try? context.save()
         return true

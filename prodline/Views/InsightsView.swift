@@ -116,7 +116,9 @@ struct InsightsView: View {
             .padding(.bottom, 4)
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(on ? Color(light: 0x000000, dark: 0xAEAEB2) : Theme.line))
             .contentShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            #if os(iOS)
             .contentShape(.contextMenuPreview, RoundedRectangle(cornerRadius: 22, style: .continuous))
+            #endif
             .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
         }
         .buttonStyle(PressableStyle(scale: 0.96))

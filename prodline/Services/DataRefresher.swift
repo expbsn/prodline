@@ -1,7 +1,9 @@
 import Foundation
 import SwiftData
 import SwiftUI
+#if canImport(BackgroundTasks)
 import BackgroundTasks
+#endif
 
 /// Pulls metrics from every active project.
 /// - Foreground: every `AppSettings.refreshSeconds` (default 30 s) while active, plus immediately on activation.
@@ -174,9 +176,11 @@ final class DataRefresher {
     // MARK: Background
 
     static func scheduleBackgroundRefresh() {
+        #if canImport(BackgroundTasks) && os(iOS)
         let req = BGAppRefreshTaskRequest(identifier: backgroundTaskID)
         req.earliestBeginDate = Date(timeIntervalSinceNow: 15 * 60)
         try? BGTaskScheduler.shared.submit(req)
+        #endif
     }
 
     @MainActor

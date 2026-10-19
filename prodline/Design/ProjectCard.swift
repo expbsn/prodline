@@ -1,5 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
 
 /// Playing-card (5:7) face for a project. Used in the carousel, the create flow preview and the detail hero,
 /// so a project always looks the same everywhere.

@@ -75,48 +75,14 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Design/Archive/LaunchAnimation.swift,
-				Design/CardEditor.swift,
-				Design/Components.swift,
-				Design/FlameShape.swift,
-				Design/ImageTools.swift,
-				Design/LaunchView.swift,
-				Design/MetricSwap.swift,
-				Design/ProjectCard.swift,
-				Design/StreakOverlay.swift,
-				Design/TabBar.swift,
-				Design/Theme.swift,
 				Info.plist,
 				PrivacyInfo.xcprivacy,
-				Services/DataRefresher.swift,
-				Services/DemoData.swift,
-				Services/GitHub.swift,
-				Services/GoalEngine.swift,
-				Services/GoalPlanner.swift,
-				Services/LiveActivities.swift,
-				Services/MockServerFinder.swift,
-				Services/ProjectLimit.swift,
-				Services/Relay.swift,
-				Services/WidgetPublisher.swift,
-				Views/ConnectionViews.swift,
-				Views/CreateProjectFlow.swift,
-				Views/FeedbackView.swift,
-				Views/HomeView.swift,
-				Views/IdeaViews.swift,
-				Views/InsightsView.swift,
-				Views/IntegrationViews.swift,
-				Views/MomentumCard.swift,
-				Views/PlanView.swift,
-				Views/ProjectDetailView.swift,
-				Views/RootView.swift,
-				Views/SchemeEditor.swift,
-				Views/ShareCard.swift,
-				Views/StoryOnboarding.swift,
-				Views/VerdictViews.swift,
-				Views/WeeklyReviewView.swift,
-				Views/WidgetGalleryView.swift,
-				en.lproj/InfoPlist.strings,
-				prodline.entitlements,
 				prodlineApp.swift,
+				Services/LiveActivities.swift,
+				Services/WidgetPublisher.swift,
+				Views/FeedbackView.swift,
+				Views/RootView.swift,
+				Views/WidgetGalleryView.swift,
 			);
 			target = D00D00000000000000000005 /* ProdlineMac */;
 		};
@@ -349,9 +315,9 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				D00D00000000000000000002 /* ProdlineMac */,
 				77B3B6FF307271C200D4F28B /* prodline */,
 				C0FFEE00000000000000000B /* Shared */,
+				D00D00000000000000000002 /* ProdlineMac */,
 			);
 			name = ProdlineMac;
 			packageProductDependencies = (

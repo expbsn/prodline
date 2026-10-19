@@ -432,20 +432,4 @@ struct MainShell: View {
     }
 }
 
-enum LaunchGate {
-    static let replay = Notification.Name("prodline.replayLaunch")
-    static var shouldShow: Bool {
-        let env = ProcessInfo.processInfo.environment
-        if env["XCTestConfigurationFilePath"] != nil { return false }
-        #if DEBUG
-        if UserDefaults.standard.bool(forKey: "PRODLINE_NOLAUNCH") { return false }
-        #endif
-        // The splash is still now, so Reduce Motion doesn't need to skip it.
-        return true
-    }
-}
 
-extension EnvironmentValues {
-    /// False for tabs kept alive in the background.
-    @Entry var isActiveTab: Bool = true
-}

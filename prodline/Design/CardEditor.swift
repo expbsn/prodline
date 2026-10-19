@@ -127,16 +127,12 @@ struct AccentSlider: View {
     }
 
     private static func rgb(_ hue: Double) -> (Double, Double, Double) {
-        let c = UIColor(hue: hue, saturation: 0.78, brightness: 0.9, alpha: 1)
-        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        c.getRed(&r, green: &g, blue: &b, alpha: &a)
-        return (r, g, b)
+        let c = PlatformColor(hue: hue, saturation: 0.78, brightness: 0.9, alpha: 1).rgba
+        return (c.r, c.g, c.b)
     }
 
     private var hue: Double {
-        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-        UIColor(Color(hex: accentHex)).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
-        return h
+        PlatformColor(Color(hex: accentHex)).hsba.h
     }
 
     var body: some View {

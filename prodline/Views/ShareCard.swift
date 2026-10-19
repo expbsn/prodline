@@ -374,7 +374,11 @@ struct ShareCardSheet: View {
         let renderer = ImageRenderer(content: ShareCardView(data: data, stats: picks, style: style).environment(\.colorScheme, .light))
         renderer.scale = 3
         renderer.isOpaque = false
+        #if os(macOS)
+        image = renderer.nsImage
+        #else
         image = renderer.uiImage
+        #endif
     }
 }
 

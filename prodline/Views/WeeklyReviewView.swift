@@ -133,7 +133,9 @@ struct WeeklyReviewView: View {
         .overlay(alignment: .top) { topBar }
         // A background, not a ZStack layer: the blobs are wider than the screen and must not widen the layout.
         .background { backdrop }
+        #if os(iOS)
         .statusBarHidden()
+        #endif
         .environment(\.accent, tint)
         .task(id: index) { await play() }
         .onAppear { WeeklyReview.markWatched(stats.start) }
@@ -539,7 +541,11 @@ struct WeeklyReviewView: View {
                 .padding(20).background(Theme.background)
                 .environment(\.colorScheme, .light))
             r.scale = 3
+            #if os(macOS)
+            shareImage = r.nsImage
+            #else
             shareImage = r.uiImage
+            #endif
         }
     }
 

@@ -1,6 +1,8 @@
 import Foundation
 import SwiftData
+#if canImport(UIKit)
 import UIKit
+#endif
 import SwiftUI
 
 /// Creates projects wired to the local mock server (MockProject/server.py) for end-to-end testing.
@@ -57,6 +59,7 @@ enum DemoData {
         try? context.save()
     }
 
+    #if canImport(UIKit)
     /// Generated artwork for exercising color extraction in tests.
     static func coverImage(_ hexes: [Int]) -> UIImage? {
         let size = CGSize(width: 600, height: 600)
@@ -72,4 +75,5 @@ enum DemoData {
             }
         }
     }
+    #endif
 }

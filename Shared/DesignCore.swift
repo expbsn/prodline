@@ -51,6 +51,27 @@ extension Color {
 }
 
 extension PlatformColor {
+    /// Hue, saturation, brightness and alpha (the Mac needs an RGB color space for these).
+    var hsba: (h: CGFloat, s: CGFloat, b: CGFloat, a: CGFloat) {
+        var h: CGFloat = 0, s: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if canImport(UIKit)
+        getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        #else
+        (usingColorSpace(.sRGB) ?? .black).getHue(&h, saturation: &s, brightness: &b, alpha: &a)
+        #endif
+        return (h, s, b, a)
+    }
+
+    var rgba: (r: CGFloat, g: CGFloat, b: CGFloat, a: CGFloat) {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        #if canImport(UIKit)
+        getRed(&r, green: &g, blue: &b, alpha: &a)
+        #else
+        (usingColorSpace(.sRGB) ?? .black).getRed(&r, green: &g, blue: &b, alpha: &a)
+        #endif
+        return (r, g, b, a)
+    }
+
     convenience init(hex: Int) {
         self.init(red: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
                   blue: CGFloat(hex & 0xFF) / 255, alpha: 1)

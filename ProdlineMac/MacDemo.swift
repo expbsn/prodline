@@ -9,9 +9,12 @@ enum MacDemo {
     static func seedIfNeeded(_ context: ModelContext) {
         guard UserDefaults.standard.bool(forKey: "PRODLINE_DEMO"),
               ((try? context.fetchCount(FetchDescriptor<Project>())) ?? 0) == 0 else { return }
-        let profile = Profile()
+        let profile = (try? context.fetch(FetchDescriptor<Profile>()))?.first ?? {
+            let p = Profile(); context.insert(p); return p
+        }()
+        profile.onboarded = true
+        profile.remindersEnabled = false
         profile.streak = 6
-        context.insert(profile)
         let specs: [(String, String, String, Int, Int, (Double, Double, Double), [String: Double])] = [
             ("habit-hero", "Habit Hero", "A tiny habit tracker that rewards streaks with plant growth.", 9, 0x58CC02, (1240, 3100, 0), ["downloads": 86]),
             ("pixel-quest", "Pixel Quest", "Daily five-minute pixel art puzzles.", 23, 0xA35CFF, (5320, 41200, 482.5), ["followers": 312, "videos_posted": 7]),
@@ -57,9 +60,6 @@ enum MacDemo {
                 guard let img = r.nsImage, let tiff = img.tiffRepresentation,
                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
                 try? png.write(to: URL(fileURLWithPath: path + suffix))
-            }
-            if let p = projects.first(where: { $0.name == "Pixel Quest" }) ?? projects.first {
-                write(ProjectPane(project: p).content.padding(28).frame(width: 820).background(Theme.background), "-pane.png", scheme: .dark)
             }
             write(MenuBarPanel().background(Theme.card), "-menu.png", scheme: .dark)
         }
