@@ -14,7 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SWIFT = (ROOT / "prodline/Services/Integrations.swift").read_text()
 OUT = ROOT / "web/docs.html"
-SUPPORT = "exp.bsn@gmail.com"
+SUPPORT = "info@prodline.build"
 
 STR = r'"((?:[^"\\]|\\.)*)"'
 

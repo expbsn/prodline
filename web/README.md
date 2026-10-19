@@ -24,7 +24,7 @@ Live at https://prodline.build (domain registered with Cloudflare). www.prodline
 - Terms of service: https://prodline.build/terms (also the Terms of Service URL for the TikTok and Meta developer apps)
 - License Agreement (App Store Connect → App Information): leave it on Apple's standard EULA; the terms page builds on it. A link to it is only required once the app sells auto-renewable subscriptions.
 - Marketing URL: https://prodline.build/
-- Support contact (FAQ, privacy page, footer): `exp.bsn@gmail.com`.
+- Support contact (FAQ, privacy page, footer, in-app feedback): `info@prodline.build`. Press and business: `inquiries@prodline.build`. Both forward to exp.bsn@gmail.com (Cloudflare Email Routing).
 - The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
   "Download on the App Store" badge (unmodified, from Apple's marketing tools) linking to the product page.
 

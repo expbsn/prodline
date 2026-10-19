@@ -10,7 +10,7 @@ import UIKit
 // that shows up right after a screenshot is taken in the app (that screen is attached already).
 
 enum Feedback {
-    static let address = "kianpal731@gmail.com"
+    static let address = "info@prodline.build"
 
     static var subject: String { "Prodline feedback (\(version))" }
 
