@@ -87,6 +87,8 @@ struct IntegrationIcon: View {
         if let logo = kind.logo, logo.isIcon {
             Image(logo.asset).resizable().scaledToFit()
                 .frame(width: size, height: size)
+                // TikTok's icon comes square; the same rounding as every other tile.
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.3, style: .continuous))
         } else {
             RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
                 .fill(kind.logo == nil ? accent.base : Color(hex: kind.logoBackgroundHex))
@@ -97,7 +99,7 @@ struct IntegrationIcon: View {
                 }
                 .overlay {
                     if let logo = kind.logo {
-                        Image(logo.asset).resizable().scaledToFit().frame(width: size * (kind == .youtube ? 0.62 : 0.7))
+                        Image(logo.asset).resizable().scaledToFit().frame(width: size * (kind == .youtube ? 0.62 : kind == .instagram ? 0.56 : 0.7))
                     } else {
                         Image(systemName: kind.symbol).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(accent.on)
                     }

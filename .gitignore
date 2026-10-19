@@ -13,3 +13,7 @@ Secrets.xcconfig
 relay/.dev.vars
 relay/node_modules/
 relay/.wrangler/
+
+# Brand downloads (originals; the app ships scaled copies in Assets.xcassets)
+design/01 Static Glyph/
+design/Dev Portal Logo Pack/
