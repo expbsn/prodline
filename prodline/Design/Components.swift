@@ -538,7 +538,14 @@ struct CelebrationOverlay: View {
                 .frame(width: 340)
                 .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(b.accent.base))
                 .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(b.accent.dark).offset(y: 5))
-                .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+                // A soft halo of the banner's own color, plus a little depth.
+                .background {
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .fill(b.accent.base.opacity(0.45))
+                        .padding(-10)
+                        .blur(radius: 26)
+                }
+                .shadow(color: .black.opacity(0.14), radius: 18, y: 8)
                 .padding(.trailing, 24).padding(.bottom, 28)
                 .transition(.move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.92, anchor: .bottomTrailing)))
             }
