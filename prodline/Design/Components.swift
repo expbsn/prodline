@@ -606,8 +606,30 @@ extension View {
     /// behind it: the page background only starts halfway down the button, so content shows right
     /// up to its corners instead of being cut off above it.
     func bottomActionBar<Bar: View>(@ViewBuilder _ bar: () -> Bar) -> some View {
-        safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(alignment: .leading, spacing: 8) { bar() }
+        safeAreaInset(edge: .bottom, spacing: 0) { ActionBarContainer(content: bar()) }
+    }
+}
+
+/// Phone: full-width buttons pinned to the bottom. Wide windows (Mac sheets): a footer with the
+/// buttons at the bottom right, like a Mac dialog.
+private struct ActionBarContainer<Content: View>: View {
+    let content: Content
+    @Environment(\.wideLayout) private var wide
+
+    var body: some View {
+        if wide {
+            VStack(spacing: 0) {
+                Divider()
+                HStack {
+                    Spacer(minLength: 0)
+                    VStack(alignment: .trailing, spacing: 6) { content }
+                        .frame(width: 280)
+                }
+                .padding(.horizontal, 24).padding(.vertical, 16)
+            }
+            .background(Theme.background)
+        } else {
+            VStack(alignment: .leading, spacing: 8) { content }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 10)
                 .background {

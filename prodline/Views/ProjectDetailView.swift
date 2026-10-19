@@ -865,6 +865,7 @@ struct EditProjectSheet: View {
     @State private var buildDays = 14
     @State private var observeDays = 28
     @Query(sort: \Profile.createdAt) private var profiles: [Profile]
+    @Environment(\.wideLayout) private var wide
 
     private var scheduleChanged: Bool {
         startDate.startOfDay != project.startDate || buildDays != project.buildDays || observeDays != project.observeDays
@@ -878,6 +879,27 @@ struct EditProjectSheet: View {
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }
             .padding(20)
+            if wide {
+                // Mac: the card and its color on the left, the words and the schedule on the right.
+                HStack(alignment: .top, spacing: 28) {
+                    VStack(spacing: 18) {
+                        CardCoverEditor(name: name, imageData: $imageData, accentHex: $accentHex,
+                                        photoHex: $photoHex, lockedToPhoto: $locked)
+                            .frame(width: 230)
+                        AccentSlider(accentHex: $accentHex, locked: $locked, photoHex: photoHex)
+                    }
+                    .frame(width: 260)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 22) {
+                            textFields
+                            scheduleSection
+                        }
+                        .padding(.bottom, 20)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .bottomActionBar { saveButton }
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
                     CardCoverEditor(name: name, imageData: $imageData, accentHex: $accentHex,
@@ -885,40 +907,14 @@ struct EditProjectSheet: View {
                         .frame(width: 220)
                         .frame(maxWidth: .infinity)
                     AccentSlider(accentHex: $accentHex, locked: $locked, photoHex: photoHex)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Name").eyebrow()
-                        TextField("Name", text: $name).inputField()
-                    }
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Description").eyebrow()
-                        TextField("", text: $details, prompt: Text("What is it, who is it for?").foregroundStyle(Theme.tertiary),
-                                  axis: .vertical)
-                            .lineLimit(2...6)
-                            .padding(.vertical, 14)
-                            .inputField()
-                    }
+                    textFields
                     scheduleSection
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
             .scrollDismissesKeyboard(.immediately)
-            .bottomActionBar {
-            Button("Save") {
-                let trimmed = name.trimmingCharacters(in: .whitespaces)
-                if !trimmed.isEmpty { project.name = trimmed }
-                project.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
-                project.coverImage = imageData
-                project.accentHex = accentHex
-                if scheduleChanged {
-                    ScheduleEngine.changeSchedule(project, start: startDate, buildDays: buildDays, observeDays: observeDays,
-                                                  profile: profiles.first, context: context)
-                }
-                try? context.save()
-                Haptics.success()
-                dismiss()
-            }
-            .buttonStyle(.chunky)
+            .bottomActionBar { saveButton }
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -934,6 +930,41 @@ struct EditProjectSheet: View {
             buildDays = project.buildDays
             observeDays = project.observeDays
         }
+    }
+
+    @ViewBuilder
+    private var textFields: some View {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Name").eyebrow()
+                        TextField("Name", text: $name).inputField()
+                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Description").eyebrow()
+                        TextField("", text: $details, prompt: Text("What is it, who is it for?").foregroundStyle(Theme.tertiary),
+                                  axis: .vertical)
+                            .lineLimit(2...6)
+                            .padding(.vertical, 14)
+                            .inputField()
+                    }
+    }
+
+    private var saveButton: some View {
+            Button("Save") {
+                let trimmed = name.trimmingCharacters(in: .whitespaces)
+                if !trimmed.isEmpty { project.name = trimmed }
+                project.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
+                project.coverImage = imageData
+                project.accentHex = accentHex
+                if scheduleChanged {
+                    ScheduleEngine.changeSchedule(project, start: startDate, buildDays: buildDays, observeDays: observeDays,
+                                                  profile: profiles.first, context: context)
+                }
+                try? context.save()
+                Haptics.success()
+                dismiss()
+            }
+            .buttonStyle(.chunky)
+            .keyboardShortcut(.defaultAction)
     }
 
     private var scheduleSection: some View {
@@ -976,9 +1007,63 @@ struct EditProjectSheet: View {
 struct ConnectionSheet: View {
     @Bindable var project: Project
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.wideLayout) private var wide
     @State private var path: [ConnectionPage] = []
+    @State private var selected: ConnectionPage = .integrations
 
     var body: some View {
+        if wide { wideBody } else { phoneBody }
+    }
+
+    /// Mac: the menu stays on the left, the picked part fills the right.
+    private var wideBody: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 14) {
+                Text("Connection").display(26, 750).foregroundStyle(Theme.ink)
+                Text("Numbers and goals flow in on their own from these.")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 4) {
+                    ForEach(pages) { page in
+                        Button {
+                            Haptics.select()
+                            selected = page
+                        } label: {
+                            wideMenuRow(page)
+                                .padding(.horizontal, 10)
+                                .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(selected == page ? Theme.card : .clear))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                Spacer()
+            }
+            .padding(20)
+            .frame(width: 280)
+            .background(Theme.inset.opacity(0.5))
+
+            Group {
+                switch selected {
+                case .integrations: ConnectionPageView(title: selected.title) { IntegrationsSection(project: project) }
+                case .github: GitHubPage(project: project)
+                case .instant:
+                    ConnectionPageView(title: selected.title) {
+                        InstantUpdatesSection(project: project, repo: project.githubRepo)
+                    }
+                case .endpoint: EndpointPage(project: project)
+                }
+            }
+            .id(selected)
+            .frame(maxWidth: .infinity)
+            .overlay(alignment: .topTrailing) {
+                CircleIconButton(systemName: "xmark") { dismiss() }.padding(18)
+            }
+        }
+        .environment(\.accent, project.accent)
+    }
+
+    private var phoneBody: some View {
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
@@ -1047,6 +1132,25 @@ struct ConnectionSheet: View {
         }
     }
 
+    /// Mac menu row: compact, one line each, no arrow (the page shows beside it).
+    private func wideMenuRow(_ page: ConnectionPage) -> some View {
+        let (caption, on) = status(page)
+        return HStack(spacing: 12) {
+            Image(systemName: page.symbol)
+                .font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.ink)
+                .frame(width: 36, height: 36)
+                .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.inset))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(page.title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(caption).font(.ui(12)).foregroundStyle(Theme.secondary).lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if on { Circle().fill(Theme.success).frame(width: 7, height: 7).help("Set up") }
+        }
+        .padding(.vertical, 8)
+        .contentShape(Rectangle())
+    }
+
     private func menuRow(_ page: ConnectionPage) -> some View {
         let caption = status(page).0
         return HStack(spacing: 14) {
@@ -1096,12 +1200,14 @@ struct ConnectionPageView<Content: View, Bar: View>: View {
     @ViewBuilder var content: Content
     @ViewBuilder var bar: Bar
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.wideLayout) private var wide
 
     var body: some View {
         VStack(spacing: 0) {
             // Our own header, like the other sheets: it's there from the first frame, no bar sliding in.
             HStack(spacing: 12) {
-                CircleIconButton(systemName: "chevron.left") { dismiss() }
+                // Wide: the menu is beside the page, there's nothing to go back to.
+                if !wide { CircleIconButton(systemName: "chevron.left") { dismiss() } }
                 Text(title).display(24, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
                 Spacer()
             }
@@ -1219,6 +1325,7 @@ struct CheckpointSheet: View {
     @State private var removedGoals: [Goal] = []
     @State private var newGoal = ""
     @FocusState private var newGoalFocused: Bool
+    @Environment(\.wideLayout) private var wide
 
     /// A goal as edited in the sheet; `goal` is nil for ones added here and not saved yet.
     struct GoalRow: Identifiable {
@@ -1248,26 +1355,31 @@ struct CheckpointSheet: View {
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }
             .padding(20)
+            if wide {
+                // Mac: name and date on the left, the goals on the right.
+                HStack(alignment: .top, spacing: 24) {
+                    VStack(alignment: .leading, spacing: 22) {
+                        nameField
+                        dueField
+                        if let m = milestone, !m.isLaunch {
+                            Button("Delete checkpoint") { confirmDelete = true }
+                                .font(.ui(14, .semibold)).foregroundStyle(Theme.danger)
+                        }
+                    }
+                    .frame(width: 320)
+                    ScrollView { goalsSection.padding(.bottom, 20) }
+                }
+                .padding(.horizontal, 24)
+                .bottomActionBar {
+                    Button(milestone == nil ? "Add checkpoint" : "Save", action: save).buttonStyle(.chunky)
+                        .keyboardShortcut(.defaultAction)
+                }
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Name").eyebrow()
-                        TextField("", text: $name, prompt: Text(autoName).foregroundStyle(Theme.tertiary))
-                            .inputField()
-                        Text("Leave empty for the automatic name. A name you set here wins over one from prodline.json.")
-                            .font(.ui(13)).foregroundStyle(Theme.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+                    nameField
                     goalsSection
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Due").eyebrow()
-                        DatePicker("Due", selection: $due, in: range, displayedComponents: .date)
-                            .datePickerStyle(.graphical)
-                            .labelsHidden()
-                            .tint(project.accent.text)
-                            .padding(8)
-                            .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card))
-                    }
+                    dueField
                     if let m = milestone, !m.isLaunch {
                         Button("Delete checkpoint") { confirmDelete = true }
                             .buttonStyle(.chunky(.danger, height: 50))
@@ -1279,6 +1391,7 @@ struct CheckpointSheet: View {
             .scrollDismissesKeyboard(.immediately)
             .bottomActionBar {
                 Button(milestone == nil ? "Add checkpoint" : "Save", action: save).buttonStyle(.chunky)
+            }
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -1301,6 +1414,30 @@ struct CheckpointSheet: View {
                 dismiss()
             }
         } message: { Text("Its goals are removed too.") }
+    }
+
+    private var nameField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Name").eyebrow()
+            TextField("", text: $name, prompt: Text(autoName).foregroundStyle(Theme.tertiary))
+                .inputField()
+            Text("Leave empty for the automatic name. A name you set here wins over one from prodline.json.")
+                .font(.ui(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var dueField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Due").eyebrow()
+            DatePicker("Due", selection: $due, in: range, displayedComponents: .date)
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .tint(project.accent.text)
+                .padding(8)
+                .frame(maxWidth: .infinity)
+                .background(RoundedRectangle(cornerRadius: 20, style: .continuous).fill(Theme.card))
+        }
     }
 
     private var goalsSection: some View {

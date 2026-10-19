@@ -297,6 +297,7 @@ struct ShareCardSheet: View {
     @State private var image: UIImage?
     /// The card is designed at full size; the preview shows it a little smaller so the options fit.
     static let previewScale: CGFloat = 0.8
+    @Environment(\.wideLayout) private var wide
 
     var body: some View {
         VStack(spacing: 0) {
@@ -306,6 +307,20 @@ struct ShareCardSheet: View {
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }
             .padding(20)
+            if wide, let data {
+                // Mac: the card on the left, how it looks and what it says on the right.
+                HStack(alignment: .top, spacing: 28) {
+                    preview(data)
+                        .frame(maxWidth: .infinity)
+                    VStack(alignment: .leading, spacing: 22) {
+                        options(data)
+                        Spacer(minLength: 0)
+                        shareButton
+                    }
+                    .frame(width: 280)
+                }
+                .padding(.horizontal, 24).padding(.bottom, 24)
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     if let data {
@@ -340,13 +355,7 @@ struct ShareCardSheet: View {
                 .padding(.horizontal, 20)
                 .padding(.bottom, 20)
             }
-            .bottomActionBar {
-                if let image {
-                    ShareLink(item: PNGImage(image: image), preview: SharePreview(project.name, image: Image(uiImage: image))) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                    }
-                    .buttonStyle(.chunky)
-                }
+            .bottomActionBar { shareButton }
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -361,6 +370,46 @@ struct ShareCardSheet: View {
         }
         .onChange(of: style) { render() }
         .onChange(of: picks) { render() }
+    }
+
+    @ViewBuilder
+    private var shareButton: some View {
+        if let image {
+            ShareLink(item: PNGImage(image: image), preview: SharePreview(project.name, image: Image(uiImage: image))) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.chunky)
+        }
+    }
+
+    private func preview(_ data: ShareCardData) -> some View {
+        let size = ShareCardView.size(style)
+        return ShareCardView(data: data, stats: picks, style: style)
+            .environment(\.colorScheme, .light)
+            .background { if style == .transparent { Checkerboard() } }
+            .clipShape(RoundedRectangle(cornerRadius: 30, style: .continuous))
+            .shadow(color: .black.opacity(0.15), radius: 18, y: 8)
+            .scaleEffect(Self.previewScale, anchor: .top)
+            .frame(width: size.width * Self.previewScale, height: size.height * Self.previewScale, alignment: .top)
+            .animation(.snappy, value: style)
+            .animation(.snappy, value: picks)
+    }
+
+    private func options(_ data: ShareCardData) -> some View {
+        VStack(alignment: .leading, spacing: 22) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Style").eyebrow()
+                FlowLayout(spacing: 6) {
+                    ForEach(ShareCardStyle.allCases.filter { $0 != .photo || data.cover != nil }) { s in
+                        Chip(title: s.title, isOn: style == s) { style = s }
+                    }
+                }
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Numbers · up to 4").eyebrow()
+                FlowChips(items: data.available, selected: picks) { s in toggle(s) }
+            }
+        }
     }
 
     private func toggle(_ s: ShareStat) {

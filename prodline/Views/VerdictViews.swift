@@ -229,6 +229,7 @@ struct VerdictSheet: View {
     @State private var newName = ""
     @State private var note = ""
     @FocusState private var noteFocused: Bool
+    @Environment(\.wideLayout) private var wide
 
     var body: some View {
         let results = VerdictEngine.results(project, refresher: refresher)
@@ -243,6 +244,25 @@ struct VerdictSheet: View {
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }
             .padding(20)
+            if wide {
+                // Mac: where it ended up on the left, the three calls side by side on the right.
+                HStack(alignment: .top, spacing: 24) {
+                    ScrollView { scoreCard(results, suggestion: suggestion) }
+                        .frame(width: 320)
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack(alignment: .top, spacing: 12) {
+                                ForEach(Verdict.allCases) { v in choiceTile(v, suggested: v == suggestion) }
+                            }
+                            if let choice { details(choice).transition(.opacity.combined(with: .move(edge: .top))) }
+                        }
+                        .padding(.bottom, 20)
+                        .animation(.spring(response: 0.4, dampingFraction: 0.85), value: choice)
+                    }
+                }
+                .padding(.horizontal, 24)
+                .bottomActionBar { confirmButton }
+            } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     scoreCard(results, suggestion: suggestion)
@@ -256,11 +276,7 @@ struct VerdictSheet: View {
                 .animation(.spring(response: 0.4, dampingFraction: 0.85), value: choice)
             }
             .scrollDismissesKeyboard(.immediately)
-            .bottomActionBar {
-                Button(confirmTitle) { confirm() }
-                    .buttonStyle(.chunky(choice == nil ? .neutral : .accent))
-                    .environment(\.accent, choice.map { Accent(hex: $0.hex) } ?? project.accent)
-                    .disabled(choice == nil || (choice == .pivot && newName.trimmingCharacters(in: .whitespaces).isEmpty))
+            .bottomActionBar { confirmButton }
             }
         }
         .background(Theme.background.ignoresSafeArea())
@@ -269,6 +285,13 @@ struct VerdictSheet: View {
             newName = project.name + " 2"
             choice = nil
         }
+    }
+
+    private var confirmButton: some View {
+        Button(confirmTitle) { confirm() }
+            .buttonStyle(.chunky(choice == nil ? .neutral : .accent))
+            .environment(\.accent, choice.map { Accent(hex: $0.hex) } ?? project.accent)
+            .disabled(choice == nil || (choice == .pivot && newName.trimmingCharacters(in: .whitespaces).isEmpty))
     }
 
     private var confirmTitle: String {
@@ -310,6 +333,43 @@ struct VerdictSheet: View {
             }
         }
         .card()
+    }
+
+    /// Mac: the same choice as a tall tile, so three fit side by side.
+    private func choiceTile(_ v: Verdict, suggested: Bool) -> some View {
+        let color = Accent(hex: v.hex)
+        let selected = choice == v
+        return Button {
+            Haptics.select()
+            choice = v
+        } label: {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top) {
+                    Image(systemName: v.symbol).font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(selected ? color.on : color.base)
+                        .frame(width: 48, height: 48)
+                        .background(Circle().fill(selected ? color.base : color.tint))
+                    Spacer(minLength: 4)
+                    if suggested {
+                        Text("SUGGESTED").font(.ui(10, .bold)).tracking(0.6)
+                            .foregroundStyle(color.text)
+                            .padding(.horizontal, 7).padding(.vertical, 3)
+                            .background(Capsule().fill(color.tint))
+                    }
+                }
+                Text(v.title).display(22, 750).foregroundStyle(Theme.ink).lineLimit(1)
+                Text(v.blurb).font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .multilineTextAlignment(.leading)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 0)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
+            .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .strokeBorder(selected ? color.base : Theme.line, lineWidth: selected ? 2.5 : 1.5))
+        }
+        .buttonStyle(PressableStyle(scale: 0.98))
     }
 
     private func choiceCard(_ v: Verdict, suggested: Bool) -> some View {

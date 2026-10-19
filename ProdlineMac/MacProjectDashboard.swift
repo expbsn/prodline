@@ -55,13 +55,13 @@ struct MacProjectDashboard: View {
         .background(Theme.background.ignoresSafeArea())
         .ignoresSafeArea(edges: .top)
         .environment(\.accent, accent)
-        .sheet(isPresented: $showEdit) { EditProjectSheet(project: project).macSheet(width: 520, height: 720) }
-        .sheet(isPresented: $showShare) { ShareCardSheet(project: project).macSheet(width: 460, height: 780) }
-        .sheet(isPresented: $showConnection) { ConnectionSheet(project: project).macSheet(width: 520, height: 720) }
+        .sheet(isPresented: $showEdit) { EditProjectSheet(project: project).macSheet(width: 820, height: 620) }
+        .sheet(isPresented: $showShare) { ShareCardSheet(project: project).macSheet(width: 760, height: 640) }
+        .sheet(isPresented: $showConnection) { ConnectionSheet(project: project).macSheet(width: 860, height: 640) }
         .sheet(isPresented: $showCriteria) { CriteriaSheet(project: project).macSheet(width: 480, height: 640) }
-        .sheet(isPresented: $showVerdict) { VerdictSheet(project: project).macSheet(width: 480, height: 720) }
+        .sheet(isPresented: $showVerdict) { VerdictSheet(project: project).macSheet(width: 900, height: 640) }
         .sheet(isPresented: Binding(get: { checkpointSheet != nil }, set: { if !$0 { checkpointSheet = nil } })) {
-            if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m).macSheet(width: 480, height: 640) }
+            if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m).macSheet(width: 820, height: 600) }
         }
         .sheet(isPresented: $pickingIntegration) {
             IntegrationPicker(connected: Set(project.integrations.map(\.kind))) { kind in

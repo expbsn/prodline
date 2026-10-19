@@ -94,6 +94,12 @@ enum MacDemo {
             if let p = projects.first {
                 write(IntegrationEditor(project: p, integration: Integration(kind: .plausible), isNew: true).environment(\.wideLayout, true).frame(height: 600), "-editor.png", width: 860, scheme: scheme)
             }
+            if let p = projects.first(where: { $0.name == "Pixel Quest" }) {
+                write(VerdictSheet(project: p).environment(\.wideLayout, true).frame(height: 640), "-verdict.png", width: 900, scheme: scheme)
+                write(EditProjectSheet(project: p).environment(\.wideLayout, true).frame(height: 620), "-edit.png", width: 820, scheme: scheme)
+                write(ShareCardSheet(project: p).environment(\.wideLayout, true).frame(height: 640), "-share.png", width: 760, scheme: scheme)
+                write(ConnectionSheet(project: p).environment(\.wideLayout, true).frame(height: 640), "-connection.png", width: 860, scheme: scheme)
+            }
             write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
             write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)
         }

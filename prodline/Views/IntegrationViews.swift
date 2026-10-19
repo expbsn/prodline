@@ -40,9 +40,15 @@ struct IntegrationsSection: View {
                     editing = Integration(kind: kind)
                 }
             }
+            #if os(macOS)
+            .frame(minWidth: 860, minHeight: 600)
+            #endif
         }
         .sheet(item: $editing) { i in
             IntegrationEditor(project: project, integration: i, isNew: !project.integrations.contains { $0.id == i.id })
+                #if os(macOS)
+                .frame(minWidth: 860, minHeight: 560)
+                #endif
         }
         #if DEBUG
         // -PRODLINE_INTEGRATION tiktok: opens that service's setup right away (demo recordings).
