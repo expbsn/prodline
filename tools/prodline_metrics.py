@@ -46,7 +46,8 @@ def paged(path, token=None, accept="application/vnd.github+json"):
 
 
 def waitlist_signups():
-    """Tester waitlist numbers from the relay (landing page): `signups` plus `signups_from_<ref>` per source.
+    """Landing page numbers from the relay: `signups`/`signups_from_<ref>` (launch emails) and
+    `testflight_clicks`/`testflight_clicks_from_<ref>` (clicks on the TestFlight beta link).
     Empty when the relay can't be reached."""
     headers = {"User-Agent": "prodline-metrics"}
     if os.environ.get("WAITLIST_KEY"):
@@ -54,7 +55,7 @@ def waitlist_signups():
     try:
         with urllib.request.urlopen(urllib.request.Request(WAITLIST, headers=headers), timeout=10) as r:
             body = json.load(r)
-        return [m for m in body.get("metrics", []) if str(m.get("key", "")).startswith("signups")]
+        return [m for m in body.get("metrics", []) if str(m.get("key", "")).startswith(("signups", "testflight_clicks"))]
     except Exception:
         return []
 

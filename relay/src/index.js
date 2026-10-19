@@ -12,7 +12,8 @@
 //   POST   /devices/:dev/start-token {deviceSecret, startToken}      Live Activity push-to-start token
 //   PUT    /schedules                {device, deviceSecret, items}     deadline activities to start later
 //   POST   /waitlist                 {email, website?, source?}         join the tester waitlist (landing page)
-//   GET    /waitlist/metrics         Bearer WAITLIST_KEY (if set)       signups, in the Prodline endpoint format
+//   POST   /waitlist/click           {source?}                          a click on the TestFlight beta link
+//   GET    /waitlist/metrics         Bearer WAITLIST_KEY (if set)       signups and beta clicks, in the Prodline endpoint format
 //   GET    /oauth/:provider/start     ?state=&challenge=                 sign in with TikTok, Instagram or Threads
 //   GET    /oauth/:provider/callback  the provider sends the browser back here; redirects to prodline://oauth/…
 //   POST   /oauth/handoff             {state, verifier}                  the tokens, once (then they're gone)
@@ -27,6 +28,7 @@
 //                                hook:<id>   → {secret, devices: [ids]}
 //                                wait:<sha256(email)> → {email, at, source};  waitcount → number;
 //                                waitsrc:<source> → number (signups per ?ref= tag)
+//                                betaclicks → number; betasrc:<source> → number (TestFlight link clicks)
 //                                oauth:<state> → {provider, challenge, tokens?}  (10 min, deleted on handoff)
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
 // A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
@@ -409,6 +411,16 @@ async function waitlist(request, env, parts, method) {
     return (json({ ok: true, count }));
   }
 
+  // A click on "Join the TestFlight beta" (sent with sendBeacon on the way out). Only a count per ?ref= tag.
+  if (method === "POST" && parts.length === 2 && parts[1] === "click") {
+    const body = await readJSON(request);
+    const source = waitSource(body.source);
+    await env.RELAY.put("betaclicks", String(Number(await env.RELAY.get("betaclicks") ?? 0) + 1));
+    const srcKey = `betasrc:${source}`;
+    await env.RELAY.put(srcKey, String(Number(await env.RELAY.get(srcKey) ?? 0) + 1));
+    return json({ ok: true });
+  }
+
   if (method === "GET" && parts.length === 2 && parts[1] === "metrics") {
     if (env.WAITLIST_KEY) {
       const auth = request.headers.get("authorization") ?? "";
@@ -420,6 +432,12 @@ async function waitlist(request, env, parts, method) {
     const { keys } = await env.RELAY.list({ prefix: "waitsrc:" });
     for (const { name } of keys) {
       metrics.push({ key: `signups_from_${name.slice("waitsrc:".length)}`, value: Number(await env.RELAY.get(name) ?? 0) });
+    }
+    // TestFlight beta clicks, in total and per ?ref= source
+    metrics.push({ key: "testflight_clicks", value: Number(await env.RELAY.get("betaclicks") ?? 0) });
+    const clicks = await env.RELAY.list({ prefix: "betasrc:" });
+    for (const { name } of clicks.keys) {
+      metrics.push({ key: `testflight_clicks_from_${name.slice("betasrc:".length)}`, value: Number(await env.RELAY.get(name) ?? 0) });
     }
     return (json({ schemaVersion: 1, project: "Prodline", asOf: new Date().toISOString(), metrics }));
   }

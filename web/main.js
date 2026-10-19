@@ -1,4 +1,4 @@
-// Prodline landing page: reveals on scroll, hand-drawn lines, the waitlist form.
+// Prodline landing page: reveals on scroll, hand-drawn lines, the TestFlight link and the launch email form.
 
 const RELAY = "https://api.prodline.build";
 
@@ -285,7 +285,7 @@ if (join && join.querySelector(".join-draw")) {
   const trail = svg.querySelector(".t-out");
   const reveal = svg.querySelector(".r-out");
   const art = join.querySelector(".join-art");
-  const button = join.querySelector(".waitlist .btn");
+  const button = join.querySelector(".tf");
   const place = () => {
     const box = join.getBoundingClientRect(), a = art.getBoundingClientRect(), b = button.getBoundingClientRect();
     if (!a.width) return;                                   // phones: no room, the drawing is hidden
@@ -309,7 +309,7 @@ if (join && join.querySelector(".join-draw")) {
   new IntersectionObserver(([e], o) => {
     if (!e.isIntersecting) return;
     o.disconnect();
-    setTimeout(() => join.classList.add("arrived"), 3700);   // the dots reach the button
+    setTimeout(() => join.classList.add("arrived"), 3700);   // the dots reach the TestFlight button
   }, { threshold: 0.35 }).observe(join);
   addEventListener("resize", place);
   document.fonts?.ready.then(place);
@@ -317,6 +317,11 @@ if (join && join.querySelector(".join-draw")) {
 }
 
 // Waitlist
+// TestFlight beta links: count the click (per ?ref= tag, no cookies) on the way out.
+document.querySelectorAll("[data-beta]").forEach((a) => a.addEventListener("click", () => {
+  try { navigator.sendBeacon(`${RELAY}/waitlist/click`, JSON.stringify({ source })); } catch {}
+}));
+
 const form = document.getElementById("waitlist");
 const note = document.getElementById("form-note");
 const button = form?.querySelector("button");
@@ -342,13 +347,13 @@ form?.addEventListener("submit", async (e) => {
     if (!r.ok) throw new Error(String(r.status));
     const body = await r.json();
     note.className = "fine ok";
-    note.textContent = body.already ? "You're already on the list. We haven't forgotten you." : "You're on the list. Keep that project warm.";
+    note.textContent = body.already ? "You're already on the list." : "Got it. One email when it's on the App Store.";
     button.textContent = "Done";
     form.email.value = "";
   } catch {
     note.className = "fine err";
     note.textContent = "Couldn't reach the list. Try again in a moment.";
     button.disabled = false;
-    button.textContent = "Join";
+    button.textContent = "Notify me";
   }
 });

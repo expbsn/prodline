@@ -433,8 +433,17 @@ h3 { font-size: 22px; font-weight: 600; line-height: 1.1; letter-spacing: -.01em
 .jd-reveal { stroke: #fff; stroke-dasharray: var(--L, 1); stroke-dashoffset: var(--L, 1); }
 .r-out { transition: stroke-dashoffset 1.5s cubic-bezier(.45,0,.55,1) 2.2s; }
 .join.in .jd-reveal { stroke-dashoffset: 0; }
-.join .waitlist .btn { transition: transform .15s cubic-bezier(.3,1.6,.5,1), background .2s, box-shadow .4s; }
-.join.arrived .waitlist .btn { box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 0 40px rgba(255,255,255,.35); }
+.join .tf { margin-top: 30px; height: 58px; padding: 0 26px; font-size: 17px; transition: transform .15s cubic-bezier(.3,1.6,.5,1), background .2s, box-shadow .4s; }
+.join .tf span { margin-left: 4px; transition: transform .2s; }
+.join .tf:hover span { transform: translateX(3px); }
+.join.arrived .tf { box-shadow: 0 0 0 6px rgba(255,255,255,.12), 0 0 40px rgba(255,255,255,.35); }
+/* the launch email: a quieter second option under the TestFlight button */
+.launch-mail { margin-top: 40px; padding-top: 26px; border-top: 1px solid var(--border); max-width: 460px; }
+.launch-label { margin: 0; font: 500 15px/1.45 var(--ui); color: var(--muted, var(--faint)); }
+.launch-mail .waitlist { margin-top: 14px; }
+.launch-mail .waitlist input[type=email] { height: 46px; font-size: 15px; }
+.launch-mail .waitlist .btn { height: 46px; padding: 0 18px; font-size: 14px; background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+.launch-mail .waitlist .btn:hover { background: rgba(255,255,255,.06); }
 .waitlist { display: flex; gap: 10px; max-width: 460px; margin-top: 32px; }
 .waitlist input[type=email] {
   flex: 1;

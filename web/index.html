@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Prodline · Ship your side projects</title>
-  <meta name="description" content="Prodline turns side projects into short plans, daily ticks and real numbers. Join the iPhone beta.">
+  <meta name="description" content="Prodline turns side projects into short plans, daily ticks and real numbers. The iPhone beta is open on TestFlight.">
   <meta name="theme-color" content="#07080B">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Prodline · Ship your side projects">
   <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
   <link rel="icon" href="mark.svg" type="image/svg+xml">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="style.css?v=47">
-  <script type="module" src="main.js?v=49"></script>
+  <link rel="stylesheet" href="style.css?v=48">
+  <script type="module" src="main.js?v=50"></script>
 </head>
 <body>
   <header class="nav" id="top">
@@ -27,7 +27,7 @@
       <a href="docs.html">Docs</a>
       <a href="faq.html">FAQ</a>
     </nav>
-    <a class="btn light small" href="#join">Join the beta</a>
+    <a class="btn light small" href="https://testflight.apple.com/join/QjY366XF" data-beta>Join the beta</a>
   </header>
 
   <main>
@@ -49,8 +49,8 @@
         <h1 id="h-top" class="up" style="--d:.25s">Watch your projects<br>take off.</h1>
         <p class="lede up" style="--d:.38s">Short plans, one tick a day, and the numbers that prove it worked. Prodline gets your side projects out of the drawer and into the air.</p>
         <div class="cta-row up" style="--d:.5s">
-          <a class="btn light" href="#join">Join the beta</a>
-          <a class="btn store" href="#join" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a>
+          <a class="btn light" href="https://testflight.apple.com/join/QjY366XF" data-beta>Join the beta</a>
+          <a class="btn store" href="#join" aria-disabled="true" title="Prodline is in beta on TestFlight. The App Store version is coming."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a>
         </div>
       </div>
       <a class="scroll-cue up" href="#how" style="--d:.8s"><span class="cue-dots" aria-hidden="true"><i></i><i></i><i></i></span>How it works</a>
@@ -229,18 +229,22 @@
         <div class="join-copy">
           <p class="eyebrow">Beta · iPhone</p>
           <h2>Get it out<br>of the drawer.</h2>
-          <p class="lede">We're letting testers in batches. Leave your email and we'll send a TestFlight invite when your spot opens.</p>
-          <form id="waitlist" class="waitlist" novalidate>
-            <label class="sr" for="email">Email</label>
-            <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required>
-            <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
-            <button class="btn light" type="submit">Join</button>
-          </form>
-          <p class="fine" id="form-note" aria-live="polite">Only used for the beta invite. No newsletter, no spam. <a href="privacy.html">Privacy</a></p>
-          <div class="store-row"><a class="btn store" href="faq.html" aria-disabled="true" title="Prodline is in beta. Join the waitlist for a TestFlight invite."><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3"/></svg><span><small>Coming soon</small>on the App Store</span></a></div>
+          <p class="lede">The beta is open. Tap the button on your iPhone, install TestFlight if you don't have it, and you're in. Free while it's in beta.</p>
+          <a class="btn light tf" href="https://testflight.apple.com/join/QjY366XF" data-beta>Join the TestFlight beta <span aria-hidden="true">→</span></a>
+          <p class="fine">Opens Apple's TestFlight. Needs iOS 26.</p>
+          <div class="launch-mail">
+            <p class="launch-label">Not on your iPhone right now? Get one email when it's on the App Store.</p>
+            <form id="waitlist" class="waitlist" novalidate>
+              <label class="sr" for="email">Email</label>
+              <input id="email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" required>
+              <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+              <button class="btn" type="submit">Notify me</button>
+            </form>
+            <p class="fine" id="form-note" aria-live="polite">One email at launch, nothing else. <a href="privacy.html">Privacy</a></p>
+          </div>
         </div>
         <div class="join-art" aria-hidden="true"></div>
-        <!-- One line: the logo's left dots, the P drawn bar → bowl → stem, its bottom dots, then on to the Join button. -->
+        <!-- One line: the logo's left dots, the P drawn bar → bowl → stem, its bottom dots, then on to the TestFlight button. -->
         <svg class="join-draw" aria-hidden="true">
           <defs><mask id="jd-out-mask" maskUnits="userSpaceOnUse"><path class="jd-reveal r-out"/></mask></defs>
           <g class="jd-logo">

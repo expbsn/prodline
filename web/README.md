@@ -6,9 +6,11 @@ subset to Latin as `fonts/AfacadFlux.woff2` (SIL Open Font License), and `mark.s
 Dark and greyscale; the color comes from the header photo and the real app screens in `shots/` (simulator, `-PRODLINE_DEMO YES`,
 status bar set to 9:41 with `xcrun simctl status_bar`). Sections
 blur in on scroll and the hand-drawn lines draw themselves (`[data-reveal]`, `.draw`). Bump the `?v=` on the
-CSS/JS links in `index.html` after changing them. The waitlist form posts to the relay
-(`POST /waitlist`, see `relay/src/index.js`); `GET /waitlist/metrics` reports `signups`, which
-`tools/prodline_metrics.py` adds to Prodline's own metrics feed.
+CSS/JS links in `index.html` after changing them. "Join the beta" buttons (`[data-beta]`) go straight to the
+public TestFlight link (https://testflight.apple.com/join/QjY366XF); main.js counts each click with a beacon to
+`POST /waitlist/click`. The launch email form under it posts to `POST /waitlist`. `GET /waitlist/metrics`
+reports `signups` and `testflight_clicks` (plus `_from_<ref>` per source), which `tools/prodline_metrics.py`
+adds to Prodline's own metrics feed.
 
 ```bash
 python3 -m http.server 8790 --directory web   # local preview

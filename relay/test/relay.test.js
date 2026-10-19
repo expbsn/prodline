@@ -186,7 +186,7 @@ test("waitlist: signs up once, ignores bots, reports signups", async () => {
   r = await route(req("/waitlist", "OPTIONS"), env);
   assert.equal(r.status, 204);
   r = await route(new Request(BASE + "/waitlist/metrics"), env);
-  assert.deepEqual((await r.json()).metrics, [{ key: "signups", value: 1 }, { key: "signups_from_direct", value: 1 }]);
+  assert.deepEqual((await r.json()).metrics, [{ key: "signups", value: 1 }, { key: "signups_from_direct", value: 1 }, { key: "testflight_clicks", value: 0 }]);
   const locked = { ...env, WAITLIST_KEY: "k".repeat(20) };
   r = await route(new Request(BASE + "/waitlist/metrics"), locked);
   assert.equal(r.status, 401);
@@ -294,6 +294,19 @@ test("TikTok refresh uses the client secret", async () => {
   assert.equal((await r.json()).access, "at2");
   assert.match(calls[0][1], /grant_type=refresh_token/);
   assert.match(calls[0][1], /client_secret=cs/);
+});
+
+test("beta link clicks are counted per source and reported", async () => {
+  const env = { RELAY: kv() };
+  for (const source of ["reddit", "reddit", ""]) {
+    const r = await route(new Request(`${BASE}/waitlist/click`, { method: "POST", body: JSON.stringify({ source }) }), env);
+    assert.equal(r.status, 200);
+  }
+  const m = (await (await route(new Request(`${BASE}/waitlist/metrics`), env)).json()).metrics;
+  const v = (k) => m.find((x) => x.key === k)?.value;
+  assert.equal(v("testflight_clicks"), 3);
+  assert.equal(v("testflight_clicks_from_reddit"), 2);
+  assert.equal(v("testflight_clicks_from_direct"), 1);
 });
 
 test("Meta data deletion and deauthorize check the signature", async () => {
