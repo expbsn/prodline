@@ -25,8 +25,11 @@ Live at https://prodline.build (domain registered with Cloudflare). www.prodline
 - License Agreement (App Store Connect → App Information): leave it on Apple's standard EULA; the terms page builds on it. A link to it is only required once the app sells auto-renewable subscriptions.
 - Marketing URL: https://prodline.build/
 - Support contact (FAQ, privacy page, footer, in-app feedback): `info@prodline.build`. Press and business: `inquiries@prodline.build`. Both forward to exp.bsn@gmail.com (Cloudflare Email Routing).
-- The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
-  "Download on the App Store" badge (unmodified, from Apple's marketing tools) linking to the product page.
+- The "Coming soon on the App Store" button is our own: Apple's badge may only be used once the app can be
+  downloaded (or the separate "Pre-order" badge during a pre-order). At launch, replace both `.btn.store`
+  links in index.html with `img/app-store-badge.svg` (Apple's black US/UK badge, unmodified) linking to the
+  product page: at least 40 px tall, clear space of a quarter of its height, not the dominant element.
+  Apple asks for one badge per layout, so keep the one in the header and drop the one in the join card.
 
 ## Where signups come from
 

@@ -104,14 +104,15 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .youtube: ("Logo-youtube", false)
         case .bluesky: ("Logo-bluesky", false)
         case .tiktok: ("Logo-tiktok", true)
-        case .instagram: ("Logo-instagram", false)
+        case .instagram: ("Logo-instagram", true)
+        case .shopify: ("Logo-shopify", false)
         default: nil
         }
     }
 
-    /// The tile behind a wordmark or icon. YouTube's icon and Instagram's glyph keep their own colors, so
-    /// they sit on white (Meta doesn't allow recoloring the glyph or boxing it in a color).
-    var logoBackgroundHex: Int { self == .youtube || self == .instagram ? 0xFFFFFF : colorHex }
+    /// The tile behind a wordmark or icon. YouTube's icon and Shopify's bag keep their own colors, so they
+    /// sit on white.
+    var logoBackgroundHex: Int { self == .youtube || self == .shopify ? 0xFFFFFF : colorHex }
 
     /// Where a YouTube or Bluesky mark links to, as their guidelines ask.
     func profileURL(_ i: Integration?) -> URL? {

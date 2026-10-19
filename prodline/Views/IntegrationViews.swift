@@ -84,7 +84,12 @@ struct IntegrationIcon: View {
 
     var body: some View {
         let accent = Accent(hex: kind.colorHex)
-        if let logo = kind.logo, logo.isIcon {
+        if kind == .instagram, let logo = kind.logo {
+            // The glyph is its own tile: full size, unmodified, white inside its outline.
+            Image(logo.asset).resizable().scaledToFit()
+                .frame(width: size, height: size)
+                .background(RoundedRectangle(cornerRadius: size * 0.28, style: .continuous).fill(.white).padding(size * 0.05))
+        } else if let logo = kind.logo, logo.isIcon {
             Image(logo.asset).resizable().scaledToFit()
                 .frame(width: size, height: size)
                 // TikTok's icon comes square; the same rounding as every other tile.
@@ -99,7 +104,7 @@ struct IntegrationIcon: View {
                 }
                 .overlay {
                     if let logo = kind.logo {
-                        Image(logo.asset).resizable().scaledToFit().frame(width: size * (kind == .youtube ? 0.62 : kind == .instagram ? 0.56 : 0.7))
+                        Image(logo.asset).resizable().scaledToFit().frame(width: size * (kind == .youtube ? 0.62 : kind == .shopify ? 0.58 : 0.7))
                     } else {
                         Image(systemName: kind.symbol).font(.system(size: size * 0.42, weight: .semibold)).foregroundStyle(accent.on)
                     }
