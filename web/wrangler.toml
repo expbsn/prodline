@@ -1,7 +1,16 @@
 # The landing page as static assets on Cloudflare (Workers static assets; deploy with ./deploy.sh).
+# worker.js only sends www and the workers.dev address on to https://prodline.build.
 name = "prodline-site"
+main = "worker.js"
 compatibility_date = "2026-09-01"
+workers_dev = true
+routes = [
+  { pattern = "prodline.build", custom_domain = true },
+  { pattern = "www.prodline.build", custom_domain = true },
+]
 
 [assets]
 directory = "../build/site"
+binding = "ASSETS"
 html_handling = "auto-trailing-slash"
+run_worker_first = true

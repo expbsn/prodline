@@ -17,13 +17,13 @@ python3 -m http.server 8790 --directory web   # local preview
 
 ## App Store Connect
 
-Live at https://prodline-site.prodline-relay.workers.dev until a domain is connected.
+Live at https://prodline.build (domain registered with Cloudflare). www.prodline.build and the old prodline-site.prodline-relay.workers.dev address redirect there (`worker.js`).
 
-- Support URL: https://prodline-site.prodline-relay.workers.dev/faq (FAQ + contact)
-- Privacy Policy URL: https://prodline-site.prodline-relay.workers.dev/privacy
-- Terms of service: https://prodline-site.prodline-relay.workers.dev/terms (also the Terms of Service URL for the TikTok and Meta developer apps)
+- Support URL: https://prodline.build/faq (FAQ + contact)
+- Privacy Policy URL: https://prodline.build/privacy
+- Terms of service: https://prodline.build/terms (also the Terms of Service URL for the TikTok and Meta developer apps)
 - License Agreement (App Store Connect → App Information): leave it on Apple's standard EULA; the terms page builds on it. A link to it is only required once the app sells auto-renewable subscriptions.
-- Marketing URL: https://prodline-site.prodline-relay.workers.dev/
+- Marketing URL: https://prodline.build/
 - Support contact (FAQ, privacy page, footer): `exp.bsn@gmail.com`.
 - The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
   "Download on the App Store" badge (unmodified, from Apple's marketing tools) linking to the product page.
