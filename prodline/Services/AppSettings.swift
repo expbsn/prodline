@@ -40,7 +40,7 @@ enum AppSettings {
     /// Push notifications for goals, checkpoints and the streak when they happen with the app closed.
     nonisolated static var cheers: Bool { bool(Key.cheers, true) }
     /// Prodline's own relay (relay/ in the repo), used unless another address is set.
-    nonisolated static let defaultRelayURL = "https://prodline-relay.prodline-relay.workers.dev"
+    nonisolated static let defaultRelayURL = "https://api.prodline.build"
     /// The relay for instant updates; "off" turns the feature off.
     nonisolated static var relayURL: URL? {
         var s = (UserDefaults.standard.string(forKey: Key.relayURL) ?? "").trimmingCharacters(in: .whitespaces)

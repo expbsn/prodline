@@ -1,6 +1,11 @@
 name = "prodline-relay"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+# api.prodline.build is the address the app and site use. The workers.dev address stays on for builds
+# and GitHub webhooks that were set up with it.
+workers_dev = true
+preview_urls = false
+routes = [{ pattern = "api.prodline.build", custom_domain = true }]
 
 [vars]
 APNS_TOPIC = "expbsn.app.prodline"

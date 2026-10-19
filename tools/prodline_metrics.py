@@ -23,7 +23,7 @@ from collections import Counter
 from datetime import datetime, timedelta, timezone
 
 API = "https://api.github.com"
-WAITLIST = "https://prodline-relay.prodline-relay.workers.dev/waitlist/metrics"
+WAITLIST = "https://api.prodline.build/waitlist/metrics"
 
 
 def get(path, token=None, accept="application/vnd.github+json"):

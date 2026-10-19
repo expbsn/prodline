@@ -36,7 +36,8 @@ Point the simulator at it: Me → Configuration → Relay → `http://127.0.0.1:
    npx wrangler secret put APNS_KEY_ID
    npx wrangler secret put APNS_TEAM_ID
    ```
-4. `npm run deploy`. It prints `https://prodline-relay.<you>.workers.dev`; check `/health`.
+4. `npm run deploy`. It serves at `https://api.prodline.build` (custom domain in `wrangler.toml`) and the
+   old `https://prodline-relay.prodline-relay.workers.dev`; check `/health`.
 5. In the app: Me → Configuration → Relay → that address. Then each project's Connection screen shows the
    webhook to add to its repo.
 
@@ -60,7 +61,7 @@ answers 503 and the app says the sign-in isn't available yet.
 
 **TikTok** — developers.tiktok.com → Manage apps → Connect an app.
 - Add the products **Login Kit**, then scopes `user.info.basic`, `user.info.stats`, `video.list`.
-- Login Kit → Web → redirect URI `https://prodline-relay.prodline-relay.workers.dev/oauth/tiktok/callback`.
+- Login Kit → Web → redirect URI `https://api.prodline.build/oauth/tiktok/callback`.
 - Until the app passes review, only accounts added as target users (Sandbox) can sign in.
 - `npx wrangler secret put TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`.
 
@@ -68,7 +69,7 @@ answers 503 and the app says the sign-in isn't available yet.
 Instagram" → API setup with Instagram login.
 - Permissions `instagram_business_basic`, `instagram_business_manage_insights`.
 - Business login settings → OAuth redirect URI
-  `https://prodline-relay.prodline-relay.workers.dev/oauth/instagram/callback`.
+  `https://api.prodline.build/oauth/instagram/callback`.
 - In development mode only Instagram testers (App roles) can sign in; their accounts must be Creator or
   Business accounts.
 - `npx wrangler secret put INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` (the *Instagram* app ID and
@@ -77,7 +78,7 @@ Instagram" → API setup with Instagram login.
 **Threads** — same Meta app (or a new one) → add the use case "Access the Threads API".
 - Permissions `threads_basic`, `threads_manage_insights`.
 - Settings → Redirect callback URL
-  `https://prodline-relay.prodline-relay.workers.dev/oauth/threads/callback`.
+  `https://api.prodline.build/oauth/threads/callback`.
 - Testers: App roles → Threads testers, then accept the invite in Threads → Settings → Account →
   Website permissions.
 - `npx wrangler secret put THREADS_APP_ID` and `THREADS_APP_SECRET`.

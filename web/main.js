@@ -1,6 +1,6 @@
 // Prodline landing page: reveals on scroll, hand-drawn lines, the waitlist form.
 
-const RELAY = "https://prodline-relay.prodline-relay.workers.dev";
+const RELAY = "https://api.prodline.build";
 
 // Where a visitor came from: the ?ref= tag of the link they followed (prodline.build/?ref=sideproject),
 // kept for the visit so it survives a detour through the docs or FAQ. Sent along with a waitlist signup.
