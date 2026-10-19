@@ -39,6 +39,9 @@ struct ProdlineMacApp: App {
                 .environment(refresher)
                 .environment(github)
                 .environment(celebration)
+                .environment(\.wideLayout, true)
+                // Buttons without their own style are our flat ones, not the system's grey bezels.
+                .buttonStyle(.plain)
                 .preferredColorScheme(scheme)
         }
         .modelContainer(Self.container)
@@ -58,8 +61,7 @@ struct ProdlineMacApp: App {
                 .environment(celebration)
                 .preferredColorScheme(scheme)
         } label: {
-            MenuBarLabel()
-                .modelContainer(Self.container)
+            Image(nsImage: MenuBarLogo.image)
         }
         .menuBarExtraStyle(.window)
     }

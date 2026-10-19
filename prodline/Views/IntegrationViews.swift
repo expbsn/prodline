@@ -119,8 +119,54 @@ struct IntegrationPicker: View {
     let connected: Set<IntegrationKind>
     var onPick: (IntegrationKind) -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.wideLayout) private var wide
+    @State private var search = ""
 
     var body: some View {
+        if wide { wideBody } else { phoneBody }
+    }
+
+    /// Mac: a search field and every service as a tile, grouped, three or four to a row.
+    private var wideBody: some View {
+        let q = search.trimmingCharacters(in: .whitespaces).lowercased()
+        return VStack(spacing: 0) {
+            HStack(spacing: 14) {
+                Text("Add integration").display(26, 750).foregroundStyle(Theme.ink)
+                Spacer()
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.secondary)
+                    TextField("", text: $search, prompt: Text("Search").foregroundStyle(Theme.tertiary))
+                        .textFieldStyle(.plain).font(.ui(14, .medium))
+                }
+                .padding(.horizontal, 12).frame(width: 220, height: 36)
+                .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.card))
+                .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Theme.line, lineWidth: 1.5))
+                CircleIconButton(systemName: "xmark") { dismiss() }
+            }
+            .padding(24)
+            MacScroll {
+                VStack(alignment: .leading, spacing: 24) {
+                    ForEach(IntegrationKind.Group.allCases, id: \.self) { group in
+                        let kinds = IntegrationKind.allCases.filter {
+                            $0.group == group && $0.isAvailable && (q.isEmpty || $0.title.lowercased().contains(q) || $0.provides.lowercased().contains(q))
+                        }
+                        if !kinds.isEmpty {
+                            VStack(alignment: .leading, spacing: 12) {
+                                Text(group.rawValue).eyebrow()
+                                LazyVGrid(columns: [GridItem(.adaptive(minimum: 200), spacing: 12)], spacing: 12) {
+                                    ForEach(kinds) { kind in IntegrationTile(kind: kind, connected: connected.contains(kind)) { onPick(kind) } }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, 24).padding(.bottom, 28)
+            }
+        }
+        .background(Theme.background.ignoresSafeArea())
+    }
+
+    private var phoneBody: some View {
         VStack(spacing: 0) {
             HStack {
                 Text("Add integration").display(26, 750).foregroundStyle(Theme.ink)
@@ -156,6 +202,45 @@ struct IntegrationPicker: View {
             }
         }
         .background(Theme.background.ignoresSafeArea())
+    }
+}
+
+/// One service in the Mac picker: logo, name and what it brings in; lifts on hover.
+struct IntegrationTile: View {
+    let kind: IntegrationKind
+    let connected: Bool
+    var action: () -> Void
+    @State private var hover = false
+
+    var body: some View {
+        Button {
+            Haptics.select()
+            action()
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                IntegrationIcon(kind: kind, size: 40)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 6) {
+                        Text(kind.title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                        if connected {
+                            Image(systemName: "checkmark.circle.fill").font(.system(size: 13)).foregroundStyle(Theme.success)
+                        }
+                    }
+                    Text(kind.provides).font(.ui(12)).foregroundStyle(Theme.secondary).lineLimit(2, reservesSpace: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(Theme.card))
+            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(hover ? Theme.ink.opacity(0.25) : .clear, lineWidth: 1.5))
+            .shadow(color: .black.opacity(hover ? 0.1 : 0.04), radius: hover ? 16 : 10, y: hover ? 6 : 3)
+            .offset(y: hover ? -2 : 0)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressableStyle(scale: 0.97))
+        .onHover { h in
+            withAnimation(.spring(response: 0.3, dampingFraction: 0.75)) { hover = h }
+        }
     }
 }
 
@@ -200,10 +285,102 @@ struct IntegrationEditor: View {
         _secret = State(initialValue: Keychain.get(integration.keychainAccount) ?? "")
     }
 
+    @Environment(\.wideLayout) private var wide
+
     private var kind: IntegrationKind { integration.kind }
     private var canSave: Bool { integration.isComplete && (!kind.needsSecret || !secret.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) }
 
     var body: some View {
+        Group {
+            if wide { wideBody } else { phoneBody }
+        }
+        .background(Theme.background.ignoresSafeArea())
+        .environment(\.accent, project.accent)
+        .fileImporter(isPresented: $importing, allowedContentTypes: [.data, .text, .item]) { result in
+            guard case .success(let url) = result else { return }
+            let scoped = url.startAccessingSecurityScopedResource()
+            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+            if let text = try? String(contentsOf: url, encoding: .utf8) { secret = text }
+        }
+        .confirmationDialog("Remove \(kind.title)?", isPresented: $confirmRemove, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) { remove() }
+        } message: {
+            Text("Numbers it already brought in stay in the history.")
+        }
+    }
+
+    private func editorHeader(close: Bool) -> some View {
+        HStack(spacing: 12) {
+            if let url = kind.profileURL(integration) {
+                Link(destination: url) { IntegrationIcon(kind: kind, size: 36) }
+            } else {
+                IntegrationIcon(kind: kind, size: 36)
+            }
+            Text(kind.title).display(24, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+            Spacer()
+            if close { CircleIconButton(systemName: "xmark") { dismiss() } }
+        }
+    }
+
+    @ViewBuilder
+    private var formFields: some View {
+        ForEach(kind.fields) { f in
+            VStack(alignment: .leading, spacing: 8) {
+                Text(f.optional ? "\(f.label) · optional" : f.label).eyebrow()
+                TextField("", text: binding(f.key), prompt: Text(verbatim: f.placeholder).foregroundStyle(Theme.tertiary))
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .focused($focus, equals: f.key)
+                    .inputField(focused: focus == f.key)
+            }
+        }
+        if kind.usesSignIn { signInCard } else if kind.needsSecret { secretField }
+        testButton
+        testResult
+    }
+
+    /// Mac: where to find things on the left, what to fill in on the right.
+    private var wideBody: some View {
+        VStack(spacing: 0) {
+            editorHeader(close: false).padding(24)
+            HStack(alignment: .top, spacing: 24) {
+                MacScroll {
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text(kind.provides + (kind.provides.contains("since the start") ? "." : ", counted from the project's start."))
+                            .font(.ui(15)).foregroundStyle(Theme.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        steps
+                    }
+                }
+                .frame(width: 300)
+                MacScroll {
+                    VStack(alignment: .leading, spacing: 18) {
+                        formFields
+                        if !isNew {
+                            Button("Remove \(kind.title)", role: .destructive) { confirmRemove = true }
+                                .buttonStyle(.plain)
+                                .font(.ui(14, .semibold)).foregroundStyle(Theme.danger)
+                                .padding(.top, 4)
+                        }
+                    }
+                    .padding(.bottom, 12)
+                }
+            }
+            .padding(.horizontal, 24)
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .buttonStyle(.chunky(.neutral, height: 44, fullWidth: false))
+                    .keyboardShortcut(.cancelAction)
+                Button(isNew ? "Connect" : "Save") { save() }
+                    .buttonStyle(.chunky(.accent, height: 44, fullWidth: false))
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!canSave)
+            }
+            .padding(24)
+        }
+    }
+
+    private var phoneBody: some View {
         VStack(spacing: 0) {
             HStack(spacing: 12) {
                 // YouTube's and Bluesky's marks link to the channel or profile, as their guidelines ask.
@@ -254,19 +431,6 @@ struct IntegrationEditor: View {
                     .buttonStyle(.chunky)
                     .disabled(!canSave)
             }
-        }
-        .background(Theme.background.ignoresSafeArea())
-        .environment(\.accent, project.accent)
-        .fileImporter(isPresented: $importing, allowedContentTypes: [.data, .text, .item]) { result in
-            guard case .success(let url) = result else { return }
-            let scoped = url.startAccessingSecurityScopedResource()
-            defer { if scoped { url.stopAccessingSecurityScopedResource() } }
-            if let text = try? String(contentsOf: url, encoding: .utf8) { secret = text }
-        }
-        .confirmationDialog("Remove \(kind.title)?", isPresented: $confirmRemove, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) { remove() }
-        } message: {
-            Text("Numbers it already brought in stay in the history.")
         }
     }
 

@@ -10,6 +10,8 @@ extension EnvironmentValues {
     @Entry var accent: Accent = .neutral
     /// False for tabs kept alive in the background.
     @Entry var isActiveTab: Bool = true
+    /// Set by the Mac app: screens and sheets lay out for a wide window instead of a phone.
+    @Entry var wideLayout: Bool = false
 }
 
 extension View {

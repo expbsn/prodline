@@ -21,6 +21,7 @@ private struct ChunkyButtonBody: View {
     let fullWidth: Bool
     @Environment(\.accent) private var accent
     @Environment(\.isEnabled) private var enabled
+    @State private var hover = false
 
     private let depth: CGFloat = 5
 
@@ -48,10 +49,16 @@ private struct ChunkyButtonBody: View {
                     .fill(edge)
                     .offset(y: pressed ? 0 : depth)
             }
-            .offset(y: pressed ? depth : 0)
+            // Mac: the button rises a hair and brightens under the pointer.
+            .brightness(hover && enabled && !pressed ? 0.04 : 0)
+            .offset(y: pressed ? depth : (hover && enabled ? -1.5 : 0))
             .padding(.bottom, depth)
             .animation(.spring(response: 0.16, dampingFraction: 0.62), value: pressed)
+            .animation(.spring(response: 0.25, dampingFraction: 0.7), value: hover)
             .onChange(of: pressed) { _, isDown in if isDown { Haptics.tap() } }
+            #if os(macOS)
+            .onHover { hover = $0 }
+            #endif
     }
 
     private var colors: (Color, Color, Color, Color?) {
@@ -75,10 +82,25 @@ extension ButtonStyle where Self == ChunkyButtonStyle {
 struct PressableStyle: ButtonStyle {
     var scale: CGFloat = 0.97
     func makeBody(configuration: Configuration) -> some View {
+        PressableBody(configuration: configuration, scale: scale)
+    }
+}
+
+private struct PressableBody: View {
+    let configuration: ButtonStyleConfiguration
+    let scale: CGFloat
+    @State private var hover = false
+
+    var body: some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? scale : 1)
+            // Mac: grows a touch under the pointer, as much as it shrinks when pressed, but gentler.
+            .scaleEffect(configuration.isPressed ? scale : (hover ? 1 + (1 - scale) * 0.6 : 1))
             .animation(.spring(response: 0.25, dampingFraction: 0.6), value: configuration.isPressed)
+            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: hover)
             .onChange(of: configuration.isPressed) { _, down in if down { Haptics.soft() } }
+            #if os(macOS)
+            .onHover { hover = $0 }
+            #endif
     }
 }
 

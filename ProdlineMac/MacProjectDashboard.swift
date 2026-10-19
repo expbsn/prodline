@@ -55,13 +55,13 @@ struct MacProjectDashboard: View {
         .background(Theme.background.ignoresSafeArea())
         .ignoresSafeArea(edges: .top)
         .environment(\.accent, accent)
-        .sheet(isPresented: $showEdit) { EditProjectSheet(project: project).frame(width: 480, height: 720) }
-        .sheet(isPresented: $showShare) { ShareCardSheet(project: project).frame(width: 460, height: 780) }
-        .sheet(isPresented: $showConnection) { ConnectionSheet(project: project).frame(width: 520, height: 720) }
-        .sheet(isPresented: $showCriteria) { CriteriaSheet(project: project).frame(width: 480, height: 640) }
-        .sheet(isPresented: $showVerdict) { VerdictSheet(project: project).frame(width: 480, height: 720) }
+        .sheet(isPresented: $showEdit) { EditProjectSheet(project: project).macSheet(width: 520, height: 720) }
+        .sheet(isPresented: $showShare) { ShareCardSheet(project: project).macSheet(width: 460, height: 780) }
+        .sheet(isPresented: $showConnection) { ConnectionSheet(project: project).macSheet(width: 520, height: 720) }
+        .sheet(isPresented: $showCriteria) { CriteriaSheet(project: project).macSheet(width: 480, height: 640) }
+        .sheet(isPresented: $showVerdict) { VerdictSheet(project: project).macSheet(width: 480, height: 720) }
         .sheet(isPresented: Binding(get: { checkpointSheet != nil }, set: { if !$0 { checkpointSheet = nil } })) {
-            if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m).frame(width: 480, height: 640) }
+            if let m = checkpointSheet { CheckpointSheet(project: project, milestone: m).macSheet(width: 480, height: 640) }
         }
         .sheet(isPresented: $pickingIntegration) {
             IntegrationPicker(connected: Set(project.integrations.map(\.kind))) { kind in
@@ -71,11 +71,11 @@ struct MacProjectDashboard: View {
                     editingIntegration = Integration(kind: kind)
                 }
             }
-            .frame(width: 480, height: 680)
+            .macSheet(width: 860, height: 640)
         }
         .sheet(item: $editingIntegration) { i in
             IntegrationEditor(project: project, integration: i, isNew: !project.integrations.contains { $0.id == i.id })
-                .frame(width: 480, height: 720)
+                .macSheet(width: 860, height: 600)
         }
         // Opening a project asks its services for fresh numbers.
         .task(id: project.id) { await refresher.refresh(projects: [project], context: context, force: true) }

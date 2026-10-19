@@ -2,19 +2,6 @@ import SwiftUI
 import SwiftData
 import AppKit
 
-/// The menu bar icon: the flame with today's streak once there is one.
-struct MenuBarLabel: View {
-    @Query private var profiles: [Profile]
-    var body: some View {
-        let streak = profiles.first?.streak ?? 0
-        if streak > 0 {
-            Label("\(streak)", systemImage: "flame.fill").labelStyle(.titleAndIcon)
-        } else {
-            Image(systemName: "flame")
-        }
-    }
-}
-
 /// The menu bar window: the next checkpoint across all projects, its goals to tick, and each active
 /// project's headline number.
 struct MenuBarPanel: View {

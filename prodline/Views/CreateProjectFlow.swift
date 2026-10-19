@@ -11,6 +11,7 @@ struct CreateProjectFlow: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(CelebrationCenter.self) private var celebration
+    @Environment(\.wideLayout) private var wide
     @Query private var projects: [Project]
 
     @State private var step = 0
@@ -44,27 +45,8 @@ struct CreateProjectFlow: View {
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            topBar
-            ScrollView {
-                Group {
-                    switch step {
-                    case 0: basicsStep
-                    case 1: lookStep
-                    case 2: scheduleStep
-                    case 3: connectStep
-                    default: goalsStep
-                    }
-                }
-                .id(step)
-                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
-                                        removal: .move(edge: .leading).combined(with: .opacity)))
-                .padding(.horizontal, 24)
-                .padding(.top, 12)
-                .padding(.bottom, 20)
-            }
-            .scrollDismissesKeyboard(.immediately)
-            .bottomActionBar { bottomBar }
+        Group {
+            if wide { wideBody } else { phoneBody }
         }
         .background(Theme.background.ignoresSafeArea())
         .environment(\.accent, accent)
@@ -88,6 +70,87 @@ struct CreateProjectFlow: View {
         }
     }
 
+    // MARK: Wide (Mac)
+
+    /// The project as it takes shape on the left (the card you're making, editable on the look step),
+    /// the step on the right.
+    private var wideBody: some View {
+        HStack(spacing: 0) {
+            ZStack {
+                Theme.card
+                AccentGlow(accent: accent)
+                VStack(spacing: 22) {
+                    if step == 1 {
+                        CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
+                                        accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                                        footnote: "Building · \(buildDays)d")
+                            .frame(width: 250)
+                    } else {
+                        ProjectCardFace(name: trimmedName.isEmpty ? "Your project" : trimmedName,
+                                        initial: trimmedName.first.map { String($0).uppercased() } ?? "?",
+                                        accent: accent, cover: imageData.flatMap { UIImage(data: $0) },
+                                        cornerLabel: "Starts", cornerValue: startDate.formatted(.dateTime.day()),
+                                        footnote: "Building · \(buildDays)d")
+                            .frame(width: 250, height: 350)
+                            .shadow(color: .black.opacity(0.2), radius: 22, y: 12)
+                    }
+                    Text(step == 1 ? "Drop in a photo or keep the color." : startDate == .now.startOfDay ? "Starts today" : "Starts \(startDate.shortDay)")
+                        .font(.ui(13, .medium)).foregroundStyle(Theme.secondary)
+                }
+                .animation(.spring(response: 0.45, dampingFraction: 0.85), value: step)
+            }
+            .frame(width: 380)
+            .clipped()
+
+            VStack(spacing: 0) {
+                topBar
+                MacScroll {
+                    Group {
+                        switch step {
+                        case 0: basicsStep
+                        case 1: lookStep
+                        case 2: scheduleStep
+                        case 3: connectStep
+                        default: goalsStep
+                        }
+                    }
+                    .id(step)
+                    .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                            removal: .move(edge: .leading).combined(with: .opacity)))
+                    .padding(.horizontal, 32).padding(.top, 12).padding(.bottom, 20)
+                }
+                VStack(spacing: 6) { bottomBar }
+                    .padding(.horizontal, 32).padding(.top, 8).padding(.bottom, 26)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var phoneBody: some View {
+        VStack(spacing: 0) {
+            topBar
+            ScrollView {
+                Group {
+                    switch step {
+                    case 0: basicsStep
+                    case 1: lookStep
+                    case 2: scheduleStep
+                    case 3: connectStep
+                    default: goalsStep
+                    }
+                }
+                .id(step)
+                .transition(.asymmetric(insertion: .move(edge: .trailing).combined(with: .opacity),
+                                        removal: .move(edge: .leading).combined(with: .opacity)))
+                .padding(.horizontal, 24)
+                .padding(.top, 12)
+                .padding(.bottom, 20)
+            }
+            .scrollDismissesKeyboard(.immediately)
+            .bottomActionBar { bottomBar }
+        }
+    }
+
     // MARK: Chrome
 
     private var topBar: some View {
@@ -102,8 +165,8 @@ struct CreateProjectFlow: View {
                     .frame(width: 36, height: 36)
             }
             ChunkyProgressBar(value: Double(step + 1) / Double(steps), height: 14)
-            // Once it has a face, the project rides along in the corner.
-            if step >= 2 {
+            // Once it has a face, the project rides along in the corner (wide: it's on the left already).
+            if step >= 2 && !wide {
                 miniMark.transition(.scale.combined(with: .opacity))
             }
         }
@@ -213,11 +276,13 @@ struct CreateProjectFlow: View {
     private var lookStep: some View {
         VStack(alignment: .leading, spacing: 22) {
             stepTitle("Step 2 of 5", "Give it a face")
-            CardCoverEditor(name: trimmedName, imageData: $imageData, accentHex: $accentHex,
-                            photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                            footnote: "Building · \(buildDays)d")
-                .frame(width: 236)
-                .frame(maxWidth: .infinity)
+            if !wide {
+                CardCoverEditor(name: trimmedName, imageData: $imageData, accentHex: $accentHex,
+                                photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
+                                footnote: "Building · \(buildDays)d")
+                    .frame(width: 236)
+                    .frame(maxWidth: .infinity)
+            }
             AccentSlider(accentHex: $accentHex, locked: $lockedToPhoto, photoHex: photoHex)
         }
     }

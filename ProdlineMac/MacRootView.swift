@@ -80,6 +80,8 @@ struct MacShell: View {
     let profile: Profile
     @Query(sort: \Project.startDate) private var projects: [Project]
     @State private var page: MacPage? = .tab(.projects)
+    /// Always both columns: the sidebar can't be hidden.
+    @State private var columns: NavigationSplitViewVisibility = .all
     @State private var showCreate = false
     @State private var showLimit = false
     @State private var showIdeas = false
@@ -90,9 +92,9 @@ struct MacShell: View {
     private var finishedProjects: [Project] { projects.filter { $0.phase() == .finished }.reversed() }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             sidebar
-                .navigationSplitViewColumnWidth(min: 210, ideal: 236, max: 300)
+                .navigationSplitViewColumnWidth(min: 220, ideal: 240, max: 300)
         } detail: {
             detail
                 .background(Theme.background)
@@ -100,13 +102,15 @@ struct MacShell: View {
         }
         // No toolbar: "New project" lives in the sidebar, and pages reach up to the window's top edge.
         .toolbar(removing: .sidebarToggle)
+        .onChange(of: columns) { if columns != .all { columns = .all } }
+        .onChange(of: page) { Haptics.select() }
         .sheet(isPresented: $showCreate, onDismiss: { startingIdea = nil }) {
             CreateProjectFlow(profile: profile, idea: startingIdea) { newID in
                 page = .project(newID)
             }
-            .frame(width: 460, height: 760)
+            .macSheet(width: 980, height: 680)
         }
-        .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile).frame(width: 460, height: 560) }
+        .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile).macSheet(width: 480, height: 560) }
         .sheet(isPresented: $showIdeas) {
             IdeaInboxSheet(profile: profile) { idea in
                 showIdeas = false
@@ -115,12 +119,12 @@ struct MacShell: View {
                     requestCreate(from: idea)
                 }
             }
-            .frame(width: 460, height: 640)
+            .macSheet(width: 520, height: 640)
         }
         .sheet(isPresented: $showReview) {
             WeeklyReviewView(stats: WeeklyReview.make(projects: projects, profile: profile, weekStart: WeeklyReview.reviewWeekStart()),
                              profile: profile) { showReview = false }
-                .frame(width: 440, height: 820)
+                .macSheet(width: 440, height: 820)
         }
         .onReceive(NotificationCenter.default.publisher(for: WeeklyReview.open)) { _ in showReview = true }
         .onReceive(NotificationCenter.default.publisher(for: .macNewProject)) { _ in requestCreate() }

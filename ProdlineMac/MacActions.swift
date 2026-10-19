@@ -26,6 +26,7 @@ enum MacActions {
 
     static func complete(_ m: Milestone, profile: Profile?, projects: [Project], celebration: CelebrationCenter, context: ModelContext) {
         guard let profile else { return }
+        Haptics.success()
         withAnimation(.spring(response: 0.35, dampingFraction: 0.7)) {
             ScheduleEngine.complete(m, profile: profile, celebration: celebration)
         }

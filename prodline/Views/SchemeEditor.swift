@@ -677,7 +677,7 @@ struct OnboardingView: View {
         .sheet(item: $editing) { i in
             if let draft {
                 IntegrationEditor(project: draft, integration: i, isNew: !draft.integrations.contains { $0.id == i.id }, live: false)
-                    .frame(width: 480, height: 720)
+                    .frame(minWidth: 860, minHeight: 560)
             }
         }
     }
