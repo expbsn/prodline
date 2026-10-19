@@ -21,6 +21,8 @@ Live at https://prodline-site.prodline-relay.workers.dev until a domain is conne
 
 - Support URL: https://prodline-site.prodline-relay.workers.dev/faq (FAQ + contact)
 - Privacy Policy URL: https://prodline-site.prodline-relay.workers.dev/privacy
+- Terms of service: https://prodline-site.prodline-relay.workers.dev/terms (also the Terms of Service URL for the TikTok and Meta developer apps)
+- License Agreement (App Store Connect → App Information): leave it on Apple's standard EULA; the terms page builds on it. A link to it is only required once the app sells auto-renewable subscriptions.
 - Marketing URL: https://prodline-site.prodline-relay.workers.dev/
 - Support contact (FAQ, privacy page, footer): `kianpal731@gmail.com`.
 - The "Coming soon on the App Store" button is our own. Once the app is live, swap in Apple's official
