@@ -72,7 +72,7 @@
     {"id": "home-widget", "title": "Home Screen widgets: project, traction and all projects", "day": 19, "done": true},
     {"id": "live-activity", "title": "Live Activity on deadline days", "day": 19, "done": true},
     {"id": "widget-project-picker", "title": "Let each widget follow a chosen project", "day": 19, "done": true},
-    {"id": "mac-sync", "title": "Sign the Mac app and sync projects over iCloud", "day": 19, "done": false},
+    {"id": "mac-sync", "title": "Sign the Mac app and sync projects over iCloud", "day": 19, "done": true},
     {"id": "lock-screen-widgets", "title": "Lock Screen widgets for the next deadline", "day": 19, "done": true},
     {"id": "widget-goal-toggle", "title": "Tick goals off right from the widget", "day": 19, "done": true},
 
