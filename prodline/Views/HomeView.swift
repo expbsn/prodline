@@ -106,31 +106,7 @@ struct HomeView: View {
     }
 
     /// Sunday evening until watched: this week's review.
-    private var reviewChip: some View {
-        Button {
-            Haptics.select()
-            onReview()
-        } label: {
-            VStack(spacing: -6) {
-                ZStack {
-                    Circle().fill(Theme.card)
-                    Circle().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2.5)
-                    Image(systemName: "play.fill").font(.system(size: 17)).foregroundStyle(Accent.sale.text)
-                }
-                .frame(width: 46, height: 46)
-                Text("Week \(WeeklyReview.calendar.component(.weekOfYear, from: WeeklyReview.reviewWeekStart()))")
-                    .display(11, 800)
-                    .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 8).padding(.vertical, 1)
-                    .background(Capsule().fill(Theme.card))
-                    .overlay(Capsule().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2))
-                    .fixedSize()
-            }
-            .shadow(color: Color(hex: 0xFFC800).opacity(0.45), radius: 10)
-        }
-        .buttonStyle(PressableStyle(scale: 0.92))
-        .accessibilityLabel("Weekly review ready")
-    }
+    private var reviewChip: some View { WeeklyReviewChip(action: onReview) }
 
     /// Beta: feedback to the developer, built exactly like the streak badge next to it.
     private var feedbackChip: some View {
@@ -409,5 +385,37 @@ struct ProjectPanel: View {
             items.append(("bolt.fill", project.hasDataSource ? "Connected" : "Sample"))
         }
         return items
+    }
+}
+
+/// The gold "Week N" chip that says this week's review is ready (Dash on the iPhone, the overview on the Mac).
+struct WeeklyReviewChip: View {
+    var action: () -> Void
+
+    var body: some View {
+        Button {
+            Haptics.select()
+            action()
+        } label: {
+            VStack(spacing: -6) {
+                ZStack {
+                    Circle().fill(Theme.card)
+                    Circle().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2.5)
+                    Image(systemName: "play.fill").font(.system(size: 17)).foregroundStyle(Accent.sale.text)
+                }
+                .frame(width: 46, height: 46)
+                Text("Week \(WeeklyReview.calendar.component(.weekOfYear, from: WeeklyReview.reviewWeekStart()))")
+                    .display(11, 800)
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 8).padding(.vertical, 1)
+                    .background(Capsule().fill(Theme.card))
+                    .overlay(Capsule().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2))
+                    .fixedSize()
+            }
+            .shadow(color: Color(hex: 0xFFC800).opacity(0.45), radius: 10)
+        }
+        .buttonStyle(PressableStyle(scale: 0.92))
+        .accessibilityLabel("Weekly review ready")
+        .help("This week's review is ready")
     }
 }

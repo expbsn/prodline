@@ -83,12 +83,26 @@ struct MacOverview: View {
 
     private var headerButtons: some View {
         HStack(spacing: 10) {
-            // Like on the iPhone: only from Sunday evening until this week's wrap is watched.
+            // Like on the iPhone: only from Sunday evening until the wrap is watched, in the week chip's gold.
             if WeeklyReview.isWaiting() {
-                Button(action: onReview) { Label("Weekly wrap", systemImage: "play.rectangle.fill") }
-                    .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
-                    .environment(\.accent, Accent(hex: 0x5B5BF0))
-                    .transition(.scale.combined(with: .opacity))
+                Button {
+                    Haptics.select()
+                    onReview()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "play.fill").font(.system(size: 13)).foregroundStyle(Accent.sale.text)
+                        Text("Weekly wrap")
+                            .display(15, 700).tracking(1.2).textCase(.uppercase)
+                            .foregroundStyle(Theme.ink)
+                    }
+                    .padding(.horizontal, 18)
+                    .frame(height: 42)
+                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.card))
+                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color(hex: 0xFFC800), lineWidth: 2.5))
+                    .shadow(color: Color(hex: 0xFFC800).opacity(0.45), radius: 10)
+                }
+                .buttonStyle(PressableStyle(scale: 0.95))
+                .transition(.scale.combined(with: .opacity))
             }
             Button(action: onCreate) { Label("New project", systemImage: "plus") }
                 .buttonStyle(.chunky(.accent, height: 42, fullWidth: false))
