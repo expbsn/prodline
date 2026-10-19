@@ -127,7 +127,7 @@ struct IntegrationPicker: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text(group.rawValue).eyebrow()
                             VStack(spacing: 0) {
-                                let kinds = IntegrationKind.allCases.filter { $0.group == group }
+                                let kinds = IntegrationKind.allCases.filter { $0.group == group && $0.isAvailable }
                                 ForEach(kinds) { kind in
                                     Button {
                                         Haptics.select()

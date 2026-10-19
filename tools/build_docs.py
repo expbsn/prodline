@@ -61,13 +61,15 @@ for k, v in cases(block("fields")).items():
         fs.append((unescape(m.group(2)), bool(m.group(4))))
     fields[k] = fs
 
-kinds = list(titles)
+# Built but not offered yet (IntegrationKind.isAvailable).
+HIDDEN = {"threads"}
+kinds = [k for k in titles if k not in HIDDEN]
 GROUPS = [
     ("revenue", "Revenue and stores", ["appStore", "revenueCat", "stripe", "lemonSqueezy", "gumroad", "shopify", "paddle", "polar"]),
     ("analytics", "Analytics", ["plausible", "umami", "fathom", "posthog", "simpleAnalytics"]),
     ("hosting", "Hosting", ["vercel", "netlify"]),
     ("newsletters", "Newsletters", ["kit", "buttondown", "beehiiv"]),
-    ("community", "Launches, packages and social", ["youtube", "tiktok", "instagram", "threads", "productHunt", "hackerNews", "npm", "bluesky"]),
+    ("community", "Launches, packages and social", ["youtube", "tiktok", "instagram", "productHunt", "hackerNews", "npm", "bluesky"]),
 ]
 assert sorted(k for _, _, ks in GROUPS for k in ks) == sorted(kinds), "every integration needs a group"
 
@@ -160,7 +162,7 @@ PAGE = f'''<!doctype html>
       <section id="overview">
         <h2>Three ways in</h2>
         <div class="ways">
-          <a class="way" href="#integrations"><b>Integrations</b><span>26 services for revenue, visits, downloads, deploys, views, subscribers and followers. Paste a key or sign in, done.</span></a>
+          <a class="way" href="#integrations"><b>Integrations</b><span>25 services for revenue, visits, downloads, deploys, views, subscribers and followers. Paste a key or sign in, done.</span></a>
           <a class="way" href="#github"><b>GitHub</b><span>Your plan from <code>prodline.json</code>, goals from issues, commits for your streak. Instant with a webhook.</span></a>
           <a class="way" href="#endpoint"><b>Your own endpoint</b><span>Anything else: return a small JSON file and Prodline polls it.</span></a>
         </div>
@@ -275,7 +277,7 @@ app.get("/api/prodline", (req, res) => {{
         <h2>A seamless setup</h2>
         <ol class="steps">
           <li><b>Start with money.</b> Connect where revenue lands first (Stripe, RevenueCat, App Store Connect…): it's the number that decides keep or let go.</li>
-          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube, TikTok, Instagram, Threads or Bluesky if that's where your audience is.</li>
+          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube, TikTok, Instagram or Bluesky if that's where your audience is.</li>
           <li><b>Link the repo and add <code>prodline.json</code>.</b> Your plan lives next to your code, and commits keep the streak alive without opening the app.</li>
           <li><b>Turn on instant updates.</b> One webhook, and goals tick seconds after you push.</li>
           <li><b>Add the widgets.</b> Long-press the Home Screen → Edit → Add Widget → Prodline. The deadline Live Activity appears on its own in the last four hours before a checkpoint.</li>

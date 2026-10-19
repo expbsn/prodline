@@ -50,7 +50,7 @@
 
       <h2>Keys and connected services</h2>
       <p>When you connect a service such as Stripe, App Store Connect, YouTube or GitHub, the key or token you enter is stored in the iOS Keychain (and your iCloud Keychain if it's on). The app calls each service directly from your iPhone to fetch your numbers or repository data. Those requests are handled under that service's own privacy policy. Prodline doesn't send your keys or the fetched data to any server of ours.</p>
-      <p>TikTok, Instagram and Threads only issue access to a server that holds Prodline's app credentials, so signing in to them goes through Prodline's relay: it receives the sign-in code from the service, exchanges it for read-only tokens, and holds them for at most a few minutes until your iPhone collects them, then deletes them. For TikTok, the relay also renews the token about once a day when your iPhone asks; it passes the new token straight back and doesn't store it. After that, the app talks to these services directly, like the others.</p>
+      <p>TikTok and Instagram only issue access to a server that holds Prodline's app credentials, so signing in to them goes through Prodline's relay: it receives the sign-in code from the service, exchanges it for read-only tokens, and holds them for at most a few minutes until your iPhone collects them, then deletes them. For TikTok, the relay also renews the token about once a day when your iPhone asks; it passes the new token straight back and doesn't store it. After that, the app talks to these services directly, like the others.</p>
 
       <h2>Instant updates relay (optional)</h2>
       <p>If instant updates are on, the app registers with Prodline's relay, which runs on Cloudflare Workers. The relay stores:</p>

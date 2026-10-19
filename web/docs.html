@@ -45,7 +45,7 @@
       <section id="overview">
         <h2>Three ways in</h2>
         <div class="ways">
-          <a class="way" href="#integrations"><b>Integrations</b><span>26 services for revenue, visits, downloads, deploys, views, subscribers and followers. Paste a key or sign in, done.</span></a>
+          <a class="way" href="#integrations"><b>Integrations</b><span>25 services for revenue, visits, downloads, deploys, views, subscribers and followers. Paste a key or sign in, done.</span></a>
           <a class="way" href="#github"><b>GitHub</b><span>Your plan from <code>prodline.json</code>, goals from issues, commits for your streak. Instant with a webhook.</span></a>
           <a class="way" href="#endpoint"><b>Your own endpoint</b><span>Anything else: return a small JSON file and Prodline polls it.</span></a>
         </div>
@@ -237,14 +237,6 @@
             <div><p class="label">Set up</p><ol class="steps"><li>Instagram only shares insights for professional accounts. If yours is personal, switch to Creator or Business in Instagram&#x27;s settings first (free).</li><li>Tap Continue with Instagram and sign in. Prodline only gets read access to your insights.</li><li>Views are Instagram&#x27;s daily account views, which can lag up to two days.</li><li>The sign-in lasts 60 days and renews itself while you use Prodline.</li></ol></div>
           </div>
         </article>
-        <article class="intg-doc" id="threads">
-          <header><h4>Threads</h4><span class="tag">Sign in</span></header>
-          <p class="provides">Views on posts since the start, and followers</p>
-          <div class="intg-cols">
-            <div><p class="label">You'll need</p><ul class="need"><li><b>Your Threads login</b> <span>read-only, kept in your Keychain</span></li></ul></div>
-            <div><p class="label">Set up</p><ol class="steps"><li>Tap Continue with Threads and sign in. Prodline only gets read access to your insights.</li><li>Views add up over posts since the project&#x27;s start. Followers is the account&#x27;s total right now.</li><li>The sign-in lasts 60 days and renews itself while you use Prodline.</li></ol></div>
-          </div>
-        </article>
         <article class="intg-doc" id="product-hunt">
           <header><h4>Product Hunt</h4></header>
           <p class="provides">Upvotes on your launch</p>
@@ -383,7 +375,7 @@ app.get("/api/prodline", (req, res) => {
         <h2>A seamless setup</h2>
         <ol class="steps">
           <li><b>Start with money.</b> Connect where revenue lands first (Stripe, RevenueCat, App Store Connect…): it's the number that decides keep or let go.</li>
-          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube, TikTok, Instagram, Threads or Bluesky if that's where your audience is.</li>
+          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube, TikTok, Instagram or Bluesky if that's where your audience is.</li>
           <li><b>Link the repo and add <code>prodline.json</code>.</b> Your plan lives next to your code, and commits keep the streak alive without opening the app.</li>
           <li><b>Turn on instant updates.</b> One webhook, and goals tick seconds after you push.</li>
           <li><b>Add the widgets.</b> Long-press the Home Screen → Edit → Add Widget → Prodline. The deadline Live Activity appears on its own in the last four hours before a checkpoint.</li>

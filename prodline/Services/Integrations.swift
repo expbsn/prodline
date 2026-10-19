@@ -281,6 +281,9 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
     /// is then the token bundle the sign-in hands back.
     var usesSignIn: Bool { [.tiktok, .instagram, .threads].contains(self) }
 
+    /// Offered in the picker. Threads is built but waits until the Meta app has the Threads API.
+    var isAvailable: Bool { self != .threads }
+
     var secretPlaceholder: String {
         switch self {
         case .appStore: "-----BEGIN PRIVATE KEY-----"

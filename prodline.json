@@ -81,7 +81,7 @@
     {"id": "push-relay", "title": "Webhook relay for instant commit updates", "day": 22, "done": true},
     {"id": "background-push", "title": "Silent push refreshes goals while the app is closed", "day": 22, "done": true},
     {"id": "tiktok-views", "title": "Track TikTok views through the relay's login", "day": 22, "done": true},
-    {"id": "meta-views", "title": "Track Instagram and Threads views through the relay's login", "day": 22, "done": false},
+    {"id": "meta-views", "title": "Track Instagram views through the relay's login", "day": 22, "done": true},
 
     {"id": "app-store-connect", "title": "Pull downloads, proceeds and rating from App Store Connect", "day": 23, "done": true},
     {"id": "revenue-integrations", "title": "Connect RevenueCat, Stripe, Lemon Squeezy and Gumroad", "day": 23, "done": true},
@@ -107,6 +107,7 @@
     {"id": "press-kit", "title": "Put together a press kit with screenshots and logo", "day": 29, "done": false},
     {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": false},
 
-    {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false}
+    {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false},
+    {"id": "threads-views", "title": "Turn on Threads views once the Meta app has the Threads API", "day": 33, "done": false}
   ]
 }
