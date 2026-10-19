@@ -13,6 +13,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
     case appStore, revenueCat, stripe, lemonSqueezy, gumroad, plausible, umami, youtube
     case shopify, paddle, polar, fathom, posthog, simpleAnalytics, vercel, netlify
     case kit, buttondown, beehiiv, npm, hackerNews, productHunt, bluesky
+    case tiktok, instagram, threads
 
     var id: String { rawValue }
 
@@ -28,7 +29,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .plausible, .umami, .fathom, .posthog, .simpleAnalytics: .analytics
         case .vercel, .netlify: .hosting
         case .kit, .buttondown, .beehiiv: .newsletter
-        case .youtube, .hackerNews, .productHunt, .bluesky: .social
+        case .youtube, .tiktok, .instagram, .threads, .hackerNews, .productHunt, .bluesky: .social
         }
     }
 
@@ -57,6 +58,9 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .hackerNews: "Hacker News"
         case .productHunt: "Product Hunt"
         case .bluesky: "Bluesky"
+        case .tiktok: "TikTok"
+        case .instagram: "Instagram"
+        case .threads: "Threads"
         }
     }
 
@@ -85,6 +89,9 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .hackerNews: "y.square.fill"
         case .productHunt: "p.circle.fill"
         case .bluesky: "cloud.fill"
+        case .tiktok: "music.note"
+        case .instagram: "camera.fill"
+        case .threads: "at"
         }
     }
 
@@ -142,6 +149,9 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .hackerNews: 0xFF6600
         case .productHunt: 0xDA552F
         case .bluesky: 0x1185FE
+        case .tiktok: 0x000000
+        case .instagram: 0xE1306C
+        case .threads: 0x000000
         }
     }
 
@@ -171,6 +181,9 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .hackerNews: "Points on Hacker News posts about it"
         case .productHunt: "Upvotes on your launch"
         case .bluesky: "Followers"
+        case .tiktok: "Views on videos posted since the start, and followers"
+        case .instagram: "Views on your content and followers"
+        case .threads: "Views on posts since the start, and followers"
         }
     }
 
@@ -230,6 +243,7 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .hackerNews: [Field(key: "url", label: "Website", placeholder: "yourapp.com")]
         case .productHunt: [Field(key: "slug", label: "Launch", placeholder: "producthunt.com/posts/your-app")]
         case .bluesky: [Field(key: "handle", label: "Handle", placeholder: "you.bsky.social")]
+        case .tiktok, .instagram, .threads: []
         }
     }
 
@@ -255,12 +269,17 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .buttondown: "API key"
         case .beehiiv: "API key"
         case .productHunt: "Developer token"
+        case .tiktok, .instagram, .threads: "Sign-in"
         case .npm, .hackerNews, .bluesky: ""
         }
     }
 
     /// Public sources (npm, Hacker News, Bluesky) work without a key.
     var needsSecret: Bool { ![.npm, .hackerNews, .bluesky].contains(self) }
+
+    /// Connected by signing in through the relay (SocialSignIn) instead of pasting a key. The "secret"
+    /// is then the token bundle the sign-in hands back.
+    var usesSignIn: Bool { [.tiktok, .instagram, .threads].contains(self) }
 
     var secretPlaceholder: String {
         switch self {
@@ -397,6 +416,22 @@ nonisolated enum IntegrationKind: String, Codable, CaseIterable, Identifiable, S
         case .bluesky: [
             "No key needed: Bluesky profiles are public.",
             "Followers is the account's total right now.",
+        ]
+        case .tiktok: [
+            "Tap Continue with TikTok and sign in to the account you post from.",
+            "Prodline only gets read access to your profile stats and video list. It can't post or change anything.",
+            "Views add up over videos posted since the project's start. Followers is the account's total right now.",
+        ]
+        case .instagram: [
+            "Instagram only shares insights for professional accounts. If yours is personal, switch to Creator or Business in Instagram's settings first (free).",
+            "Tap Continue with Instagram and sign in. Prodline only gets read access to your insights.",
+            "Views are Instagram's daily account views, which can lag up to two days.",
+            "The sign-in lasts 60 days and renews itself while you use Prodline.",
+        ]
+        case .threads: [
+            "Tap Continue with Threads and sign in. Prodline only gets read access to your insights.",
+            "Views add up over posts since the project's start. Followers is the account's total right now.",
+            "The sign-in lasts 60 days and renews itself while you use Prodline.",
         ]
         }
     }
@@ -640,6 +675,9 @@ nonisolated enum IntegrationSources {
         case .hackerNews: return try await hackerNews(i, start: start, session: session)
         case .productHunt: return try await productHunt(i, secret: secret, session: session)
         case .bluesky: return try await bluesky(i, session: session)
+        case .tiktok: return try await tiktok(i, secret: secret, start: start, session: session)
+        case .instagram: return try await instagram(i, secret: secret, start: start, session: session, cache: cache)
+        case .threads: return try await threads(i, secret: secret, start: start, session: session)
         }
     }
 

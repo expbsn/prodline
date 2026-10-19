@@ -154,6 +154,8 @@ struct IntegrationEditor: View {
     @State private var test: TestState = .idle
     @State private var importing = false
     @State private var confirmRemove = false
+    @State private var signingIn = false
+    @State private var signInError: String?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Environment(DataRefresher.self) private var refresher
@@ -216,7 +218,7 @@ struct IntegrationEditor: View {
                                 .inputField(focused: focus == f.key)
                         }
                     }
-                    if kind.needsSecret { secretField }
+                    if kind.usesSignIn { signInCard } else if kind.needsSecret { secretField }
                     testButton
                     testResult
                     if !isNew {
@@ -254,7 +256,7 @@ struct IntegrationEditor: View {
 
     private var steps: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Where to find these").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+            Text(kind.usesSignIn ? "Before you connect" : "Where to find these").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
             ForEach(Array(kind.steps.enumerated()), id: \.offset) { n, step in
                 HStack(alignment: .top, spacing: 10) {
                     Text("\(n + 1)").font(.ui(12, .bold)).foregroundStyle(Theme.secondary)
@@ -302,6 +304,49 @@ struct IntegrationEditor: View {
             }
             Label("Stored in your Keychain, never in iCloud data.", systemImage: "lock.fill")
                 .font(.ui(12)).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    /// TikTok, Instagram, Threads: sign in instead of pasting a key.
+    private var signInCard: some View {
+        let signedIn = SocialTokens(secret) != nil
+        return VStack(alignment: .leading, spacing: 10) {
+            if signedIn {
+                Label("Signed in", systemImage: "checkmark.circle.fill")
+                    .font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+            }
+            Button {
+                signIn()
+            } label: {
+                HStack(spacing: 8) {
+                    if signingIn { ProgressView().tint(Theme.inverse) }
+                    Text(signedIn ? "Sign in again" : "Continue with \(kind.title)")
+                }
+            }
+            .buttonStyle(.chunky(signedIn ? .neutral : .accent, height: 54))
+            .disabled(signingIn)
+            if let signInError {
+                Text(signInError).font(.ui(14, .medium)).foregroundStyle(Theme.danger)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Label("Read-only. The sign-in stays in your Keychain.", systemImage: "lock.fill")
+                .font(.ui(12)).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    private func signIn() {
+        signingIn = true
+        signInError = nil
+        Task {
+            do {
+                secret = try await SocialSignIn.connect(kind)
+                Haptics.success()
+                runTest()
+            } catch {
+                signInError = error.localizedDescription
+                if signInError != nil { Haptics.warning() }
+            }
+            signingIn = false
         }
     }
 

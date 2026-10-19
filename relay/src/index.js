@@ -13,6 +13,10 @@
 //   PUT    /schedules                {device, deviceSecret, items}     deadline activities to start later
 //   POST   /waitlist                 {email, website?, source?}         join the tester waitlist (landing page)
 //   GET    /waitlist/metrics         Bearer WAITLIST_KEY (if set)       signups, in the Prodline endpoint format
+//   GET    /oauth/:provider/start     ?state=&challenge=                 sign in with TikTok, Instagram or Threads
+//   GET    /oauth/:provider/callback  the provider sends the browser back here; redirects to prodline://oauth/…
+//   POST   /oauth/handoff             {state, verifier}                  the tokens, once (then they're gone)
+//   POST   /oauth/tiktok/refresh      {refresh_token}                    a new TikTok access token
 //   GET    /health
 //   cron (every 5 min): starts scheduled Live Activities whose time has come
 //
@@ -21,9 +25,12 @@
 //                                hook:<id>   → {secret, devices: [ids]}
 //                                wait:<sha256(email)> → {email, at, source};  waitcount → number;
 //                                waitsrc:<source> → number (signups per ?ref= tag)
+//                                oauth:<state> → {provider, challenge, tokens?}  (10 min, deleted on handoff)
 // Secrets (wrangler secret put): APNS_KEY (.p8 contents), APNS_KEY_ID, APNS_TEAM_ID; var APNS_TOPIC.
 // A key made for the sandbox only won't work for TestFlight / App Store builds: add a production key as
 // APNS_KEY_PROD + APNS_KEY_ID_PROD (or use one "Sandbox & Production" key as APNS_KEY for both).
+// Social sign-in: TIKTOK_CLIENT_KEY + TIKTOK_CLIENT_SECRET, INSTAGRAM_APP_ID + INSTAGRAM_APP_SECRET,
+// THREADS_APP_ID + THREADS_APP_SECRET. A provider without its pair answers 503.
 
 const ID = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_DEVICES_PER_HOOK = 20;
@@ -38,10 +45,10 @@ class HttpError extends Error {
 }
 
 /// Every request: errors become JSON answers with their status. `apns` is swappable for tests.
-export async function route(request, env, apns = sendSilentPush) {
+export async function route(request, env, apns = sendSilentPush, http = (...a) => fetch(...a)) {
   let res;
   try {
-    res = await handle(request, env, apns);
+    res = await handle(request, env, apns, http);
   } catch (e) {
     res = e instanceof HttpError ? json({ error: e.message }, e.status) : json({ error: "internal" }, 500);
   }
@@ -50,7 +57,7 @@ export async function route(request, env, apns = sendSilentPush) {
   return res;
 }
 
-async function handle(request, env, apns) {
+async function handle(request, env, apns, http) {
   const url = new URL(request.url);
   const parts = url.pathname.split("/").filter(Boolean);
   const method = request.method;
@@ -58,6 +65,7 @@ async function handle(request, env, apns) {
   if (method === "GET" && url.pathname === "/health") return json({ ok: true });
 
   if (parts[0] === "waitlist") return waitlist(request, env, parts, method);
+  if (parts[0] === "oauth") return oauth(request, env, parts, method, http);
 
   if (method === "POST" && parts.length === 1 && parts[0] === "devices") {
     const body = await readJSON(request);
@@ -179,6 +187,157 @@ async function handle(request, env, apns) {
   }
 
   throw new HttpError(404, "not found");
+}
+
+// MARK: - Social sign-in (TikTok, Instagram, Threads)
+//
+// These services only hand out tokens to a server that knows the app secret, so the relay does the
+// code exchange. The app starts with a random state and the SHA-256 of a random verifier; the tokens
+// wait under that state for a few minutes and only go to whoever shows the verifier. Nothing is kept.
+
+const OAUTH_TTL = 600;
+
+export const PROVIDERS = {
+  tiktok: {
+    id: "TIKTOK_CLIENT_KEY", secret: "TIKTOK_CLIENT_SECRET",
+    authorize: (id, redirect, state) => "https://www.tiktok.com/v2/auth/authorize/?" + new URLSearchParams({
+      client_key: id, response_type: "code", scope: "user.info.basic,user.info.stats,video.list", redirect_uri: redirect, state,
+    }),
+    async exchange(env, code, redirect, http) {
+      const t = await form(http, "https://open.tiktokapis.com/v2/oauth/token/", {
+        client_key: env.TIKTOK_CLIENT_KEY, client_secret: env.TIKTOK_CLIENT_SECRET, code, grant_type: "authorization_code", redirect_uri: redirect,
+      });
+      return tiktokTokens(t);
+    },
+  },
+  instagram: {
+    id: "INSTAGRAM_APP_ID", secret: "INSTAGRAM_APP_SECRET",
+    authorize: (id, redirect, state) => "https://www.instagram.com/oauth/authorize?" + new URLSearchParams({
+      client_id: id, redirect_uri: redirect, response_type: "code", state,
+      scope: "instagram_business_basic,instagram_business_manage_insights",
+    }),
+    async exchange(env, code, redirect, http) {
+      const short = await form(http, "https://api.instagram.com/oauth/access_token", {
+        client_id: env.INSTAGRAM_APP_ID, client_secret: env.INSTAGRAM_APP_SECRET, grant_type: "authorization_code", redirect_uri: redirect, code,
+      });
+      const s = Array.isArray(short.data) ? short.data[0] ?? {} : short;
+      if (!s.access_token) throw new HttpError(502, "no token");
+      const long = await get(http, "https://graph.instagram.com/access_token?" + new URLSearchParams({
+        grant_type: "ig_exchange_token", client_secret: env.INSTAGRAM_APP_SECRET, access_token: s.access_token,
+      }));
+      return { access: long.access_token, expires: now() + Number(long.expires_in ?? 0), user: String(s.user_id ?? "") };
+    },
+  },
+  threads: {
+    id: "THREADS_APP_ID", secret: "THREADS_APP_SECRET",
+    authorize: (id, redirect, state) => "https://threads.net/oauth/authorize?" + new URLSearchParams({
+      client_id: id, redirect_uri: redirect, response_type: "code", state, scope: "threads_basic,threads_manage_insights",
+    }),
+    async exchange(env, code, redirect, http) {
+      const short = await form(http, "https://graph.threads.net/oauth/access_token", {
+        client_id: env.THREADS_APP_ID, client_secret: env.THREADS_APP_SECRET, grant_type: "authorization_code", redirect_uri: redirect, code,
+      });
+      if (!short.access_token) throw new HttpError(502, "no token");
+      const long = await get(http, "https://graph.threads.net/access_token?" + new URLSearchParams({
+        grant_type: "th_exchange_token", client_secret: env.THREADS_APP_SECRET, access_token: short.access_token,
+      }));
+      return { access: long.access_token, expires: now() + Number(long.expires_in ?? 0), user: String(short.user_id ?? "") };
+    },
+  },
+};
+
+const now = () => Math.floor(Date.now() / 1000);
+
+function tiktokTokens(t) {
+  if (!t.access_token) throw new HttpError(502, "no token");
+  return { access: t.access_token, refresh: t.refresh_token, expires: now() + Number(t.expires_in ?? 0),
+    refreshExpires: now() + Number(t.refresh_expires_in ?? 0), user: String(t.open_id ?? "") };
+}
+
+async function form(http, url, fields) {
+  const res = await http(url, { method: "POST", body: new URLSearchParams(fields),
+    headers: { "content-type": "application/x-www-form-urlencoded" } });
+  return answer(res);
+}
+
+async function get(http, url) { return answer(await http(url)); }
+
+async function answer(res) {
+  let body = {};
+  try { body = await res.json(); } catch { /* not JSON */ }
+  if (!res.ok || body.error) throw new HttpError(res.status === 401 || res.status === 400 ? 401 : 502, "provider refused");
+  return body;
+}
+
+function redirect(location) { return new Response(null, { status: 302, headers: { location } }); }
+
+async function oauth(request, env, parts, method, http) {
+  const url = new URL(request.url);
+
+  if (method === "POST" && parts.length === 2 && parts[1] === "handoff") {
+    const body = await readJSON(request);
+    requireId(body.state, "state");
+    requireString(body.verifier, "verifier", 32);
+    const key = `oauth:${body.state}`;
+    const entry = await getJSON(env, key);
+    if (!entry?.tokens || !timingSafeEqual(entry.challenge, await sha256(body.verifier))) throw new HttpError(404, "nothing to hand off");
+    await env.RELAY.delete(key);
+    return json({ provider: entry.provider, ...entry.tokens });
+  }
+
+  if (method === "POST" && parts.length === 3 && parts[1] === "tiktok" && parts[2] === "refresh") {
+    configured(env, "tiktok");
+    const body = await readJSON(request);
+    if (typeof body.refresh_token !== "string" || body.refresh_token.length < 8 || body.refresh_token.length > 1000) throw new HttpError(400, "bad refresh_token");
+    const t = await form(http, "https://open.tiktokapis.com/v2/oauth/token/", {
+      client_key: env.TIKTOK_CLIENT_KEY, client_secret: env.TIKTOK_CLIENT_SECRET, grant_type: "refresh_token", refresh_token: body.refresh_token,
+    });
+    return json(tiktokTokens(t));
+  }
+
+  const provider = PROVIDERS[parts[1]];
+  const name = parts[1];
+  // The app checks with HEAD that a provider is set up before opening the sign-in sheet.
+  if (method === "HEAD" && parts.length === 3 && provider && parts[2] === "start") {
+    configured(env, name);
+    return new Response(null, { status: 204 });
+  }
+  if (method !== "GET" || parts.length !== 3 || !provider) throw new HttpError(404, "not found");
+  const callback = `${url.origin}/oauth/${name}/callback`;
+
+  if (parts[2] === "start") {
+    configured(env, name);
+    const state = url.searchParams.get("state") ?? "";
+    const challenge = url.searchParams.get("challenge") ?? "";
+    requireId(state, "state");
+    if (!/^[0-9a-f]{64}$/.test(challenge)) throw new HttpError(400, "bad challenge");
+    await env.RELAY.put(`oauth:${state}`, JSON.stringify({ provider: name, challenge }), { expirationTtl: OAUTH_TTL });
+    return redirect(provider.authorize(env[provider.id], callback, state));
+  }
+
+  if (parts[2] === "callback") {
+    const state = url.searchParams.get("state") ?? "";
+    requireId(state, "state");
+    const back = (extra) => redirect(`prodline://oauth/${name}?` + new URLSearchParams({ state, ...extra }));
+    const key = `oauth:${state}`;
+    const entry = await getJSON(env, key);
+    if (!entry || entry.provider !== name) return back({ error: "expired" });
+    // Instagram adds "#_" to the code.
+    const code = (url.searchParams.get("code") ?? "").replace(/#_$/, "");
+    if (!code) return back({ error: url.searchParams.get("error") === "access_denied" ? "denied" : "failed" });
+    configured(env, name);
+    let tokens;
+    try { tokens = await provider.exchange(env, code, callback, http); } catch { return back({ error: "failed" }); }
+    await env.RELAY.put(key, JSON.stringify({ ...entry, tokens }), { expirationTtl: 300 });
+    return back({});
+  }
+
+  throw new HttpError(404, "not found");
+}
+
+function configured(env, name) {
+  const p = PROVIDERS[name];
+  if (!env[p.id] || !env[p.secret]) throw new HttpError(503, `${name} sign-in isn't set up on this relay`);
 }
 
 // MARK: - Waitlist (landing page)

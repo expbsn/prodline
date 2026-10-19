@@ -48,8 +48,8 @@ struct AccentTests {
             UIColor.white.setFill(); ctx.fill(CGRect(x: 0, y: 100, width: 200, height: 100))
         }
         let a = Accent(hex: try #require(ImageTools.dominantAccentHex(img)))
-        #expect(a.luminance < 0.1)          // dark enough for white text
-        #expect(a.on == .white)
+        #expect(a.luminance < 0.1)          // near-black: text flips with the scheme
+        #expect(a.on == Theme.inverse)
     }
 
     @Test func normalizedColorsAreUsableAsButtons() {
@@ -74,10 +74,10 @@ struct AccentTests {
     }
 
     @Test func foregroundContrast() {
-        #expect(Accent(hex: 0xFFC800).on == Theme.ink)  // yellow -> dark text
+        #expect(Accent(hex: 0xFFC800).on == Theme.inkFixed)  // yellow -> dark text in both schemes
         #expect(Accent(hex: 0x58CC02).on == .white)
-        #expect(Accent(hex: 0x1C1C1E).on == .white)
-        #expect(Accent(hex: 0xFFFFFF).on == Theme.ink)
+        #expect(Accent(hex: 0x1C1C1E).on == Theme.inverse)   // neutral fill turns light in dark mode
+        #expect(Accent(hex: 0xFFFFFF).on == Theme.inkFixed)
     }
 
     @Test func hexRoundTrip() {

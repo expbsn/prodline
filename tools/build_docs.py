@@ -67,7 +67,7 @@ GROUPS = [
     ("analytics", "Analytics", ["plausible", "umami", "fathom", "posthog", "simpleAnalytics"]),
     ("hosting", "Hosting", ["vercel", "netlify"]),
     ("newsletters", "Newsletters", ["kit", "buttondown", "beehiiv"]),
-    ("community", "Launches, packages and social", ["youtube", "productHunt", "hackerNews", "npm", "bluesky"]),
+    ("community", "Launches, packages and social", ["youtube", "tiktok", "instagram", "threads", "productHunt", "hackerNews", "npm", "bluesky"]),
 ]
 assert sorted(k for _, _, ks in GROUPS for k in ks) == sorted(kinds), "every integration needs a group"
 
@@ -84,14 +84,17 @@ def code_inline(text):
 def integration(k):
     keyless = not secret[k]
     need = []
-    if secret[k]:
+    signin = secret[k] == "Sign-in"
+    if signin:
+        need.append(f"<li><b>Your {html.escape(titles[k])} login</b> <span>read-only, kept in your Keychain</span></li>")
+    elif secret[k]:
         need.append(f"<li><b>{html.escape(secret[k])}</b> <span>kept in your Keychain</span></li>")
     for label, optional in fields[k]:
         need.append(f"<li>{html.escape(label)}{' <span>optional</span>' if optional else ''}</li>")
     if keyless and not fields[k]:
         need.append("<li>Nothing</li>")
     lis = "".join(f"<li>{code_inline(s)}</li>" for s in steps[k])
-    badge = '<span class="tag">No key</span>' if keyless else ""
+    badge = '<span class="tag">No key</span>' if keyless else '<span class="tag">Sign in</span>' if signin else ""
     return f'''        <article class="intg-doc" id="{slug(k)}">
           <header><h4>{html.escape(titles[k])}</h4>{badge}</header>
           <p class="provides">{html.escape(provides[k])}</p>
@@ -157,7 +160,7 @@ PAGE = f'''<!doctype html>
       <section id="overview">
         <h2>Three ways in</h2>
         <div class="ways">
-          <a class="way" href="#integrations"><b>Integrations</b><span>23 services for revenue, visits, downloads, deploys, subscribers and followers. Paste a key, done.</span></a>
+          <a class="way" href="#integrations"><b>Integrations</b><span>26 services for revenue, visits, downloads, deploys, views, subscribers and followers. Paste a key or sign in, done.</span></a>
           <a class="way" href="#github"><b>GitHub</b><span>Your plan from <code>prodline.json</code>, goals from issues, commits for your streak. Instant with a webhook.</span></a>
           <a class="way" href="#endpoint"><b>Your own endpoint</b><span>Anything else: return a small JSON file and Prodline polls it.</span></a>
         </div>
@@ -272,7 +275,7 @@ app.get("/api/prodline", (req, res) => {{
         <h2>A seamless setup</h2>
         <ol class="steps">
           <li><b>Start with money.</b> Connect where revenue lands first (Stripe, RevenueCat, App Store Connect…): it's the number that decides keep or let go.</li>
-          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube or Bluesky if that's where your audience is.</li>
+          <li><b>Add one traffic source.</b> Plausible, Fathom, PostHog, Simple Analytics or Umami for visits; YouTube, TikTok, Instagram, Threads or Bluesky if that's where your audience is.</li>
           <li><b>Link the repo and add <code>prodline.json</code>.</b> Your plan lives next to your code, and commits keep the streak alive without opening the app.</li>
           <li><b>Turn on instant updates.</b> One webhook, and goals tick seconds after you push.</li>
           <li><b>Add the widgets.</b> Long-press the Home Screen → Edit → Add Widget → Prodline. The deadline Live Activity appears on its own in the last four hours before a checkpoint.</li>

@@ -91,6 +91,8 @@ extension IntegrationKind {
         case .hackerNews: ["hn_points", "hn_comments"]
         case .productHunt: ["upvotes", "ph_comments"]
         case .bluesky: ["followers"]
+        case .tiktok: ["social_views", "videos_posted", "followers"]
+        case .instagram, .threads: ["social_views", "followers"]
         }
     }
 }

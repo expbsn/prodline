@@ -30,14 +30,14 @@
   <main class="doc">
     <p class="eyebrow">Privacy policy</p>
     <h1>Your projects stay yours.</h1>
-    <p class="lede">Effective October 16, 2026. This policy covers the Prodline iPhone app, its widgets and Live Activities, the instant-updates relay and this website.</p>
+    <p class="lede">Effective October 19, 2026. This policy covers the Prodline iPhone app, its widgets and Live Activities, the instant-updates relay and this website.</p>
 
     <article class="policy">
       <h2>The short version</h2>
       <ul>
         <li>No account, no ads, no analytics SDKs, no tracking.</li>
         <li>Your projects, goals and numbers live on your iPhone and in your own private iCloud.</li>
-        <li>API keys stay in the iOS Keychain and go only to the service they belong to.</li>
+        <li>API keys stay in the iOS Keychain and go only to the service they belong to. Social sign-ins pass through our relay once and aren't kept there.</li>
         <li>The optional relay keeps only what it needs to send pushes to your device.</li>
         <li>Waitlist emails are used for beta invites and nothing else.</li>
       </ul>
@@ -47,6 +47,7 @@
 
       <h2>Keys and connected services</h2>
       <p>When you connect a service such as Stripe, App Store Connect, YouTube or GitHub, the key or token you enter is stored in the iOS Keychain (and your iCloud Keychain if it's on). The app calls each service directly from your iPhone to fetch your numbers or repository data. Those requests are handled under that service's own privacy policy. Prodline doesn't send your keys or the fetched data to any server of ours.</p>
+      <p>TikTok, Instagram and Threads only issue access to a server that holds Prodline's app credentials, so signing in to them goes through Prodline's relay: it receives the sign-in code from the service, exchanges it for read-only tokens, and holds them for at most a few minutes until your iPhone collects them, then deletes them. For TikTok, the relay also renews the token about once a day when your iPhone asks; it passes the new token straight back and doesn't store it. After that, the app talks to these services directly, like the others.</p>
 
       <h2>Instant updates relay (optional)</h2>
       <p>If instant updates are on, the app registers with Prodline's relay, which runs on Cloudflare Workers. The relay stores:</p>

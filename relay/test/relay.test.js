@@ -209,3 +209,89 @@ test("waitlist: counts signups per ?ref= source", async () => {
   assert.equal(waitSource("  "), "direct");
   assert.equal(waitSource("../../etc"), "etc");
 });
+
+// MARK: - Social sign-in
+
+const STATE = "st_cccccccccccccccccccc";
+const VERIFIER = "verifier-0123456789abcdef0123456789abcdef";
+const OAUTH_ENV = () => ({ RELAY: kv(), TIKTOK_CLIENT_KEY: "ck", TIKTOK_CLIENT_SECRET: "cs", INSTAGRAM_APP_ID: "ia", INSTAGRAM_APP_SECRET: "is" });
+
+async function challenge(v) {
+  const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(v));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function provider(answers) {
+  const calls = [];
+  const http = async (url, init) => {
+    calls.push([String(url), init?.body ? String(init.body) : ""]);
+    const hit = answers.find(([match]) => String(url).includes(match));
+    return new Response(JSON.stringify(hit?.[1] ?? {}), { status: hit?.[2] ?? 200 });
+  };
+  return { http, calls };
+}
+
+test("TikTok sign-in: start, callback, one handoff", async () => {
+  const env = OAUTH_ENV();
+  const { http, calls } = provider([["open.tiktokapis.com", { access_token: "at", refresh_token: "rt", expires_in: 86400, refresh_expires_in: 31536000, open_id: "u1" }]]);
+  let r = await route(req(`/oauth/tiktok/start?state=${STATE}&challenge=${await challenge(VERIFIER)}`, "GET"), env, undefined, http);
+  assert.equal(r.status, 302);
+  const auth = new URL(r.headers.get("location"));
+  assert.equal(auth.host, "www.tiktok.com");
+  assert.equal(auth.searchParams.get("client_key"), "ck");
+  assert.equal(auth.searchParams.get("redirect_uri"), `${BASE}/oauth/tiktok/callback`);
+
+  r = await route(req(`/oauth/tiktok/callback?code=abc&state=${STATE}`, "GET"), env, undefined, http);
+  assert.equal(r.headers.get("location"), `prodline://oauth/tiktok?state=${STATE}`);
+  assert.match(calls[0][1], /client_secret=cs/);
+  assert.match(calls[0][1], /code=abc/);
+
+  r = await route(req("/oauth/handoff", "POST", { state: STATE, verifier: "wrong-verifier-0123456789abcdef0123" }), env, undefined, http);
+  assert.equal(r.status, 404);
+  r = await route(req("/oauth/handoff", "POST", { state: STATE, verifier: VERIFIER }), env, undefined, http);
+  const t = await r.json();
+  assert.equal(t.access, "at");
+  assert.equal(t.refresh, "rt");
+  assert.equal(t.user, "u1");
+  r = await route(req("/oauth/handoff", "POST", { state: STATE, verifier: VERIFIER }), env, undefined, http);
+  assert.equal(r.status, 404);
+});
+
+test("Instagram sign-in swaps for a long-lived token", async () => {
+  const env = OAUTH_ENV();
+  const { http, calls } = provider([
+    ["api.instagram.com", { data: [{ access_token: "short", user_id: 42 }] }],
+    ["graph.instagram.com", { access_token: "long", expires_in: 5184000 }],
+  ]);
+  await route(req(`/oauth/instagram/start?state=${STATE}&challenge=${await challenge(VERIFIER)}`, "GET"), env, undefined, http);
+  const r = await route(req(`/oauth/instagram/callback?code=abc%23_&state=${STATE}`, "GET"), env, undefined, http);
+  assert.equal(r.headers.get("location"), `prodline://oauth/instagram?state=${STATE}`);
+  assert.match(calls[0][1], /code=abc(&|$)/);
+  assert.match(calls[1][0], /ig_exchange_token/);
+  const t = await (await route(req("/oauth/handoff", "POST", { state: STATE, verifier: VERIFIER }), env, undefined, http)).json();
+  assert.equal(t.access, "long");
+  assert.equal(t.user, "42");
+});
+
+test("sign-in errors go back to the app, missing setup is 503", async () => {
+  const env = OAUTH_ENV();
+  const { http } = provider([["open.tiktokapis.com", { error: "invalid_grant" }, 400]]);
+  await route(req(`/oauth/tiktok/start?state=${STATE}&challenge=${await challenge(VERIFIER)}`, "GET"), env, undefined, http);
+  let r = await route(req(`/oauth/tiktok/callback?error=access_denied&state=${STATE}`, "GET"), env, undefined, http);
+  assert.equal(r.headers.get("location"), `prodline://oauth/tiktok?state=${STATE}&error=denied`);
+  r = await route(req(`/oauth/tiktok/callback?code=x&state=${STATE}`, "GET"), env, undefined, http);
+  assert.equal(r.headers.get("location"), `prodline://oauth/tiktok?state=${STATE}&error=failed`);
+  r = await route(req(`/oauth/threads/start?state=${STATE}&challenge=${await challenge(VERIFIER)}`, "GET"), env, undefined, http);
+  assert.equal(r.status, 503);
+  assert.equal((await route(new Request(`${BASE}/oauth/threads/start`, { method: "HEAD" }), env, undefined, http)).status, 503);
+  assert.equal((await route(new Request(`${BASE}/oauth/tiktok/start`, { method: "HEAD" }), env, undefined, http)).status, 204);
+});
+
+test("TikTok refresh uses the client secret", async () => {
+  const env = OAUTH_ENV();
+  const { http, calls } = provider([["open.tiktokapis.com", { access_token: "at2", refresh_token: "rt2", expires_in: 86400, refresh_expires_in: 100, open_id: "u1" }]]);
+  const r = await route(req("/oauth/tiktok/refresh", "POST", { refresh_token: "rt-old-123" }), env, undefined, http);
+  assert.equal((await r.json()).access, "at2");
+  assert.match(calls[0][1], /grant_type=refresh_token/);
+  assert.match(calls[0][1], /client_secret=cs/);
+});

@@ -50,3 +50,34 @@ sandbox one:
 npx wrangler secret put APNS_KEY_PROD
 npx wrangler secret put APNS_KEY_ID_PROD
 ```
+
+## Social sign-in (TikTok, Instagram, Threads)
+
+These services hand tokens only to a server holding the app secret, so the relay does the code exchange
+and keeps the tokens for at most a few minutes until the app collects them (`/oauth/*` in
+`src/index.js`). Each provider needs its own developer app; until its secrets are set, its sign-in
+answers 503 and the app says the sign-in isn't available yet.
+
+**TikTok** — developers.tiktok.com → Manage apps → Connect an app.
+- Add the products **Login Kit**, then scopes `user.info.basic`, `user.info.stats`, `video.list`.
+- Login Kit → Web → redirect URI `https://prodline-relay.prodline-relay.workers.dev/oauth/tiktok/callback`.
+- Until the app passes review, only accounts added as target users (Sandbox) can sign in.
+- `npx wrangler secret put TIKTOK_CLIENT_KEY` and `TIKTOK_CLIENT_SECRET`.
+
+**Instagram** — developers.facebook.com → Create app → use case "Manage messaging & content on
+Instagram" → API setup with Instagram login.
+- Permissions `instagram_business_basic`, `instagram_business_manage_insights`.
+- Business login settings → OAuth redirect URI
+  `https://prodline-relay.prodline-relay.workers.dev/oauth/instagram/callback`.
+- In development mode only Instagram testers (App roles) can sign in; their accounts must be Creator or
+  Business accounts.
+- `npx wrangler secret put INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET` (the *Instagram* app ID and
+  secret shown on that page, not the Meta app's).
+
+**Threads** — same Meta app (or a new one) → add the use case "Access the Threads API".
+- Permissions `threads_basic`, `threads_manage_insights`.
+- Settings → Redirect callback URL
+  `https://prodline-relay.prodline-relay.workers.dev/oauth/threads/callback`.
+- Testers: App roles → Threads testers, then accept the invite in Threads → Settings → Account →
+  Website permissions.
+- `npx wrangler secret put THREADS_APP_ID` and `THREADS_APP_SECRET`.

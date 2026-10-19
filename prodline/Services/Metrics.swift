@@ -150,6 +150,8 @@ nonisolated enum MetricsError: LocalizedError, Equatable, Sendable {
     case server(Int)
     case badPayload(String)
     case offline(String)
+    /// A TikTok, Instagram or Threads sign-in that ran out or was revoked.
+    case signInExpired
 
     var errorDescription: String? {
         switch self {
@@ -160,6 +162,7 @@ nonisolated enum MetricsError: LocalizedError, Equatable, Sendable {
         case .server(let code): "The project's server answered \(code)."
         case .badPayload(let why): "Unexpected response: \(why)"
         case .offline(let why): why
+        case .signInExpired: "The sign-in ran out. Open the integration and sign in again."
         }
     }
 
