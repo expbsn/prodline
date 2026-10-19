@@ -84,6 +84,10 @@ enum MacDemo {
                     write(MacProjectDashboard(project: p), "-project\(tag).png", width: w, scheme: scheme)
                 }
             }
+            write(MacPlanView(profile: profile, onOpen: { _ in }, onCreate: {}, onIdeas: {}), "-plan.png", width: 1180, scheme: scheme)
+            write(MacPlanView(profile: profile, onOpen: { _ in }, onCreate: {}, onIdeas: {}), "-plan-narrow.png", width: 700, scheme: scheme)
+            write(InsightsView(wide: true).background(Theme.background), "-data.png", width: 1180, scheme: scheme)
+            write(MeView(profile: profile, wide: true).background(Theme.background), "-me.png", width: 1180, scheme: scheme)
             write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
             write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)
         }

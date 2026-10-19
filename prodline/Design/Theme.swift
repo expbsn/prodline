@@ -23,6 +23,15 @@ extension View {
     }
 }
 
+/// "iPhone" or "Mac", for copy that names this device.
+enum ThisDevice {
+    #if os(macOS)
+    static let name = "Mac"
+    #else
+    static let name = "iPhone"
+    #endif
+}
+
 // MARK: - Haptics
 
 enum Haptics {
@@ -46,4 +55,18 @@ enum Haptics {
     static func success() { perform(.levelChange) }
     static func warning() { perform(.generic) }
     #endif
+}
+
+extension EnvironmentValues {
+    /// DEBUG snapshots render whole pages, which a ScrollView would clip to nothing.
+    @Entry var macSnapshot: Bool = false
+}
+
+/// A vertical ScrollView, or just its content for a snapshot (Mac layout checks).
+struct MacScroll<Content: View>: View {
+    @ViewBuilder var content: Content
+    @Environment(\.macSnapshot) private var snapshot
+    var body: some View {
+        if snapshot { content } else { ScrollView { content } }
+    }
 }

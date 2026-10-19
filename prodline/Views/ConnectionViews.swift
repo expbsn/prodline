@@ -593,7 +593,7 @@ struct GoalsGuideView: View {
                  "Put issues in a GitHub milestone, or label them “prodline”. A milestone with a due date lands on the first checkpoint on or after it; without a date, your first milestone maps to checkpoint 1, the second to checkpoint 2, and so on. Closing the issue ticks the goal. Pull requests are ignored.")
 
             item("sparkles", "Suggestions",
-                 "With Apple Intelligence, Prodline drafts goals on your iPhone from the description, README and open issues. Nothing leaves the device. Goals from your API or GitHub replace suggestions on the same checkpoint.")
+                 "With Apple Intelligence, Prodline drafts goals on your \(ThisDevice.name) from the description, README and open issues. Nothing leaves the device. Goals from your API or GitHub replace suggestions on the same checkpoint.")
 
             item("chart.line.uptrend.xyaxis", "Traction targets",
                  "After launch, the traction review gets stretch targets for visits and revenue based on last week's pace. They tick themselves.")

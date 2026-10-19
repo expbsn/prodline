@@ -91,30 +91,8 @@ struct MacShell: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $page) {
-                Section {
-                    ForEach(AppTab.allCases) { t in
-                        Label(t.title, systemImage: t.symbol(selected: page == .tab(t))).tag(MacPage.tab(t))
-                    }
-                }
-                Section("Projects") {
-                    ForEach(activeProjects) { p in projectRow(p) }
-                }
-                if !finishedProjects.isEmpty {
-                    Section("Finished") {
-                        ForEach(finishedProjects) { p in projectRow(p) }
-                    }
-                }
-            }
-            .navigationSplitViewColumnWidth(min: 210, ideal: 240)
-            .safeAreaInset(edge: .bottom) {
-                Button { requestCreate() } label: {
-                    Label("New project", systemImage: "plus").frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.chunky(.accent, height: 40))
-                .environment(\.accent, .neutral)
-                .padding(12)
-            }
+            sidebar
+                .navigationSplitViewColumnWidth(min: 210, ideal: 236, max: 300)
         } detail: {
             detail
                 .background(Theme.background)
@@ -156,17 +134,55 @@ struct MacShell: View {
         #endif
     }
 
+    // MARK: Sidebar
+
+    /// Our own rows: a grey fill marks the page you're on (the system list would tint it blue).
+    private var sidebar: some View {
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(AppTab.allCases) { t in
+                        MacSidebarRow(selected: page == .tab(t)) { page = .tab(t) } label: {
+                            Image(systemName: t.symbol(selected: page == .tab(t)))
+                                .font(.system(size: 14, weight: .semibold)).frame(width: 22)
+                            Text(t.title).font(.ui(14, .semibold))
+                        }
+                    }
+                    sidebarHeader("Projects").padding(.top, 18)
+                    ForEach(activeProjects) { p in projectRow(p) }
+                    if activeProjects.isEmpty {
+                        Text("No projects yet").font(.ui(13)).foregroundStyle(Theme.tertiary).padding(.horizontal, 10).padding(.vertical, 6)
+                    }
+                    if !finishedProjects.isEmpty {
+                        sidebarHeader("Finished").padding(.top, 18)
+                        ForEach(finishedProjects) { p in projectRow(p) }
+                    }
+                }
+                .padding(.horizontal, 10).padding(.top, 8).padding(.bottom, 12)
+            }
+            Button { requestCreate() } label: {
+                Label("New project", systemImage: "plus").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.chunky(.accent, height: 40))
+            .environment(\.accent, .neutral)
+            .padding(12)
+        }
+    }
+
+    private func sidebarHeader(_ title: String) -> some View {
+        Text(title).eyebrow(size: 10).padding(.horizontal, 10).padding(.bottom, 4)
+    }
+
     private func projectRow(_ p: Project) -> some View {
-        HStack(spacing: 10) {
-            ProjectThumb(project: p, size: 24)
-            Text(p.name).lineLimit(1)
+        MacSidebarRow(selected: page == .project(p.id)) { page = .project(p.id) } label: {
+            ProjectThumb(project: p, size: 22)
+            Text(p.name).font(.ui(14, .medium)).lineLimit(1)
             Spacer(minLength: 0)
             if let m = p.nextMilestone, m.isDueToday || m.isOverdue {
                 Circle().fill(m.isOverdue ? Theme.danger : Theme.flame).frame(width: 7, height: 7)
                     .help(m.isOverdue ? "Checkpoint overdue" : "Checkpoint due today")
             }
         }
-        .tag(MacPage.project(p.id))
     }
 
     /// The iPhone screens are made for a phone's width; on the Mac they sit in a centered column.
@@ -177,14 +193,12 @@ struct MacShell: View {
             MacOverview(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
                         onReview: { showReview = true })
         case .tab(.plan):
-            column(640) {
-                PlanView(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
-                         onIdeas: { showIdeas = true })
-            }
+            MacPlanView(profile: profile, onOpen: { page = .project($0.id) }, onCreate: { requestCreate() },
+                        onIdeas: { showIdeas = true })
         case .tab(.insights):
-            column(640) { InsightsView() }
+            InsightsView(wide: true).background(Theme.background)
         case .tab(.me):
-            column(600) { MeView(profile: profile) }
+            MeView(profile: profile, wide: true).background(Theme.background)
         case .project(let id):
             if let p = projects.first(where: { $0.id == id }) {
                 MacProjectDashboard(project: p).id(p.id)
@@ -192,12 +206,6 @@ struct MacShell: View {
                 ContentUnavailableView("Project not found", systemImage: "questionmark.folder")
             }
         }
-    }
-
-    private func column<C: View>(_ width: CGFloat, @ViewBuilder _ content: () -> C) -> some View {
-        content()
-            .frame(maxWidth: width)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func requestCreate(from idea: Idea? = nil) {
@@ -224,5 +232,28 @@ struct StreakBadge: View {
         .foregroundStyle(streak > 0 ? Theme.flame : Theme.secondary)
         .font(.display(15, 750))
         .help("\(streak)-day streak")
+    }
+}
+
+/// A sidebar row: grey fill when selected, a lighter one on hover.
+struct MacSidebarRow<Label: View>: View {
+    let selected: Bool
+    var action: () -> Void
+    @ViewBuilder var label: Label
+    @State private var hover = false
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 10) { label }
+                .foregroundStyle(selected ? Theme.ink : Theme.inkSoft)
+                .padding(.horizontal, 10)
+                .frame(height: 34)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(selected ? Color(light: 0xE3E3E8, dark: 0x3A3A3C) : hover ? Color(light: 0xEDEDF0, dark: 0x2C2C2E) : .clear))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hover = $0 }
     }
 }

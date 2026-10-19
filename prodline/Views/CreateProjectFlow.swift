@@ -298,7 +298,7 @@ struct CreateProjectFlow: View {
             if loadingRepo || drafting {
                 HStack(spacing: 12) {
                     ProgressView().tint(accent.text)
-                    Text(loadingRepo ? "Reading \(GitHubRepoRef(repo)?.slug ?? "your repo")…" : "Suggesting goals on your iPhone…")
+                    Text(loadingRepo ? "Reading \(GitHubRepoRef(repo)?.slug ?? "your repo")…" : "Suggesting goals on your \(ThisDevice.name)…")
                         .font(.ui(15, .medium)).foregroundStyle(Theme.inkSoft)
                 }
                 .card()
@@ -333,7 +333,7 @@ struct CreateProjectFlow: View {
         if repoPreview.map({ !$0.isEmpty }) ?? false {
             return GoalPlanner.isEnabled ? "GitHub issues fill their checkpoints; suggestions fill the rest. Edit freely." : "GitHub issues fill their checkpoints. Add your own goals to the rest."
         }
-        if GoalPlanner.isEnabled { return "Suggested on your iPhone. Rename checkpoints and edit goals freely: each checkpoint completes once its goals are done." }
+        if GoalPlanner.isEnabled { return "Suggested on your \(ThisDevice.name). Rename checkpoints and edit goals freely: each checkpoint completes once its goals are done." }
         return GoalPlanner.unavailableReason + " Name your checkpoints and add goals yourself, or leave them simple and tick them off."
     }
 

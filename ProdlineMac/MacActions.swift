@@ -133,16 +133,3 @@ extension Milestone {
     }
 }
 
-extension EnvironmentValues {
-    /// DEBUG snapshots render whole pages, which a ScrollView would clip to nothing.
-    @Entry var macSnapshot: Bool = false
-}
-
-/// A vertical ScrollView, or just its content for a snapshot.
-struct MacScroll<Content: View>: View {
-    @ViewBuilder var content: Content
-    @Environment(\.macSnapshot) private var snapshot
-    var body: some View {
-        if snapshot { content } else { ScrollView { content } }
-    }
-}

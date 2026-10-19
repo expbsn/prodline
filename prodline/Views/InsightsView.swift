@@ -3,7 +3,10 @@ import SwiftData
 import Charts
 
 struct InsightsView: View {
+    /// Wide windows (the Mac): the cards side by side instead of stacked.
+    var wide = false
     @Query(sort: \Project.startDate) private var projects: [Project]
+    @State private var width: CGFloat = 1000
     @Environment(DataRefresher.self) private var refresher
     @State private var metric = ""
     /// The numbers picked for the tiles (comma-separated keys), when there are more than three.
@@ -52,6 +55,55 @@ struct InsightsView: View {
     }
 
     var body: some View {
+        if wide { wideBody } else { phoneBody }
+    }
+
+    /// Desktop: totals across the top, the trend beside the per-project bars, the rhythm full width.
+    private var wideBody: some View {
+        let twoColumns = width >= 900
+        return MacScroll {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Across \(projects.count) project\(projects.count == 1 ? "" : "s")").eyebrow().lineLimit(1)
+                    Text("Data").display(44, 750).foregroundStyle(Theme.ink).lineLimit(1)
+                }
+                if projects.isEmpty {
+                    emptyState
+                } else {
+                    totals
+                    if twoColumns {
+                        // Same height side by side: the bar chart grows to the trend card's height.
+                        HStack(alignment: .top, spacing: 24) {
+                            trend.frame(maxWidth: .infinity)
+                            tractionCard(fill: true).frame(width: 340)
+                        }
+                        .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        trend
+                        traction
+                    }
+                    rhythm
+                }
+            }
+            .padding(.horizontal, 40).padding(.top, 34).padding(.bottom, 40)
+            .frame(maxWidth: 1180, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "chart.bar.xaxis").font(.system(size: 36)).foregroundStyle(Theme.tertiary)
+            Text("Your timeline and traction appear here once you've created a project.")
+                .font(.ui(16)).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 60)
+        .padding(.horizontal, 30)
+    }
+
+    private var phoneBody: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 16) {
                 ScreenHeader(eyebrow: "Across \(projects.count) project\(projects.count == 1 ? "" : "s")", title: "Insights")
@@ -275,7 +327,9 @@ struct InsightsView: View {
         .card()
     }
 
-    private var traction: some View {
+    private var traction: some View { tractionCard(fill: false) }
+
+    private func tractionCard(fill: Bool) -> some View {
         let key = current
         return VStack(alignment: .leading, spacing: 14) {
             SectionTitle("By project", trailing: Stat.title(key))
@@ -288,9 +342,10 @@ struct InsightsView: View {
                     }
             }
             .chartYAxis(.hidden)
-            .frame(height: 200)
+            .frame(minHeight: 200, maxHeight: fill ? .infinity : 200)
             .animation(.spring(response: 0.5, dampingFraction: 0.8), value: key)
         }
+        .frame(maxHeight: fill ? .infinity : nil, alignment: .top)
         .card()
     }
 

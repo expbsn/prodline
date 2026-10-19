@@ -123,78 +123,13 @@ struct MeView: View {
         var id: Self { self }
     }
 
+    /// Wide windows (the Mac): the cards in two columns under a wide header.
+    var wide = false
+    @State private var width: CGFloat = 1000
+
     var body: some View {
-        ScrollView(showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 16) {
-                ScreenHeader(eyebrow: "Level \(profile.level)", title: "Me")
-
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("\(profile.xp % 100) / 100 XP to level \(profile.level + 1)").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
-                        Spacer()
-                        Text("Best streak \(profile.bestStreak) day\(profile.bestStreak == 1 ? "" : "s")").font(.ui(13)).foregroundStyle(Theme.secondary)
-                    }
-                    ChunkyProgressBar(value: profile.levelProgress, color: Color(hex: 0xFFC800))
-                }
-                .card()
-                .padding(.horizontal, 16)
-
-                VStack(alignment: .leading, spacing: 16) {
-                    SectionTitle("Building scheme")
-                    SchemeEditor(profile: profile)
-                    Label("Applies to projects you create from now on.", systemImage: "info.circle")
-                        .font(.ui(12)).foregroundStyle(Theme.secondary)
-                }
-                .card()
-                .padding(.horizontal, 16)
-
-                VStack(alignment: .leading, spacing: 14) {
-                    SectionTitle("Reminders")
-                    Toggle(isOn: $profile.remindersEnabled) {
-                        Text("Deadline notifications").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                    }
-                    .tint(Theme.switchOn)
-                    .onChange(of: profile.remindersEnabled) { _, on in
-                        Haptics.select()
-                        Task {
-                            if on { _ = await Notifier.requestAuth() }
-                            Notifier.rescheduleAll(projects: projects, profile: profile)
-                        }
-                    }
-                    if profile.remindersEnabled {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("When you work").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                            HStack(spacing: 6) {
-                                ForEach(WorkStyle.allCases) { w in
-                                    Chip(title: w.title.components(separatedBy: " ").last ?? w.title, isOn: profile.workStyle == w) {
-                                        profile.apply(w)
-                                        Notifier.rescheduleAll(projects: projects, profile: profile)
-                                    }
-                                }
-                            }
-                        }
-                        HourPicker(title: "Deadline reminder", hour: $profile.reminderHour)
-                            .onChange(of: profile.reminderHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
-                        HourPicker(title: "Last call", hour: $profile.nudgeHour)
-                            .onChange(of: profile.nudgeHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
-                    }
-                }
-                .card()
-                .padding(.horizontal, 16)
-
-                #if os(iOS)
-                WidgetsCard(data: widgetData).padding(.horizontal, 16)
-                #endif
-
-                configurationCard.padding(.horizontal, 16)
-
-                #if DEBUG
-                developerCard.padding(.horizontal, 16)
-                #endif
-
-                dataCard.padding(.horizontal, 16)
-            }
-            .padding(.bottom, 24)
+        Group {
+            if wide { wideBody } else { phoneBody }
         }
         .confirmationDialog(confirm == .deleteAll ? "Delete all data?" : "Reset progress?",
                             isPresented: Binding(get: { confirm != nil }, set: { if !$0 { confirm = nil } }),
@@ -210,13 +145,136 @@ struct MeView: View {
         }
     }
 
+    private var phoneBody: some View {
+        ScrollView(showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                ScreenHeader(eyebrow: "Level \(profile.level)", title: "Me")
+
+                levelCard.padding(.horizontal, 16)
+                schemeCard.padding(.horizontal, 16)
+                remindersCard.padding(.horizontal, 16)
+
+                #if os(iOS)
+                WidgetsCard(data: widgetData).padding(.horizontal, 16)
+                #endif
+
+                configurationCard.padding(.horizontal, 16)
+
+                #if DEBUG
+                developerCard.padding(.horizontal, 16)
+                #endif
+
+                dataCard.padding(.horizontal, 16)
+            }
+            .padding(.bottom, 24)
+        }
+    }
+
+    private var wideBody: some View {
+        MacScroll {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Level \(profile.level) · \(profile.xp) XP").eyebrow().lineLimit(1)
+                    Text("Me").display(44, 750).foregroundStyle(Theme.ink).lineLimit(1)
+                }
+                levelCard
+                if width >= 860 {
+                    HStack(alignment: .top, spacing: 24) {
+                        VStack(spacing: 24) { schemeCard; remindersCard; dataCard }.frame(maxWidth: .infinity)
+                        VStack(spacing: 24) { wideRightColumn }.frame(maxWidth: .infinity)
+                    }
+                } else {
+                    schemeCard
+                    remindersCard
+                    wideRightColumn
+                    dataCard
+                }
+            }
+            .padding(.horizontal, 40).padding(.top, 34).padding(.bottom, 40)
+            .frame(maxWidth: 1180, alignment: .leading)
+            .frame(maxWidth: .infinity)
+        }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+    }
+
+    @ViewBuilder
+    private var wideRightColumn: some View {
+        configurationCard
+        #if DEBUG
+        developerCard
+        #endif
+    }
+
+    private var levelCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("\(profile.xp % 100) / 100 XP to level \(profile.level + 1)").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                Text("Best streak \(profile.bestStreak) day\(profile.bestStreak == 1 ? "" : "s")").font(.ui(13)).foregroundStyle(Theme.secondary)
+            }
+            ChunkyProgressBar(value: profile.levelProgress, color: Color(hex: 0xFFC800))
+        }
+        .card()
+    }
+
+    private var schemeCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            SectionTitle("Building scheme")
+            SchemeEditor(profile: profile)
+            Label("Applies to projects you create from now on.", systemImage: "info.circle")
+                .font(.ui(12)).foregroundStyle(Theme.secondary)
+        }
+        .card()
+    }
+
+    private var remindersCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SectionTitle("Reminders")
+            Toggle(isOn: $profile.remindersEnabled) {
+                Text("Deadline notifications").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+            }
+            .tint(Theme.switchOn)
+            .onChange(of: profile.remindersEnabled) { _, on in
+                Haptics.select()
+                Task {
+                    if on { _ = await Notifier.requestAuth() }
+                    Notifier.rescheduleAll(projects: projects, profile: profile)
+                }
+            }
+            if profile.remindersEnabled {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("When you work").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                    HStack(spacing: 6) {
+                        ForEach(WorkStyle.allCases) { w in
+                            Chip(title: w.title.components(separatedBy: " ").last ?? w.title, isOn: profile.workStyle == w) {
+                                profile.apply(w)
+                                Notifier.rescheduleAll(projects: projects, profile: profile)
+                            }
+                        }
+                    }
+                }
+                HourPicker(title: "Deadline reminder", hour: $profile.reminderHour)
+                    .onChange(of: profile.reminderHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
+                HourPicker(title: "Last call", hour: $profile.nudgeHour)
+                    .onChange(of: profile.nudgeHour) { Notifier.rescheduleAll(projects: projects, profile: profile) }
+            }
+        }
+        .card()
+    }
+
     // MARK: Configuration
+
+    #if os(macOS)
+    private static let appearanceHint = "Follow your Mac, or keep Prodline light or dark."
+    #else
+    private static let appearanceHint = "Follow your iPhone, or keep Prodline light or dark."
+    #endif
 
     private var configurationCard: some View {
         VStack(alignment: .leading, spacing: 18) {
             SectionTitle("Configuration")
 
-            optionRow("Appearance", "Follow your iPhone, or keep Prodline light or dark.") {
+            optionRow("Appearance", Self.appearanceHint) {
                 HStack(spacing: 6) {
                     ForEach([("system", "System"), ("light", "Light"), ("dark", "Dark")], id: \.0) { v, label in
                         Chip(title: label, isOn: appearance == v) { appearance = v }
@@ -249,8 +307,8 @@ struct MeView: View {
             }
             toggleRow("Watch repos for new commits", "Syncs right after you push: ~30 s with a token, ~2 min without.", $commitWatch)
             toggleRow("Suggested goals", GoalPlanner.isAvailable
-                      ? "Drafted on this iPhone with Apple Intelligence."
-                      : "Needs Apple Intelligence on this iPhone.", $suggestions)
+                      ? "Drafted on this \(ThisDevice.name) with Apple Intelligence."
+                      : "Needs Apple Intelligence on this \(ThisDevice.name).", $suggestions)
             #if DEBUG
             toggleRow("Sample data", "Show sample numbers for projects without an endpoint.", $sampleData)
             #endif
@@ -377,7 +435,7 @@ struct MeView: View {
     private var dataCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Your data")
-            Text("Projects live on this iPhone and in your iCloud. Deleting removes them everywhere you're signed in.")
+            Text("Projects live on this \(ThisDevice.name) and in your iCloud. Deleting removes them everywhere you're signed in.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 8) {
