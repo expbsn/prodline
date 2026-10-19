@@ -22,6 +22,8 @@ struct ProjectDetailView: View {
     @State private var showCriteria = false
     @State private var showVerdict = false
     @State private var showShare = false
+    @State private var editingIntegration: Integration?
+    @State private var pickingIntegration = false
     @State private var confirmDelete = false
     @State private var drafting = false
     @State private var draftError: String?
@@ -218,6 +220,7 @@ struct ProjectDetailView: View {
                     .padding(.horizontal, 24)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            integrationStrip
             }
             .opacity(revealed ? 1 : 0)
             .blur(radius: revealed ? 0 : 12)
@@ -230,6 +233,53 @@ struct ProjectDetailView: View {
                 .offset(y: -overscroll)
                 .padding(.horizontal, -16)
                 .opacity(revealed ? 1 : 0)
+        }
+    }
+
+    /// The connected services as icons, tap one to edit it; + adds another.
+    private var integrationStrip: some View {
+        let row = HStack(spacing: 10) {
+            ForEach(project.integrations) { i in
+                Button {
+                    Haptics.tap()
+                    editingIntegration = i
+                } label: { IntegrationIcon(kind: i.kind, size: 38) }
+                .buttonStyle(.plain)
+                .accessibilityLabel(i.kind.title)
+            }
+            Button {
+                Haptics.tap()
+                pickingIntegration = true
+            } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Theme.secondary)
+                    .frame(width: 38, height: 38)
+                    .background(RoundedRectangle(cornerRadius: 38 * 0.3, style: .continuous).fill(Theme.inset))
+                    .overlay(RoundedRectangle(cornerRadius: 38 * 0.3, style: .continuous)
+                        .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3])))
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Add integration")
+        }
+        .padding(.horizontal, 8)
+        // Centered while it fits; scrolls sideways once there are many.
+        return ViewThatFits(in: .horizontal) {
+            row
+            ScrollView(.horizontal, showsIndicators: false) { row }
+        }
+        .padding(.top, 2)
+        .sheet(isPresented: $pickingIntegration) {
+            IntegrationPicker(connected: Set(project.integrations.map(\.kind))) { kind in
+                pickingIntegration = false
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(350))
+                    editingIntegration = Integration(kind: kind)
+                }
+            }
+        }
+        .sheet(item: $editingIntegration) { i in
+            IntegrationEditor(project: project, integration: i, isNew: !project.integrations.contains { $0.id == i.id })
         }
     }
 
