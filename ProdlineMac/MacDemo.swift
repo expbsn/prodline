@@ -100,6 +100,9 @@ enum MacDemo {
                 write(ShareCardSheet(project: p).environment(\.wideLayout, true).frame(height: 640), "-share.png", width: 760, scheme: scheme)
                 write(ConnectionSheet(project: p).environment(\.wideLayout, true).frame(height: 640), "-connection.png", width: 860, scheme: scheme)
             }
+            let center = CelebrationCenter()
+            center.fire(title: "+10 XP", subtitle: "Nailed it · right on time", accent: Accent(hex: 0xA35CFF), confetti: false)
+            write(ZStack { Theme.background; CelebrationOverlay() }.environment(center).environment(\.wideLayout, true).frame(height: 420), "-toast.png", width: 900, scheme: scheme)
             write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
             write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)
         }

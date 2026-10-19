@@ -29,6 +29,11 @@ struct MacRootView: View {
         }
         .blur(radius: (1 - reveal) * 14)
         .opacity(0.3 + 0.7 * reveal)
+        // The streak and ship moments and the confetti use the whole window; banners pop up bottom right
+        // (over the page, since the sidebar is on the left).
+        .overlay { ShipOverlay() }
+        .overlay { StreakOverlay() }
+        .overlay { CelebrationOverlay() }
         .overlay {
             if showSplash {
                 ZStack {
@@ -118,10 +123,7 @@ struct MacShell: View {
             detail
                 .background(Theme.background)
                 .environment(\.isActiveTab, true)
-                // Banners, confetti and the streak and ship moments cover the page, not the sidebar.
-                .overlay { ShipOverlay() }
-                .overlay { StreakOverlay() }
-                .overlay { CelebrationOverlay() }
+
         }
         // No toolbar: "New project" lives in the sidebar, and pages reach up to the window's top edge.
         .toolbar(removing: .sidebarToggle)

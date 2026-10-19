@@ -509,8 +509,45 @@ final class CelebrationCenter {
 
 struct CelebrationOverlay: View {
     @Environment(CelebrationCenter.self) private var center
+    @Environment(\.wideLayout) private var wide
 
     var body: some View {
+        if wide { wideBody } else { phoneBody }
+    }
+
+    /// Mac: confetti over the whole window, the banner as a pop-up card in the bottom-right corner.
+    private var wideBody: some View {
+        ZStack(alignment: .bottomTrailing) {
+            if let c = center.confetti {
+                ConfettiView(accent: c.accent).id(c.id)
+            }
+            if let b = center.banner {
+                HStack(spacing: 14) {
+                    Image(systemName: "sparkles").font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(b.accent.on)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(b.accent.on.opacity(0.18)))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(b.title).display(20, 750).lineLimit(1)
+                        Text(b.subtitle).font(.ui(13, .medium)).opacity(0.85).lineLimit(2)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .foregroundStyle(b.accent.on)
+                .padding(.horizontal, 16).padding(.vertical, 14)
+                .frame(width: 340)
+                .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(b.accent.base))
+                .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(b.accent.dark).offset(y: 5))
+                .shadow(color: .black.opacity(0.22), radius: 24, y: 10)
+                .padding(.trailing, 24).padding(.bottom, 28)
+                .transition(.move(edge: .trailing).combined(with: .opacity).combined(with: .scale(scale: 0.92, anchor: .bottomTrailing)))
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+        .allowsHitTesting(false)
+    }
+
+    private var phoneBody: some View {
         ZStack(alignment: .top) {
             if let c = center.confetti {
                 ConfettiView(accent: c.accent).id(c.id)
