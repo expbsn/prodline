@@ -44,6 +44,15 @@ struct IntegrationsSection: View {
         .sheet(item: $editing) { i in
             IntegrationEditor(project: project, integration: i, isNew: !project.integrations.contains { $0.id == i.id })
         }
+        #if DEBUG
+        // -PRODLINE_INTEGRATION tiktok: opens that service's setup right away (demo recordings).
+        .onAppear {
+            if let raw = UserDefaults.standard.string(forKey: "PRODLINE_INTEGRATION"), let kind = IntegrationKind(rawValue: raw),
+               editing == nil, !project.integrations.contains(where: { $0.kind == kind }) {
+                editing = Integration(kind: kind)
+            }
+        }
+        #endif
     }
 }
 
@@ -203,7 +212,7 @@ struct IntegrationEditor: View {
             .padding(20)
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    Text(kind.provides + ", counted from the project's start.")
+                    Text(kind.provides + (kind.provides.contains("since the start") ? "." : ", counted from the project's start."))
                         .font(.ui(15)).foregroundStyle(Theme.secondary)
                         .fixedSize(horizontal: false, vertical: true)
 

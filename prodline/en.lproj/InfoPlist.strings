@@ -1,0 +1,3 @@
+/* Shown by iOS, e.g. in the "Wants to Use … to Sign In" prompt. */
+"CFBundleName" = "Prodline";
+"CFBundleDisplayName" = "Prodline";
