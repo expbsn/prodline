@@ -242,11 +242,15 @@ struct ChunkySlider: View {
     let range: ClosedRange<Int>
     var color: Color? = nil
     @Environment(\.accent) private var accent
+    @Environment(\.wideLayout) private var wide
     @State private var dragging = false
+    @State private var hover = false
     /// Decided on the first movement: nil = undecided, true = horizontal (slider), false = vertical (page scroll).
     @State private var horizontal: Bool?
 
-    private let knob: CGFloat = 34
+    /// Mac: a quieter slider (thin track, small plain knob); the iPhone keeps the chunky one for thumbs.
+    private var knob: CGFloat { wide ? 18 : 34 }
+    private var track: CGFloat { wide ? 6 : 14 }
 
     private func set(at x: CGFloat, width w: CGFloat, span: CGFloat) {
         let f = min(max((x - knob / 2) / (w - knob), 0), 1)
@@ -266,17 +270,30 @@ struct ChunkySlider: View {
             let x = frac * (w - knob)
 
             ZStack(alignment: .leading) {
-                Capsule().fill(Theme.line).frame(height: 14)
-                Capsule().fill(tint).frame(width: x + knob / 2, height: 14)
-                Circle()
-                    .fill(.white)
-                    .overlay(Circle().strokeBorder(tint, lineWidth: 5))
-                    .shadow(color: .black.opacity(dragging ? 0.18 : 0.08), radius: dragging ? 8 : 3, y: 2)
-                    .frame(width: knob, height: knob)
-                    .scaleEffect(dragging ? 1.18 : 1)
-                    .offset(x: x)
+                Capsule().fill(Theme.line).frame(height: track)
+                Capsule().fill(tint).frame(width: x + knob / 2, height: track)
+                if wide {
+                    Circle()
+                        .fill(Color(light: 0xFFFFFF, dark: 0xE5E5EA))
+                        .overlay(Circle().strokeBorder(.black.opacity(0.08), lineWidth: 0.5))
+                        .shadow(color: .black.opacity(dragging ? 0.3 : 0.2), radius: dragging ? 4 : 2, y: 1)
+                        .frame(width: knob, height: knob)
+                        .scaleEffect(dragging ? 1.12 : hover ? 1.06 : 1)
+                        .offset(x: x)
+                } else {
+                    Circle()
+                        .fill(.white)
+                        .overlay(Circle().strokeBorder(tint, lineWidth: 5))
+                        .shadow(color: .black.opacity(dragging ? 0.18 : 0.08), radius: dragging ? 8 : 3, y: 2)
+                        .frame(width: knob, height: knob)
+                        .scaleEffect(dragging ? 1.18 : 1)
+                        .offset(x: x)
+                }
             }
-            .frame(height: 44)
+            .frame(height: wide ? 28 : 44)
+            #if os(macOS)
+            .onHover { h in withAnimation(.spring(response: 0.25, dampingFraction: 0.7)) { hover = h } }
+            #endif
             .contentShape(Rectangle())
             // Simultaneous + axis lock: vertical drags keep scrolling the page and never move the slider.
             .simultaneousGesture(
@@ -299,7 +316,7 @@ struct ChunkySlider: View {
             )
             .onTapGesture(coordinateSpace: .local) { p in set(at: p.x, width: w, span: span) }
         }
-        .frame(height: 44)
+        .frame(height: wide ? 28 : 44)
     }
 }
 

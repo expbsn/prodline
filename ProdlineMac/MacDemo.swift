@@ -87,7 +87,7 @@ enum MacDemo {
             write(MacPlanView(profile: profile, onOpen: { _ in }, onCreate: {}, onIdeas: {}), "-plan.png", width: 1180, scheme: scheme)
             write(MacPlanView(profile: profile, onOpen: { _ in }, onCreate: {}, onIdeas: {}), "-plan-narrow.png", width: 700, scheme: scheme)
             write(InsightsView(wide: true).background(Theme.background), "-data.png", width: 1180, scheme: scheme)
-            write(MeView(profile: profile, wide: true).background(Theme.background), "-me.png", width: 1180, scheme: scheme)
+            write(MeView(profile: profile, wide: true).background(Theme.background).environment(\.wideLayout, true), "-me.png", width: 1180, scheme: scheme)
             write(Image(nsImage: MenuBarLogo.image).resizable().interpolation(.high).frame(width: 18, height: 18).scaleEffect(4).frame(width: 90, height: 90).background(Color.white), "-logo.png", width: 90, scheme: .light)
             write(CreateProjectFlow(profile: profile) { _ in }.environment(\.wideLayout, true).frame(height: 680), "-create.png", width: 980, scheme: scheme)
             write(IntegrationPicker(connected: [.stripe]) { _ in }.environment(\.wideLayout, true).frame(height: 640), "-picker.png", width: 860, scheme: scheme)
