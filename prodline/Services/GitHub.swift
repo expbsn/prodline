@@ -281,6 +281,9 @@ final class GitHubService {
     /// Returns the projects whose snapshot changed.
     @discardableResult
     func refresh(projects: [Project], force: Bool = false, now: Date = .now) async -> [Project] {
+        #if DEBUG
+        if StoreDemo.isOn { return [] }
+        #endif
         var changed: [Project] = []
         for p in projects where p.isActive || p.phase() == .upcoming {
             guard let client = Self.client(for: p) else { continue }

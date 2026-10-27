@@ -74,6 +74,12 @@ struct prodlineApp: App {
         if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
             return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true)])
         }
+        #if DEBUG
+        // The App Store screenshot set lives in memory only, never in iCloud.
+        if StoreDemo.isOn {
+            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
+        }
+        #endif
         moveStoreIntoAppGroup()
         do {
             // Private CloudKit database (container from the entitlements) keeps devices in sync.

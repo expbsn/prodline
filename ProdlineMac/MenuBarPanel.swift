@@ -34,6 +34,7 @@ struct MenuBarPanel: View {
                     ForEach(m.displayGoals.prefix(5)) { g in GoalToggle(goal: g, accent: p.accent) }
                 }
                 .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(.quaternary.opacity(0.5)))
             } else {
                 Text(active.isEmpty ? "No active projects." : "Nothing due. Nice.").foregroundStyle(.secondary)

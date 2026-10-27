@@ -16,6 +16,12 @@ struct ProdlineMacApp: App {
 
     static let container: ModelContainer = {
         let schema = Schema([Profile.self, Project.self, Milestone.self, MetricSnapshot.self, Goal.self, Idea.self])
+        #if DEBUG
+        // The App Store screenshot set lives in memory only, never in iCloud.
+        if StoreDemo.isOn {
+            return try! ModelContainer(for: schema, configurations: [ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)])
+        }
+        #endif
         do {
             return try ModelContainer(for: schema, configurations: [ModelConfiguration(schema: schema, cloudKitDatabase: .automatic)])
         } catch {

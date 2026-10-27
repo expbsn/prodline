@@ -111,6 +111,7 @@ struct ProjectDetailView: View {
             case "verdict": showVerdict = true
             case "targets": showCriteria = true
             case "share": showShare = true
+            case "picker": pickingIntegration = true
             default: break
             }
         }

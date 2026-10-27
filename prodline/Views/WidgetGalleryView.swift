@@ -146,3 +146,40 @@ struct WidgetGalleryView: View {
             .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(LinearGradient(colors: [Color(hex: 0x4A4E69), Color(hex: 0x22223B)], startPoint: .top, endPoint: .bottom)))
     }
 }
+
+#if DEBUG
+/// -PRODLINE_STORE YES -PRODLINE_SHEET board: the widgets on a dark Home Screen, for the App Store frame.
+struct StoreWidgetBoard: View {
+    let data: WidgetData
+
+    var body: some View {
+        let now = Date.now
+        // The green one: Side Shop's black card would vanish on the dark wallpaper.
+        let project = data.projects.first { $0.name == "Habit Hero" } ?? data.mostUrgent(on: now)
+        VStack(spacing: 26) {
+            WidgetTile(size: WidgetSize.medium) {
+                ProjectWidgetView(project: project, date: now, family: .systemMedium)
+            }
+            HStack(spacing: 24) {
+                WidgetTile(size: WidgetSize.small) {
+                    ProjectWidgetView(project: project, date: now, family: .systemSmall)
+                }
+                WidgetTile(size: WidgetSize.small, content: {
+                    TractionWidgetView(project: data.projects.first { $0.name == "Tiny Invoice" }, projects: data.projects,
+                                       metricKey: "revenue", date: now, family: .systemSmall)
+                }, background: { TractionWidgetView.background(for: data.projects.first { $0.name == "Tiny Invoice" }) })
+            }
+            WidgetTile(size: WidgetSize.medium) {
+                LineupWidgetView(data: data, date: now, family: .systemMedium)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            LinearGradient(colors: [Color(hex: 0x1B2A6B), Color(hex: 0x3B1E6E), Color(hex: 0x0E0F24)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+                .ignoresSafeArea()
+        }
+        .environment(\.colorScheme, .dark)
+    }
+}
+#endif

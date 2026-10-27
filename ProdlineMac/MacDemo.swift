@@ -62,7 +62,7 @@ enum MacDemo {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             let projects = (try? context.fetch(FetchDescriptor<Project>())) ?? []
-            @MainActor func write(_ view: some View, _ suffix: String, width: CGFloat, scheme: ColorScheme) {
+            @MainActor func write(_ view: some View, _ suffix: String, width: CGFloat, scheme: ColorScheme, scale: CGFloat = 1.5) {
                 let r = ImageRenderer(content: view
                     .frame(width: width)
                     .environment(\.macSnapshot, true)
@@ -72,7 +72,7 @@ enum MacDemo {
                     .environment(CelebrationCenter())
                     .environment(GitHubService())
                     .modelContainer(container))
-                r.scale = 1.5
+                r.scale = scale
                 guard let img = r.nsImage, let tiff = img.tiffRepresentation,
                       let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return }
                 try? png.write(to: URL(fileURLWithPath: path + suffix))
@@ -105,7 +105,16 @@ enum MacDemo {
             center.fire(title: "+10 XP", subtitle: "Nailed it · right on time", accent: Accent(hex: 0xA35CFF), confetti: false)
             write(ZStack { Theme.background; CelebrationOverlay() }.environment(center).environment(\.wideLayout, true).frame(height: 420), "-toast.png", width: 900, scheme: scheme)
             write(OnboardingView(profile: Profile(), wide: true).frame(height: 760), "-welcome.png", width: 1180, scheme: scheme)
-            write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme)
+            write(MenuBarPanel().background(Theme.card), "-menu.png", width: 300, scheme: scheme, scale: 3)
+            // Each project's card, large, for the App Store header.
+            if StoreDemo.isOn {
+                let refresher = DataRefresher()
+                for p in projects {
+                    let slug = p.name.lowercased().replacingOccurrences(of: " ", with: "-")
+                    write(ProjectCardFace(project: p, refresher: refresher).frame(width: 250, height: 350), "-card-\(slug).png",
+                          width: 250, scheme: .light, scale: 6)
+                }
+            }
         }
     }
 }

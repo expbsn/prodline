@@ -59,6 +59,17 @@ struct MacRootView: View {
                 try? context.save()
             }
             #if DEBUG
+            StoreDemo.seed(context)
+            // Screenshot set: the window at the App Store's 1440 x 900 points (2880 x 1800 pixels).
+            if StoreDemo.isOn {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .milliseconds(300))
+                    if let w = NSApp.windows.first(where: { $0.isVisible && $0.frame.width > 400 }) {
+                        w.setContentSize(NSSize(width: 1440, height: 900))
+                        w.center()
+                    }
+                }
+            }
             MacDemo.seedIfNeeded(context)
             MacDemo.snapshotIfAsked(context, container: ProdlineMacApp.container)
             #endif
@@ -159,6 +170,7 @@ struct MacShell: View {
                 page = .project(p.id)
             }
             if let t = UserDefaults.standard.string(forKey: "PRODLINE_TAB").flatMap(AppTab.init(rawValue:)) { page = .tab(t) }
+            if UserDefaults.standard.bool(forKey: "PRODLINE_CREATE") { showCreate = true }
         }
         #endif
     }

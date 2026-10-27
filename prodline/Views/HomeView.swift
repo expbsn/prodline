@@ -58,7 +58,7 @@ struct HomeView: View {
                     ScreenHeader(eyebrow: "Prodline", title: "Projects") {
                         HStack(alignment: .top, spacing: 10) {
                             if reviewWaiting { reviewChip.transition(.scale.combined(with: .opacity)) }
-                            feedbackChip
+                            if showsFeedback { feedbackChip }
                             streakBadge
                         }
                     }
@@ -107,6 +107,12 @@ struct HomeView: View {
 
     /// Sunday evening until watched: this week's review.
     private var reviewChip: some View { WeeklyReviewChip(action: onReview) }
+
+    #if DEBUG
+    private var showsFeedback: Bool { !StoreDemo.isOn }
+    #else
+    private let showsFeedback = true
+    #endif
 
     /// Beta: feedback to the developer, built exactly like the streak badge next to it.
     private var feedbackChip: some View {

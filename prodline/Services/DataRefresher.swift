@@ -60,6 +60,13 @@ final class DataRefresher {
     }
 
     func refresh(projects: [Project], context: ModelContext, force: Bool = false, now: Date = .now) async {
+        #if DEBUG
+        // Screenshot set: every project reads as live, nothing is fetched.
+        if StoreDemo.isOn {
+            for p in projects { status[p.id] = .live(now.addingTimeInterval(-120)) }
+            return
+        }
+        #endif
         // A poll is running: a refresh the user asked for waits for it instead of being dropped.
         if force { while isRefreshing { try? await Task.sleep(for: .milliseconds(150)) } }
         guard !isRefreshing else { return }

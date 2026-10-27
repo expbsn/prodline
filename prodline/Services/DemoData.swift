@@ -12,8 +12,8 @@ enum DemoData {
         var details: String = ""
         let key: String, startedDaysAgo: Int, accent: Int
         var githubRepo: String = ""
-        /// Bundled photo (Assets: Cover-<slug>, credits in design/IMAGE_CREDITS.md).
-        /// `accent` is the fallback when the photo has no usable color (Side Shop is black and white).
+        /// Bundled logo (Assets: Cover-<slug>, drawn by design/make_demo_logos.swift).
+        /// `accent` is the fallback when the logo has no usable color (Side Shop is black).
         var cover: UIImage? { UIImage(named: "Cover-\(slug)") }
     }
 

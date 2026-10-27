@@ -100,7 +100,7 @@
     {"id": "deploy-pulse", "title": "Count Vercel and Netlify deploys while building", "day": 25, "done": true},
     {"id": "audience-integrations", "title": "Track newsletters, npm, Hacker News, Product Hunt and Bluesky", "day": 25, "done": true},
 
-    {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
+    {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": true},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},
     {"id": "mac-testflight", "title": "Upload the Mac app to TestFlight", "day": 26, "done": true},
 

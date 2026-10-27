@@ -57,18 +57,23 @@ struct ActivityItem: Identifiable {
         return items.sorted { $0.date > $1.date }
     }
 
-    /// How the project's shown numbers moved today, against the last reading before midnight.
+    /// How the project's shown numbers moved today, against the last reading before midnight: one line per
+    /// project, so a few busy services don't push everything else out.
     private static func metricMoves(_ p: Project, refresher: DataRefresher, now: Date) -> [ActivityItem] {
         let snaps = p.sortedSnapshots
         let today = now.startOfDay
-        return refresher.shownMetrics(for: p).compactMap { key in
+        var latestAt = Date.distantPast
+        let moves: [String] = refresher.shownMetrics(for: p).compactMap { key in
             guard let latest = snaps.last(where: { $0.valueIfPresent(key) != nil }), latest.date >= today,
                   let base = snaps.last(where: { $0.date < today && $0.valueIfPresent(key) != nil })?.valueIfPresent(key),
                   let value = latest.valueIfPresent(key), value > base else { return nil }
-            return ActivityItem(id: "metric-\(p.id)-\(key)", date: latest.date, symbol: Stat.symbol(key), tint: p.accent.text,
-                                title: "+\(Stat.format(key, value - base)) \(Stat.title(key).lowercased()) today",
-                                detail: "\(p.name) · \(Stat.format(key, value)) in total")
+            latestAt = max(latestAt, latest.date)
+            return "+\(Stat.format(key, value - base)) \(Stat.title(key).lowercased())"
         }
+        guard !moves.isEmpty else { return [] }
+        return [ActivityItem(id: "metrics-\(p.id)", date: latestAt, symbol: "chart.line.uptrend.xyaxis", tint: p.accent.text,
+                             title: "\(moves[0]) today",
+                             detail: ([p.name] + [moves.dropFirst().joined(separator: ", ")].filter { !$0.isEmpty }).joined(separator: " · "))]
     }
 }
 

@@ -159,8 +159,10 @@ extension ProjectCardFace {
             label = "Day"; value = "\(project.dayInPhase)"
             foot = "Building · \(project.daysLeftInPhase)d left"
         case .observing:
-            label = "Visits"
-            value = refresher?.value(.visits, for: project).map(MetricKey.count) ?? "–"
+            // The project's own lead number: a game shows downloads, not visits it doesn't track.
+            let key = refresher?.shownMetrics(for: project).first ?? MetricKey.visits.rawValue
+            label = Stat.title(key)
+            value = refresher?.value(key, for: project).map { Stat.format(key, $0) } ?? "–"
             foot = "Observing · day \(project.dayInPhase)"
         case .finished:
             label = "Revenue"

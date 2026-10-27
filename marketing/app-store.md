@@ -1,16 +1,12 @@
 # Prodline: App Store submission
 
-Everything for App Store Connect in one place. Part 1 is ready to paste. Part 2 (screenshots) and Part 3 (header and search assets) are drafts to sign off before the assets get built.
+Everything for App Store Connect in one place. Part 1 is ready to paste; Parts 2 and 3 are built and live in `marketing/app-store/`.
 
 ---
 
-## Decide first
+## Decided
 
-| | Proposal | Why |
-|---|---|---|
-| Price | Free, no in-app purchases | Matches "free during the beta"; the app has no StoreKit yet. Pricing can come in a later version. |
-| App name | **Prodline: Side Project Tracker** (30/30) | The name field is the strongest search signal. Plain "Prodline" ranks for nothing yet. TestFlight then shows the long name too. |
-| Release | Manual release after approval | So iPhone and Mac go live together and you can post the same day. |
+Free, no in-app purchases. Name **Prodline: Side Project Tracker**. Manual release after approval, so iPhone and Mac go live together.
 
 ---
 
@@ -131,95 +127,76 @@ Not needed for 1.0.
 
 ---
 
-## Part 2: Screenshot draft
+## Part 2: Screenshots
 
-### Sizes
-
-| Platform | Size | Status |
+| Folder | Size | Upload to |
 |---|---|---|
-| iPhone 6.1" (Dynamic Island, medium) | 1206 × 2622 | **Required** |
-| iPhone 6.9" (Dynamic Island, large) | 1320 × 2868 | Optional, built from the same layouts |
-| iPhone Duo | 1398 × 2034 / 2007 × 2853 | Optional now, required from April 2027. Skip for 1.0. |
-| Mac | 2880 × 1800 | **Required** for the Mac app |
+| `marketing/app-store/iphone-6.1/` | 1206 × 2622 | iPhone 6.1" display (**required**) |
+| `marketing/app-store/iphone-6.9/` | 1320 × 2868 | iPhone 6.9" display |
+| `marketing/app-store/mac/` | 2880 × 1800 | Mac (**required** for the Mac app) |
 
-### Style
+iPhone Duo screenshots are optional until April 2027; skip them for 1.0.
 
-- The app's own look: light background (`Theme.background`), Afacad Flux for the headline, the chunky card shadows.
-- Each frame: a short headline (2–5 words) and one subline, then the real screen below it, in a rounded phone outline that bleeds off the bottom edge.
-- Light mode for all frames except one dark frame (the widgets) for contrast in the row.
-- Real app screens from the simulator with the store demo data below, no mock-ups.
-
-### Store demo data (replaces the stock photos)
-
-New covers are drawn logos: `design/demo-logos/` (habit-hero, pixel-quest, side-shop, tiny-invoice, moonlog). A DEBUG-only launch argument (`-PRODLINE_STORE YES`) seeds this set on iPhone and Mac, offline, with history for the charts.
-
-| Project | What it is | Phase | Connected | Numbers shown |
-|---|---|---|---|---|
-| **Tiny Invoice** | Invoices for freelancers | Observing, day 12 of 28 | Stripe, Plausible, GitHub | $1,240 revenue · 3,180 visitors · 46 signups |
-| **Pixel Quest** | Daily pixel art puzzles | Observing, day 26 of 28, targets met → **Keep** suggested | App Store Connect, YouTube, TikTok | 2,860 downloads · 41.2K views · 312 followers |
-| **Habit Hero** | Habit tracker with plants | Building, day 9 of 14 | App Store Connect, RevenueCat, GitHub | 86 downloads · 14 trials |
-| **Side Shop** | One-page print shop | Building, day 3 of 14 | Shopify, Plausible | 180 visitors |
-| **Moonlog** | Journaling newsletter | Finished, **Kept** | Kit, Bluesky | 1,920 subscribers |
-
-Profile: level 7, 12-day streak, 91% on time. Goals come from all sources (GitHub issues, prodline.json, metric targets, typed), so the source icons show.
-
-### iPhone frames
+### iPhone (6 frames, in this order)
 
 | # | Headline | Subline | Screen |
 |---|---|---|---|
-| 1 | **Finish what you start.** | Every side project on a short clock. | Dash: the project carousel on Tiny Invoice, streak flame lit, today's checkpoint below |
-| 2 | **Numbers, on their own.** | Revenue, visitors and downloads arrive by themselves. | Tiny Invoice project page: revenue chart, three tiles, Stripe · Plausible · GitHub connected |
-| 3 | **Goals that tick themselves off.** | "First sale" happens, the goal is done. | Habit Hero checkpoints: goals from GitHub issues and a metric target ticked, one "Up next" |
-| 4 | **25+ services, connected.** | Keys stay in your Keychain. | The integration picker grid |
-| 5 | **Keep, pivot or kill.** | Decide on real numbers, not on feelings. | Pixel Quest decision sheet, targets met, Keep suggested |
-| 6 | **Your streak, everywhere.** | Widgets and a deadline Live Activity. | Dark: Home Screen widgets (small streak, medium traction) and the Lock Screen Live Activity, composed from the widget views on a wallpaper |
-| 7 | **Your week, wrapped.** | What you shipped, every Sunday. | The weekly wrap's main card (optional, if the row feels short) |
+| 1 | Finish what you start. | Every side project on a short clock. | Dash, Habit Hero in the carousel |
+| 2 | Numbers, on their own. | Revenue and visitors, by themselves. | Tiny Invoice: timeline, traction chart, Stripe and Plausible connected |
+| 3 | A deadline for every step. | Every project, every checkpoint. | Plan: streak, week strip, today's checkpoints with goals |
+| 4 | 25+ services, connected. | Your keys stay in your Keychain. | The integration picker |
+| 5 | Keep, pivot or kill. | Decide on numbers, not on a feeling. | Pixel Quest's decision, targets met, Keep suggested |
+| 6 | Always in sight. | Your next deadline on the Home Screen. | Widgets on a dark Home Screen |
 
-### Mac frames
-
-Full window (1440 × 900 points, so 2880 × 1800 at 2×) on a soft backdrop, headline above the window.
+### Mac (5 frames)
 
 | # | Headline | Screen |
 |---|---|---|
-| 1 | **Your week at a glance.** | Dash: stats strip, Up next, Coming up, Activity |
-| 2 | **Live numbers for every project.** | Tiny Invoice project page with the chart and connected services |
-| 3 | **Every deadline in one place.** | Plan: agenda and month calendar |
-| 4 | **Always one click away.** | The menu bar panel open over the desktop |
-| 5 | **Plan a build in a minute.** | The create-project flow on its schedule step |
+| 1 | Your week at a glance. | Dash: stats, Up next, Activity |
+| 2 | Live numbers for every project. | Tiny Invoice's project page |
+| 3 | Every deadline in one place. | Plan: agenda and calendar |
+| 4 | One click away. | The menu bar panel on a desktop |
+| 5 | Plan a build in a minute. | The create-project flow |
+
+### The demo data behind them
+
+`-PRODLINE_STORE YES` (DEBUG builds only) loads five projects into an in-memory store, so nothing reaches iCloud, and switches syncing off so the screens hold still. Covers are logos drawn by `design/make_demo_logos.swift`.
+
+| Project | Phase | Connected | Numbers |
+|---|---|---|---|
+| Tiny Invoice | Observing, day 12 | Stripe, Plausible | $1,240 revenue · 3,180 visits · 46 sales |
+| Pixel Quest | Observing, day 26, targets met | App Store Connect, YouTube, TikTok | 2,860 downloads · 41.2K views · 312 followers |
+| Habit Hero | Building, day 9 | App Store Connect, RevenueCat | 86 downloads · 14 trials · $38 |
+| Side Shop | Building, day 3 | Shopify, Plausible | 180 visits |
+| Moonlog | Observing again after a Keep | Kit, Bluesky | 1,920 subscribers |
+
+### Rebuilding them
+
+1. iPhone 17 Pro simulator, status bar set with `xcrun simctl status_bar <sim> override --time 9:41 --batteryState discharging --batteryLevel 100`.
+2. Shots with `-PRODLINE_STORE YES -PRODLINE_NOLAUNCH YES` plus: nothing (Dash), `-PRODLINE_OPEN "Tiny Invoice"` (scrolled to Traction), `-PRODLINE_TAB plan`, `-PRODLINE_OPEN "Tiny Invoice" -PRODLINE_SHEET picker`, `-PRODLINE_OPEN "Pixel Quest" -PRODLINE_SHEET verdict`, `-PRODLINE_SHEET board`. Save as dash, traction, plan, picker, verdict, board.png.
+3. Mac: the same argument plus `-config.appearance light`; window captures of Dash, `-PRODLINE_OPEN "Tiny Invoice"`, `-PRODLINE_TAB plan`, `-PRODLINE_CREATE YES`; with `-PRODLINE_SNAPSHOT <path>` the snapshot writer adds the menu panel, the menu bar logo and the project cards.
+4. `design/make_store_frames.swift`, `design/make_mac_frames.swift` and `design/make_creative_assets.swift` compose everything (usage at the top of each).
 
 ---
 
-## Part 3: Header and search results assets (new since October)
+## Part 3: Header and search results assets
 
-Optional, shown only on iOS 27 / iPadOS 27 and later. They're submitted from the version page's "Header and Search Results" tab (or the Asset Library) and reviewed separately from the build, so they can go in after the app is approved. Rules: no prices, URLs, copyright signs, other platforms' logos or awards, content suitable for 4+, no transparency.
+Optional, shown only on iOS 27 / iPadOS 27 and later. Upload them from the version page's "Header and Search Results" tab (or the Asset Library) once the app is approved; they're reviewed on their own. Rules: no prices, URLs, copyright signs, other platforms' logos or awards; 4+ content; no transparency (both files have none).
 
-### Product page header: 21:9, 3840 × 1646, PNG
+| File | Placement | Size |
+|---|---|---|
+| `marketing/app-store/header-21x9.png` | Product page header | 3840 × 1646 |
+| `marketing/app-store/search-3x2.png` | Search results | 3840 × 2560 |
 
-Sits at the very top of the product page. The app icon, name and Get button appear below it, not on it. One idea, mood over features.
-
-**Concept: "the shelf of finished things."** A soft light gradient in the app's background tone. The five demo project cards (logos, phase line, one number each) stand in a gentle arc across the middle, the center card (Tiny Invoice, "$1,240") slightly larger and lifted, the outer ones fading into the background. One line above the cards, centered:
-
-> Finish what you start.
-
-Everything important stays inside the middle 3:2 area, so a crop never cuts a card in half.
-
-### Search results asset: 3:2, 3840 × 2560, PNG
-
-Replaces the screenshot row in search results (if left out, the first screenshots show as now). It should be a real screen plus one line that adds to it.
-
-**Concept:** left third: the headline in Afacad Flux, large:
-
-> Your side projects, on a deadline.
-
-Right two thirds: two phone screens side by side, slightly overlapping. Tiny Invoice's project page (chart) in front, Dash behind it. Same background as the header so both read as one campaign.
-
-**Video (later):** both slots also take 5–30 s loops. A 10-second loop of a goal ticking itself off and the streak flame lighting would be the strongest version, using the app's existing animations. Not needed for 1.0.
+- **Header:** "Finish what you start." above the five project cards in an arc, Tiny Invoice in the middle.
+- **Search:** "Your side projects, on a deadline." beside two phones (Tiny Invoice's numbers in front, Dash behind).
+- **Later:** both slots also take 5–30 s video loops. A goal ticking itself off and the streak flame lighting would be the strongest one.
 
 ---
 
-## Order of work after sign-off
+## Submitting
 
-1. Store demo data and logos into the app (DEBUG only).
-2. iPhone frames at 1206 × 2622 and 1320 × 2868, Mac frames at 2880 × 1800, into `marketing/app-store/`.
-3. Header and search assets into `marketing/app-store/`.
-4. You: paste Part 1, upload the screenshots, select the build, submit both platforms. After approval: upload the header and search assets.
+1. App Store Connect → Prodline → iOS: paste Part 1, upload `iphone-6.1` and `iphone-6.9`, select the build, answer age rating and privacy as above, "Add for Review".
+2. Same app → macOS (add the platform if it isn't there): paste Part 1 again, upload `mac`, select the Mac build, "Add for Review".
+3. Submit both together, release manually.
+4. After approval: upload the header and search assets.

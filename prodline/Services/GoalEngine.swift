@@ -274,7 +274,9 @@ enum GoalEngine {
               !(review.goals ?? []).contains(where: { $0.source == .metric }) else { return }
         let daysLeft = Date.days(from: now, to: review.dueDate)
         var order = 100
-        for key in [MetricKey.visits, .revenue] {
+        let available = refresher.availableMetrics(for: project)
+        // Only numbers the project actually tracks (a game with App Store and TikTok has no visits).
+        for key in [MetricKey.visits, .revenue] where available.contains(key.rawValue) {
             guard let current = refresher.value(key, for: project) else { continue }
             if key == .revenue && current <= 0 { continue }
             let target = stretchTarget(current: current, dailyRate: dailyRate(key, project: project), daysLeft: daysLeft)

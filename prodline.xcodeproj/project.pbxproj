@@ -53,7 +53,7 @@
 		77B3B70E307271C400D4F28B /* prodlineTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = prodlineTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		77B3B718307271C400D4F28B /* prodlineUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = prodlineUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C0FFEE000000000000000001 /* ProdlineWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ProdlineWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		D00D00000000000000000001 /* ProdlineMac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProdlineMac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D00D00000000000000000001 /* Prodline.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Prodline.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -199,7 +199,7 @@
 				77B3B70E307271C400D4F28B /* prodlineTests.xctest */,
 				77B3B718307271C400D4F28B /* prodlineUITests.xctest */,
 				C0FFEE000000000000000001 /* ProdlineWidgets.appex */,
-				D00D00000000000000000001 /* ProdlineMac.app */,
+				D00D00000000000000000001 /* Prodline.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -322,7 +322,7 @@
 			packageProductDependencies = (
 			);
 			productName = ProdlineMac;
-			productReference = D00D00000000000000000001 /* ProdlineMac.app */;
+			productReference = D00D00000000000000000001 /* Prodline.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -822,8 +822,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Prodline;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Kian Jain";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -859,8 +859,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Prodline;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Kian Jain";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",

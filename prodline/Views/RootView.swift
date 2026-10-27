@@ -16,6 +16,9 @@ struct RootView: View {
     /// Cold start: the logo for a moment, then it blurs away while the app sharpens in (2 s in all).
     @State private var showSplash = LaunchGate.shouldShow
     @State private var reveal: Double = LaunchGate.shouldShow ? 0 : 1
+    #if DEBUG
+    @State private var storeBoard = StoreDemo.isOn && UserDefaults.standard.string(forKey: "PRODLINE_SHEET") == "board"
+    #endif
 
     #if DEBUG
     /// -PRODLINE_SPLASH YES keeps the splash up, to look at it.
@@ -71,6 +74,13 @@ struct RootView: View {
         .overlay { StreakOverlay() }
         .overlay { CelebrationOverlay() }
         .overlay { launchLayers }
+        #if DEBUG
+        .fullScreenCover(isPresented: $storeBoard) {
+            StoreWidgetBoard(data: WidgetData(generatedAt: .now, streak: profiles.first?.streak ?? 0,
+                                              projects: projects.map { WidgetPublisher.make($0, refresher: refresher, now: .now) }))
+                .onAppear { for p in projects { WidgetCovers.overrides[p.id.uuidString] = p.cover } }
+        }
+        #endif
         // Ticking a goal updates the deadline Live Activity right away, not on the next sync.
         .onChange(of: deadlineSignature) { Task { await LiveActivities.sync(projects) } }
         // A widget tick that ran in the app's own process: apply it now rather than on the next pass.
@@ -111,6 +121,7 @@ struct RootView: View {
                 DemoData.load(baseURL: UserDefaults.standard.string(forKey: "mockServerURL") ?? "http://127.0.0.1:8787",
                               profile: profile, context: context)
             }
+            StoreDemo.seed(context)
             if UserDefaults.standard.bool(forKey: "PRODLINE_ONBOARDING"), let profile = profiles.first {
                 profile.onboarded = false
             }
