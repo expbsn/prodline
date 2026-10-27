@@ -83,20 +83,17 @@ struct MacProjectDashboard: View {
 
     // MARK: Header
 
+    /// No name here: the card and the sidebar already show it. Just the phase and the actions.
     private var header: some View {
-        HStack(alignment: .bottom, spacing: 16) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 7) {
-                    Image(systemName: project.phase().symbol)
-                    Text(phaseLine).lineLimit(1)
-                }
-                .font(.ui(13, .semibold))
-                .foregroundStyle(accent.on)
-                .padding(.horizontal, 12).padding(.vertical, 6)
-                .background(Capsule().fill(accent.base))
-                Text(project.name).display(44, 800).foregroundStyle(Theme.ink)
-                    .lineLimit(1).minimumScaleFactor(0.55)
+        HStack(spacing: 16) {
+            HStack(spacing: 7) {
+                Image(systemName: project.phase().symbol)
+                Text(phaseLine).lineLimit(1)
             }
+            .font(.ui(13, .semibold))
+            .foregroundStyle(accent.on)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Capsule().fill(accent.base))
             .layoutPriority(1)
             Spacer(minLength: 12)
             // Labels while they fit, icons when the window gets narrow.
