@@ -156,7 +156,10 @@ struct StoreWidgetBoard: View {
         let now = Date.now
         // The green one, so the first widget carries some color.
         let project = data.projects.first { $0.name == "Habit Hero" } ?? data.mostUrgent(on: now)
-        VStack(spacing: 26) {
+        let invoice = data.projects.first { $0.name == "Tiny Invoice" }
+        let game = data.projects.first { $0.name == "Pixel Quest" }
+        // Four rows from the status bar down to the home indicator, like a full Home Screen page.
+        VStack(spacing: 22) {
             WidgetTile(size: WidgetSize.medium) {
                 ProjectWidgetView(project: project, date: now, family: .systemMedium)
             }
@@ -165,15 +168,23 @@ struct StoreWidgetBoard: View {
                     ProjectWidgetView(project: project, date: now, family: .systemSmall)
                 }
                 WidgetTile(size: WidgetSize.small, content: {
-                    TractionWidgetView(project: data.projects.first { $0.name == "Tiny Invoice" }, projects: data.projects,
-                                       metricKey: "revenue", date: now, family: .systemSmall)
-                }, background: { TractionWidgetView.background(for: data.projects.first { $0.name == "Tiny Invoice" }) })
+                    TractionWidgetView(project: invoice, projects: data.projects, metricKey: "revenue", date: now, family: .systemSmall)
+                }, background: { TractionWidgetView.background(for: invoice) })
+            }
+            HStack(spacing: 24) {
+                WidgetTile(size: WidgetSize.small, content: {
+                    TractionWidgetView(project: game, projects: data.projects, metricKey: "social_views", date: now, family: .systemSmall)
+                }, background: { TractionWidgetView.background(for: game) })
+                WidgetTile(size: WidgetSize.small) {
+                    ProjectWidgetView(project: game, date: now, family: .systemSmall)
+                }
             }
             WidgetTile(size: WidgetSize.medium) {
                 LineupWidgetView(data: data, date: now, family: .systemMedium)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.top, 72)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background {
             LinearGradient(colors: [Color(hex: 0xEDEDF0), Color(hex: 0xD9D9DE), Color(hex: 0xC6C6CD)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
