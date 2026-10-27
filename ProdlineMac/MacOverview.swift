@@ -1,8 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Dash on the Mac: the numbers that matter today across the top, today's checkpoints to tick, and every
-/// project as its card in a grid.
+/// Dash on the Mac: the numbers that matter in one strip, today's checkpoints to tick beside what happened
+/// lately, and every project as its card in a grid.
 struct MacOverview: View {
     let profile: Profile
     var onOpen: (Project) -> Void
@@ -10,6 +10,9 @@ struct MacOverview: View {
     var onReview: () -> Void
     @Query(sort: \Project.startDate) private var projects: [Project]
     @Environment(DataRefresher.self) private var refresher
+    @State private var width: CGFloat = 1000
+    /// Up next and Activity side by side while the window is wide enough for both.
+    private var twoColumns: Bool { width >= 880 }
 
     private var active: [Project] { projects.filter { $0.phase() != .finished }.reversed() }
     private var finished: [Project] { projects.filter { $0.phase() == .finished }.reversed() }
@@ -17,38 +20,112 @@ struct MacOverview: View {
     private var focus: [Milestone] {
         let due = active.flatMap { $0.sortedMilestones.filter { !$0.isDone && ($0.isDueToday || $0.isOverdue) } }
         let next = active.filter { p in !due.contains { $0.project?.id == p.id } }.compactMap(\.nextMilestone)
-        return Array((due + next.sorted { $0.dueDate < $1.dueDate }).prefix(6))
+        return Array((due + next.sorted { $0.dueDate < $1.dueDate }).prefix(4))
+    }
+
+    /// The deadlines after the ones in Up next.
+    private var comingUp: [Milestone] {
+        let shown = Set(focus.map(\.id))
+        return active.flatMap(\.sortedMilestones)
+            .filter { !$0.isDone && !shown.contains($0.id) && $0.dueDate > Date.now.startOfDay }
+            .sorted { $0.dueDate < $1.dueDate }
+            .prefix(4).map { $0 }
     }
 
     var body: some View {
         MacScroll {
-            VStack(alignment: .leading, spacing: 34) {
+            VStack(alignment: .leading, spacing: 26) {
                 header
                 stats
-                if !focus.isEmpty {
-                    VStack(alignment: .leading, spacing: 14) {
-                        SectionTitle("Up next", trailing: "\(focus.filter { $0.isDueToday || $0.isOverdue }.count) due today")
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 280), spacing: 18, alignment: .top)], alignment: .leading, spacing: 18) {
-                            ForEach(focus) { m in MacFocusCard(milestone: m, onOpen: { if let p = m.project { onOpen(p) } }) }
+                if twoColumns {
+                    HStack(alignment: .top, spacing: 20) {
+                        VStack(spacing: 20) {
+                            upNext
+                            if !comingUp.isEmpty { comingUpPanel }
                         }
+                        .frame(maxWidth: .infinity)
+                        MacActivityPanel(projects: projects).frame(width: 330)
                     }
+                } else {
+                    upNext
+                    if !comingUp.isEmpty { comingUpPanel }
+                    MacActivityPanel(projects: projects, limit: 6)
                 }
-                VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 14) {
                     SectionTitle("Projects", trailing: "\(active.count) active")
                     cardGrid(active, withCreate: true)
                 }
                 if !finished.isEmpty {
-                    VStack(alignment: .leading, spacing: 18) {
+                    VStack(alignment: .leading, spacing: 14) {
                         SectionTitle("Finished")
                         cardGrid(finished, withCreate: false)
                     }
                 }
             }
-            .padding(.horizontal, 40).padding(.top, 34).padding(.bottom, 40)
+            .padding(.horizontal, 36).padding(.top, 30).padding(.bottom, 36)
             .frame(maxWidth: 1320, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background(Theme.background)
+    }
+
+    /// The checkpoints to work on, in one panel with their open goals to tick.
+    private var upNext: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Up next").cardTitle(20).foregroundStyle(Theme.ink)
+                Spacer()
+                let due = focus.filter { $0.isDueToday || $0.isOverdue }.count
+                Text(due == 0 ? "Nothing due today" : "\(due) due today").eyebrow(size: 10)
+            }
+            if focus.isEmpty {
+                Text("No open checkpoints. Start a project and its plan lands here.")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .padding(.vertical, 6)
+            } else {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(focus.enumerated()), id: \.element.id) { i, m in
+                        if i > 0 { Divider().overlay(Theme.line).padding(.vertical, 12) }
+                        MacFocusRow(milestone: m, onOpen: { if let p = m.project { onOpen(p) } })
+                    }
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .card(padding: 20, radius: 24)
+    }
+
+    private var comingUpPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Coming up").cardTitle(20).foregroundStyle(Theme.ink)
+            VStack(spacing: 10) {
+                ForEach(comingUp) { m in
+                    Button { if let p = m.project { onOpen(p) } } label: {
+                        HStack(spacing: 12) {
+                            VStack(spacing: 0) {
+                                Text(m.dueDate.formatted(.dateTime.weekday(.abbreviated))).font(.ui(10, .bold)).textCase(.uppercase)
+                                    .foregroundStyle(Theme.secondary)
+                                Text(m.dueDate.formatted(.dateTime.day())).display(18, 750).foregroundStyle(Theme.ink)
+                            }
+                            .frame(width: 42, height: 42)
+                            .background(RoundedRectangle(cornerRadius: 11, style: .continuous).fill(Theme.background))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(m.title).font(.ui(14, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
+                                Text(m.project?.name ?? "").font(.ui(12)).foregroundStyle(Theme.secondary).lineLimit(1)
+                            }
+                            Spacer(minLength: 8)
+                            let days = Date.days(from: Date.now.startOfDay, to: m.dueDate)
+                            Text(days == 1 ? "Tomorrow" : "In \(days) days").font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .card(padding: 20, radius: 24)
     }
 
     private var greeting: String {
@@ -77,7 +154,7 @@ struct MacOverview: View {
     private var greetingBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(Date.now.formatted(.dateTime.weekday(.wide).month(.wide).day())).eyebrow().lineLimit(1)
-            Text(greeting).display(44, 750).foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
+            Text(greeting).display(38, 750).foregroundStyle(Theme.ink).lineLimit(1).fixedSize()
         }
     }
 
@@ -111,30 +188,40 @@ struct MacOverview: View {
         .fixedSize()
     }
 
+    /// The four headline numbers in one strip; two by two when the window is narrow.
     private var stats: some View {
         let ms = active.flatMap(\.sortedMilestones)
         let today = Date.now.startOfDay
         let onTime = profile.onTimeRate.map { "\(Int(($0 * 100).rounded()))%" } ?? "–"
-        return LazyVGrid(columns: [GridItem(.adaptive(minimum: 210), spacing: 16)], spacing: 16) {
-            MacStatCard(title: "Streak", value: "\(profile.streak)", detail: profile.streak == 1 ? "day" : "days",
-                        tint: Theme.flame) {
-                FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 26)
+        let streak = MacStatCell(title: "Streak", value: "\(profile.streak)", detail: profile.streak == 1 ? "day" : "days") {
+            FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 24)
+        }
+        let level = MacStatCell(title: "Level \(profile.level)", value: "\(profile.xp)", detail: "XP") {
+            ChunkyProgressBar(value: profile.levelProgress, color: Accent(hex: 0x5B5BF0).base, height: 8).frame(width: 64)
+        }
+        let checkpoints = MacStatCell(title: "Checkpoints", value: "\(ms.filter(\.isDone).count)/\(ms.count)", detail: "done") {
+            Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(Theme.success)
+        }
+        let onTimeCell = MacStatCell(title: "On time", value: onTime, detail: "of checkpoints") {
+            Image(systemName: "clock.fill").font(.system(size: 20)).foregroundStyle(Theme.secondary)
+        }
+        let divider = Rectangle().fill(Theme.line).frame(width: 1).padding(.vertical, 4)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 22) {
+                streak; divider; level; divider; checkpoints; divider; onTimeCell
             }
-            MacStatCard(title: "Level \(profile.level)", value: "\(profile.xp)", detail: "XP", tint: Accent(hex: 0x5B5BF0).base) {
-                ChunkyProgressBar(value: profile.levelProgress, color: Accent(hex: 0x5B5BF0).base, height: 10).frame(width: 90)
-            }
-            MacStatCard(title: "Checkpoints", value: "\(ms.filter(\.isDone).count)/\(ms.count)", detail: "done",
-                        tint: Theme.success) {
-                Image(systemName: "checkmark.circle.fill").font(.system(size: 22)).foregroundStyle(Theme.success)
-            }
-            MacStatCard(title: "On time", value: onTime, detail: "of checkpoints", tint: Theme.ink) {
-                Image(systemName: "clock.fill").font(.system(size: 22)).foregroundStyle(Theme.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minWidth: 760)
+            Grid(horizontalSpacing: 22, verticalSpacing: 18) {
+                GridRow { streak; level }
+                GridRow { checkpoints; onTimeCell }
             }
         }
+        .card(padding: 20, radius: 24)
     }
 
     private func cardGrid(_ ps: [Project], withCreate: Bool) -> some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 215), spacing: 26, alignment: .top)], alignment: .leading, spacing: 32) {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 190, maximum: 240), spacing: 20, alignment: .top)], alignment: .leading, spacing: 24) {
             ForEach(ps) { p in MacProjectTile(project: p) { onOpen(p) } }
             if withCreate {
                 Button(action: onCreate) {
@@ -149,28 +236,27 @@ struct MacOverview: View {
     }
 }
 
-/// One headline number in a card.
-struct MacStatCard<Accessory: View>: View {
+/// One headline number in the stats strip.
+struct MacStatCell<Accessory: View>: View {
     let title: String
     let value: String
     let detail: String
-    let tint: Color
     @ViewBuilder var accessory: Accessory
 
     var body: some View {
         HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 6) {
-                Text(title).eyebrow(size: 11).lineLimit(1)
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text(value).display(32, 750).foregroundStyle(Theme.ink).contentTransition(.numericText())
+            VStack(alignment: .leading, spacing: 5) {
+                Text(title).eyebrow(size: 10).lineLimit(1)
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(value).display(28, 750).foregroundStyle(Theme.ink).contentTransition(.numericText())
                         .lineLimit(1).fixedSize()
-                    Text(detail).font(.ui(13, .medium)).foregroundStyle(Theme.secondary).lineLimit(1)
+                    Text(detail).font(.ui(12, .medium)).foregroundStyle(Theme.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 8)
             accessory
         }
-        .card(padding: 20, radius: 24)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -224,8 +310,8 @@ struct MacLiftStyle: ButtonStyle {
     }
 }
 
-/// The next checkpoint of a project, with its goals to tick right here.
-struct MacFocusCard: View {
+/// The next checkpoint of a project, with its open goals to tick right here.
+struct MacFocusRow: View {
     let milestone: Milestone
     var onOpen: () -> Void
     @Environment(\.modelContext) private var context
@@ -235,14 +321,17 @@ struct MacFocusCard: View {
 
     var body: some View {
         let accent = milestone.project?.accent ?? .neutral
-        VStack(alignment: .leading, spacing: 14) {
+        let open = milestone.openGoals
+        VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 12) {
                 Button(action: onOpen) {
                     HStack(spacing: 12) {
-                        if let p = milestone.project { ProjectThumb(project: p, size: 40) }
+                        if let p = milestone.project { ProjectThumb(project: p, size: 34) }
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(milestone.project?.name ?? "").eyebrow(size: 10).lineLimit(1)
-                            Text(milestone.title).display(20, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                            Text(milestone.title).cardTitle(17).foregroundStyle(Theme.ink).lineLimit(1)
+                            Text("\(milestone.project?.name ?? "") · \(milestone.macSubtitle)")
+                                .font(.ui(12, .medium)).lineLimit(1)
+                                .foregroundStyle(milestone.isOverdue ? Theme.danger : milestone.isDueToday ? Theme.flame : Theme.secondary)
                         }
                     }
                     .contentShape(Rectangle())
@@ -250,32 +339,30 @@ struct MacFocusCard: View {
                 .buttonStyle(.plain)
                 .help("Open \(milestone.project?.name ?? "project")")
                 Spacer(minLength: 8)
-                CheckpointRing(milestone: milestone, size: 30)
+                if milestone.hasGoals {
+                    CheckpointRing(milestone: milestone, size: 26)
+                } else {
+                    Button("Mark done") {
+                        MacActions.complete(milestone, profile: profiles.first, projects: projects, celebration: celebration, context: context)
+                    }
+                    .buttonStyle(.chunky(.accent, height: 32, fullWidth: false))
+                }
             }
-            Text(milestone.macSubtitle)
-                .lineLimit(1)
-                .font(.ui(13, .semibold))
-                .foregroundStyle(milestone.isOverdue ? Theme.danger : milestone.isDueToday ? Theme.flame : Theme.secondary)
-            if milestone.hasGoals {
-                VStack(alignment: .leading, spacing: 9) {
-                    ForEach(milestone.displayGoals.prefix(5)) { g in
+            if !open.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(open.prefix(3)) { g in
                         MacGoalRow(goal: g, compact: true) {
                             MacActions.toggle(g, profile: profiles.first, projects: projects, celebration: celebration, context: context)
                         }
                     }
-                    if (milestone.goals ?? []).count > 5 {
-                        Text("+\((milestone.goals ?? []).count - 5) more").font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
+                    if open.count > 3 {
+                        Text("+\(open.count - 3) more").font(.ui(12, .semibold)).foregroundStyle(Theme.secondary)
                     }
                 }
-            } else {
-                Button("Mark done") {
-                    MacActions.complete(milestone, profile: profiles.first, projects: projects, celebration: celebration, context: context)
-                }
-                .buttonStyle(.chunky(.accent, height: 38))
+                .padding(.leading, 46)
             }
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
-        .card(padding: 20, radius: 24)
         .environment(\.accent, accent)
     }
 }

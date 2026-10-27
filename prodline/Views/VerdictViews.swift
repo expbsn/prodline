@@ -344,19 +344,10 @@ struct VerdictSheet: View {
             choice = v
         } label: {
             VStack(alignment: .leading, spacing: 12) {
-                HStack(alignment: .top) {
-                    Image(systemName: v.symbol).font(.system(size: 22, weight: .bold))
-                        .foregroundStyle(selected ? color.on : color.base)
-                        .frame(width: 48, height: 48)
-                        .background(Circle().fill(selected ? color.base : color.tint))
-                    Spacer(minLength: 4)
-                    if suggested {
-                        Text("SUGGESTED").font(.ui(10, .bold)).tracking(0.6)
-                            .foregroundStyle(color.text)
-                            .padding(.horizontal, 7).padding(.vertical, 3)
-                            .background(Capsule().fill(color.tint))
-                    }
-                }
+                Image(systemName: v.symbol).font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(selected ? color.on : color.base)
+                    .frame(width: 48, height: 48)
+                    .background(Circle().fill(selected ? color.base : color.tint))
                 Text(v.title).display(22, 750).foregroundStyle(Theme.ink).lineLimit(1)
                 Text(v.blurb).font(.ui(13)).foregroundStyle(Theme.secondary)
                     .multilineTextAlignment(.leading)
@@ -365,6 +356,17 @@ struct VerdictSheet: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
+            // In the corner on one line, however narrow the tile gets.
+            .overlay(alignment: .topTrailing) {
+                if suggested {
+                    Text("Suggested").font(.ui(10, .bold)).tracking(0.5).textCase(.uppercase)
+                        .lineLimit(1).fixedSize()
+                        .foregroundStyle(color.text)
+                        .padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(Capsule().fill(color.tint))
+                        .padding(14)
+                }
+            }
             .background(RoundedRectangle(cornerRadius: 22, style: .continuous).fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 22, style: .continuous)
                 .strokeBorder(selected ? color.base : Theme.line, lineWidth: selected ? 2.5 : 1.5))
