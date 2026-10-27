@@ -14,7 +14,9 @@ struct MacRootView: View {
     @Environment(DataRefresher.self) private var refresher
     @Environment(GitHubService.self) private var github
     @Environment(CelebrationCenter.self) private var celebration
-    /// Launch: the static mark for a moment, then it blurs away while the dashboard sharpens in.
+    /// Launch: the static mark for a moment, then it blurs away over the dashboard. Only the splash fades:
+    /// blurring the window's content itself lays the split view out without its title bar inset, and it
+    /// jumps down once the blur ends.
     @State private var showSplash = true
     @State private var reveal: Double = 0
 
@@ -27,8 +29,6 @@ struct MacRootView: View {
                 MacShell(profile: profile)
             }
         }
-        .blur(radius: (1 - reveal) * 14)
-        .opacity(0.3 + 0.7 * reveal)
         // The streak and ship moments and the confetti use the whole window; banners pop up bottom right
         // (over the page, since the sidebar is on the left).
         .overlay { ShipOverlay() }

@@ -173,10 +173,14 @@ struct Accent: Equatable, Hashable {
 enum DisplayFont {
     private static var cache: [String: PlatformFont] = [:]
 
+    /// Afacad Flux runs heavy next to SF, so every weight sits this much lighter than asked.
+    private static let lighten: CGFloat = 100
+
     /// Afacad Flux is a variable font; pick the weight via the `wght` axis.
     static func ui(_ size: CGFloat, weight: CGFloat) -> PlatformFont {
         let key = "\(size)-\(weight)"
         if let f = cache[key] { return f }
+        let weight = max(300, weight - lighten)
         let wght = 0x77676874 // 'wght'
         #if canImport(UIKit)
         let desc = UIFontDescriptor(fontAttributes: [
