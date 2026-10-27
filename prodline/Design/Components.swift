@@ -174,7 +174,7 @@ struct CardTitleFont: ViewModifier {
     @Environment(\.wideLayout) private var wide
     let size: CGFloat
     let weight: CGFloat
-    func body(content: Content) -> some View { content.font(.display(size, wide ? 550 : weight)) }
+    func body(content: Content) -> some View { content.font(.display(size, wide ? 620 : weight)) }
 }
 
 extension View {

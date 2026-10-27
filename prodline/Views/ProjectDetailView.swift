@@ -341,29 +341,33 @@ struct ProjectDetailView: View {
                 }
                 .frame(maxWidth: .infinity, minHeight: 150)
             } else {
-                // Only snapshots that carry the number (no drops to zero), straight segments like a price chart.
-                let series = points.compactMap { s in s.valueIfPresent(current).map { (date: s.date, value: $0) } }
-                Chart(Array(series.enumerated()), id: \.offset) { _, s in
-                    AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
-                        .interpolationMethod(.linear)
-                        .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
-                                                        startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
-                        .interpolationMethod(.linear)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(accent.base)
-                }
-                .chartYAxis {
-                    AxisMarks(position: .trailing) { v in
-                        AxisGridLine().foregroundStyle(Theme.line)
-                        AxisValueLabel {
-                            if let d = v.as(Double.self) { Text(Stat.format(current, d)) }
+                let series = ChartSeries.make(project, key: current)
+                ZStack {
+                    Chart(Array(series.enumerated()), id: \.offset) { _, s in
+                        AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                            .interpolationMethod(.linear)
+                            .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
+                                                            startPoint: .top, endPoint: .bottom))
+                        LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                            .interpolationMethod(.linear)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                            .foregroundStyle(accent.base)
+                    }
+                    .chartYAxis {
+                        AxisMarks(position: .trailing) { v in
+                            AxisGridLine().foregroundStyle(Theme.line)
+                            AxisValueLabel {
+                                if let d = v.as(Double.self) { Text(Stat.format(current, d)) }
+                            }
                         }
                     }
+                    .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
+                    // A new metric fades in rather than the line morphing point by point into the other one.
+                    .id(current)
+                    .transition(.opacity)
                 }
-                .chartXAxis { AxisMarks(values: .automatic(desiredCount: 4)) { _ in AxisValueLabel(format: .dateTime.month(.abbreviated).day()) } }
                 .frame(height: 190)
-                .animation(.easeInOut, value: current)
+                .animation(.easeInOut(duration: 0.25), value: current)
             }
 
             if !extras.isEmpty {
@@ -1539,5 +1543,23 @@ struct CheckpointSheet: View {
         try? context.save()
         Haptics.success()
         dismiss()
+    }
+}
+
+/// The traction chart's points: only snapshots that carry the number (no drops to zero), at most one per
+/// time slice (the slice's last value). Syncing every few seconds leaves thousands of snapshots, and drawn
+/// as is the area fill frays into slivers.
+enum ChartSeries {
+    static func make(_ project: Project, key: String, limit: Int = 180) -> [(date: Date, value: Double)] {
+        let all = project.sortedSnapshots.compactMap { s in s.valueIfPresent(key).map { (date: s.date, value: $0) } }
+        guard all.count > limit, let first = all.first?.date, let last = all.last?.date, last > first else { return all }
+        let span = last.timeIntervalSince(first)
+        var out: [(date: Date, value: Double)] = [all[0]]
+        var slice = 0
+        for p in all.dropFirst() {
+            let i = Int(p.date.timeIntervalSince(first) / span * Double(limit - 1))
+            if i == slice, out.count > 1 { out[out.count - 1] = p } else { out.append(p); slice = i }
+        }
+        return out
     }
 }

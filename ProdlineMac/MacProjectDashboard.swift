@@ -287,7 +287,7 @@ struct MacProjectDashboard: View {
     private var tractionCard: some View {
         let (shown, available) = tractionKeys
         let current = shown.contains(metric) ? metric : (shown.first ?? MetricKey.visits.rawValue)
-        let series = project.sortedSnapshots.compactMap { s in s.valueIfPresent(current).map { (date: s.date, value: $0) } }
+        let series = ChartSeries.make(project, key: current)
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Traction").cardTitle(24).foregroundStyle(Theme.ink)
@@ -310,29 +310,34 @@ struct MacProjectDashboard: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
-                Chart(Array(series.enumerated()), id: \.offset) { _, s in
-                    AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
-                        .interpolationMethod(.linear)
-                        .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
-                                                        startPoint: .top, endPoint: .bottom))
-                    LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
-                        .interpolationMethod(.linear)
-                        .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
-                        .foregroundStyle(accent.base)
-                }
-                .chartYAxis {
-                    AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
-                        AxisGridLine().foregroundStyle(Theme.line)
-                        AxisValueLabel { if let d = v.as(Double.self) { Text(axisLabel(current, d)) } }
+                ZStack {
+                    Chart(Array(series.enumerated()), id: \.offset) { _, s in
+                        AreaMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                            .interpolationMethod(.linear)
+                            .foregroundStyle(LinearGradient(colors: [accent.base.opacity(0.32), accent.base.opacity(0)],
+                                                            startPoint: .top, endPoint: .bottom))
+                        LineMark(x: .value("Time", s.date), y: .value(Stat.title(current), s.value))
+                            .interpolationMethod(.linear)
+                            .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                            .foregroundStyle(accent.base)
                     }
-                }
-                .chartXAxis {
-                    AxisMarks(values: .automatic(desiredCount: wide ? 6 : 4)) { _ in
-                        AxisValueLabel(format: .dateTime.month(.abbreviated).day(), collisionResolution: .greedy)
+                    .chartYAxis {
+                        AxisMarks(position: .trailing, values: .automatic(desiredCount: 4)) { v in
+                            AxisGridLine().foregroundStyle(Theme.line)
+                            AxisValueLabel { if let d = v.as(Double.self) { Text(axisLabel(current, d)) } }
+                        }
                     }
+                    .chartXAxis {
+                        AxisMarks(values: .automatic(desiredCount: wide ? 6 : 4)) { _ in
+                            AxisValueLabel(format: .dateTime.month(.abbreviated).day(), collisionResolution: .greedy)
+                        }
+                    }
+                    // A new metric fades in rather than the line morphing point by point into the other one.
+                    .id(current)
+                    .transition(.opacity)
                 }
                 .frame(maxHeight: .infinity)
-                .animation(.easeInOut, value: current)
+                .animation(.easeInOut(duration: 0.25), value: current)
             }
         }
         .padding(22)
