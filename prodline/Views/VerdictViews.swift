@@ -28,7 +28,7 @@ struct SuccessCard: View {
                 }
             } else {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Success looks like").display(20, 750).foregroundStyle(Theme.ink)
+                    Text("Success looks like").cardTitle(20, 750).foregroundStyle(Theme.ink)
                     Spacer()
                     if project.verdict != .pivot && project.verdict != .kill {
                         Button(project.criteria.isEmpty ? "Set" : "Edit", action: onSetTargets)
@@ -137,7 +137,7 @@ struct CriteriaSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Success looks like").display(26, 750).foregroundStyle(Theme.ink)
+                Text("Success looks like").cardTitle(26, 750).foregroundStyle(Theme.ink)
                 Spacer()
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }

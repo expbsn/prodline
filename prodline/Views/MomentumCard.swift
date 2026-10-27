@@ -14,7 +14,7 @@ struct MomentumCard: View {
         let m = Momentum.make(project: project)
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Momentum").display(24, 700).foregroundStyle(Theme.ink)
+                Text("Momentum").cardTitle(24).foregroundStyle(Theme.ink)
                 Spacer()
                 Text("Day \(m.elapsedDays) of \(m.buildLength)").eyebrow(size: 10)
             }

@@ -128,7 +128,7 @@ struct MacPlanView: View {
         let ordered = Array(symbols[(cal.firstWeekday - 1)...] + symbols[..<(cal.firstWeekday - 1)])
         return VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Text(monthStart.formatted(.dateTime.month(.wide).year())).font(.display(18, 750)).foregroundStyle(Theme.ink)
+                Text(monthStart.formatted(.dateTime.month(.wide).year())).cardTitle(18).foregroundStyle(Theme.ink)
                 Spacer()
                 monthButton("chevron.left") { month = monthStart.adding(days: -1) }
                 monthButton("chevron.right") { month = monthStart.adding(days: count) }
@@ -195,7 +195,7 @@ struct MacPlanView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("Next project").eyebrow(size: 11)
             Text(due ? "Time for a new build" : "Starts in \(daysLeft.durationText)")
-                .display(22, 750).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
+                .cardTitle(22).foregroundStyle(Theme.ink).lineLimit(1).minimumScaleFactor(0.8)
             if due {
                 Button("Create project", action: onCreate).buttonStyle(.chunky(.accent, height: 42)).environment(\.accent, .neutral)
             } else {

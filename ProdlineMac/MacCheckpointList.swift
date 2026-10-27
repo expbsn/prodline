@@ -15,7 +15,7 @@ struct MacCheckpointList: View {
         let fromFile = project.followsPlanFile
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Text("Checkpoints").display(24, 750).foregroundStyle(Theme.ink)
+                Text("Checkpoints").cardTitle(24).foregroundStyle(Theme.ink)
                 Text("\(done) of \(ms.count) done").eyebrow(size: 11).lineLimit(1)
                 Spacer(minLength: 8)
                 if fromFile {

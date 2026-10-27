@@ -14,7 +14,7 @@ struct IdeaInboxCard: View {
         Button(action: onOpen) {
             VStack(alignment: .leading, spacing: 12) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("Idea inbox").display(20, 750).foregroundStyle(Theme.ink)
+                    Text("Idea inbox").cardTitle(20, 750).foregroundStyle(Theme.ink)
                     if !waiting.isEmpty {
                         Text("\(waiting.count)").font(.ui(13, .bold)).foregroundStyle(.white)
                             .padding(.horizontal, 8).padding(.vertical, 2)
@@ -96,7 +96,7 @@ struct IdeaInboxSheet: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("Idea inbox").display(26, 750).foregroundStyle(Theme.ink)
+                Text("Idea inbox").cardTitle(26, 750).foregroundStyle(Theme.ink)
                 Spacer()
                 CircleIconButton(systemName: "xmark") { dismiss() }
             }

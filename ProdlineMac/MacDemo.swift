@@ -66,6 +66,7 @@ enum MacDemo {
                 let r = ImageRenderer(content: view
                     .frame(width: width)
                     .environment(\.macSnapshot, true)
+                    .environment(\.wideLayout, true)
                     .environment(\.colorScheme, scheme)
                     .environment(DataRefresher())
                     .environment(CelebrationCenter())

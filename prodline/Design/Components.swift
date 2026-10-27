@@ -168,13 +168,26 @@ extension ScreenHeader where Trailing == EmptyView {
     }
 }
 
+/// Card and section titles. On the Mac, where a page holds many cards under a large page title,
+/// they sit a weight lighter so the page title leads.
+struct CardTitleFont: ViewModifier {
+    @Environment(\.wideLayout) private var wide
+    let size: CGFloat
+    let weight: CGFloat
+    func body(content: Content) -> some View { content.font(.display(size, wide ? 550 : weight)) }
+}
+
+extension View {
+    func cardTitle(_ size: CGFloat, _ weight: CGFloat = 700) -> some View { modifier(CardTitleFont(size: size, weight: weight)) }
+}
+
 struct SectionTitle: View {
     let text: String
     var trailing: String? = nil
     init(_ text: String, trailing: String? = nil) { self.text = text; self.trailing = trailing }
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(text).display(24, 700).foregroundStyle(Theme.ink)
+            Text(text).cardTitle(24).foregroundStyle(Theme.ink)
             Spacer()
             if let trailing { Text(trailing).eyebrow(size: 11) }
         }

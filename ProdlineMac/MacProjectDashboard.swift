@@ -233,7 +233,7 @@ struct MacProjectDashboard: View {
         let buildFrac = Double(project.buildDays) / total
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Timeline").font(.display(17, 750)).foregroundStyle(Theme.ink)
+                Text("Timeline").cardTitle(17).foregroundStyle(Theme.ink)
                 Spacer(minLength: 6)
                 Text("Day \(min(max(Date.days(from: project.startDate, to: .now) + 1, 0), Int(total))) of \(Int(total))")
                     .eyebrow(size: 10).lineLimit(1)
@@ -290,7 +290,7 @@ struct MacProjectDashboard: View {
         let series = project.sortedSnapshots.compactMap { s in s.valueIfPresent(current).map { (date: s.date, value: $0) } }
         return VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Traction").display(24, 750).foregroundStyle(Theme.ink)
+                Text("Traction").cardTitle(24).foregroundStyle(Theme.ink)
                 Spacer()
                 statusLabel
             }
@@ -407,7 +407,7 @@ struct MacProjectDashboard: View {
             Image(systemName: "paperplane.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(accent.on)
                 .frame(width: 46, height: 46).background(Circle().fill(accent.base))
             VStack(alignment: .leading, spacing: 2) {
-                Text("Ready to ship").display(21, 750).foregroundStyle(Theme.ink)
+                Text("Ready to ship").cardTitle(21).foregroundStyle(Theme.ink)
                 Text(early > 0 ? "Every goal is done. Ship today and you're \(early) day\(early == 1 ? "" : "s") early."
                                : "Every goal is done, and it's launch day.")
                     .font(.ui(14)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.85)
