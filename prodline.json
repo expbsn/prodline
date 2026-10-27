@@ -107,7 +107,7 @@
     {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": false},
     {"id": "app-preview-video", "title": "Record the App Store preview video", "day": 29, "done": false},
     {"id": "press-kit", "title": "Put together a press kit with screenshots and logo", "day": 29, "done": false},
-    {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": false},
+    {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": true},
 
     {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false},
     {"id": "threads-views", "title": "Turn on Threads views once the Meta app has the Threads API", "day": 33, "done": false}
