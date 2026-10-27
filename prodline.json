@@ -61,7 +61,7 @@
     {"id": "testflight-build", "title": "Upload first TestFlight build", "day": 12, "done": true},
 
     {"id": "feedback-button", "title": "Add an in-app feedback button with screenshot", "day": 13, "done": true},
-    {"id": "tester-posts", "title": "Post the tester waitlist on r/SideProject and Indie Hackers", "day": 13, "done": false},
+    {"id": "tester-posts", "title": "Post the tester waitlist on r/SideProject and Indie Hackers", "day": 13, "done": true},
     {"id": "testers", "title": "Invite the first wave of testers from the waitlist", "day": 13, "done": false},
     {"id": "waitlist-50", "title": "Get 50 clicks on the TestFlight beta link", "day": 13, "done": false, "metric": {"key": "testflight_clicks", "target": 50}},
 
