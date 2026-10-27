@@ -102,7 +102,7 @@
 
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": false},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},
-    {"id": "mac-testflight", "title": "Upload the Mac app to TestFlight", "day": 26, "done": false},
+    {"id": "mac-testflight", "title": "Upload the Mac app to TestFlight", "day": 26, "done": true},
 
     {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": false},
     {"id": "app-preview-video", "title": "Record the App Store preview video", "day": 29, "done": false},
