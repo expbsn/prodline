@@ -19,10 +19,11 @@ Free, no in-app purchases. Name **Prodline: Side Project Tracker**. Manual relea
 Prodline: Side Project Tracker
 ```
 
-**Subtitle** (30 max)
+**Subtitle** (30/30)
 ```
-Deadlines, streaks, real stats
+Ship it: deadlines, goals, MRR
 ```
+The name and subtitle carry the most search weight, so together they cover "side project", "tracker", "ship", "deadline", "goal" and "MRR". The keyword field below doesn't repeat any of them; Apple combines words across all three fields ("indie" + "hacker", "habit" + "tracker").
 
 **Primary category:** Productivity
 **Secondary category:** Developer Tools
@@ -36,41 +37,48 @@ Deadlines, streaks, real stats
 
 ### Version information (iPhone version; repeat for the Mac version)
 
-**Promotional text** (170 max, can change any time without review)
+**Promotional text** (154/170, can change any time without review)
 ```
-Give every side project a deadline, watch the real numbers come in, then decide: keep, pivot or kill. Now on iPhone and Mac.
-```
-
-**Keywords** (100/100, no spaces, no words from name or subtitle)
-```
-indie,hacker,startup,launch,ship,goal,habit,mrr,revenue,stripe,analytics,maker,planner,checklist,mvp
+Now on iPhone and Mac. Give every side project a short deadline, watch revenue and visitors come in from Stripe and co., then decide: keep, pivot or kill.
 ```
 
-**Description**
+**Keywords** (100/100, no spaces, nothing from the name or subtitle)
 ```
-Most side projects don't fail. They fade out. Prodline gives each one a short clock, so you ship it, see what happens and decide.
+indie,hacker,startup,founder,launch,saas,maker,mvp,revenue,stripe,analytics,planner,habit,streak,dev
+```
 
-BUILD, LAUNCH, OBSERVE
-Every project runs in two phases. A build phase of about two weeks, split into checkpoints with concrete goals. Then launch day, and an observe phase where you watch the numbers. At the end, Prodline checks them against the targets you set and suggests: keep, pivot or kill.
+**Description** (the first three lines show before "more", so they carry the pitch)
+```
+Most side projects don't fail. They fade out. Prodline puts each one on a short clock: build it in two weeks, launch it, watch the real numbers, then decide to keep, pivot or kill it.
 
-NUMBERS THAT COME IN ON THEIR OWN
-Connect the tools you already use and the numbers arrive by themselves: revenue, visitors, downloads, signups, views. Goals like "first sale" or "100 visitors" tick themselves off the moment they happen.
+Made for indie hackers, makers and solo founders with more ideas than evenings.
+
+BUILD IN CHECKPOINTS
+Every project gets a build phase of about two weeks, split into checkpoints with concrete goals and deadlines. Link a GitHub repo and its issues turn into goals; your commits count toward your momentum.
+
+LIVE NUMBERS, NO SPREADSHEET
+Connect the tools you already use and revenue, MRR, visitors, downloads, signups and views come in by themselves. Goals like "first sale" or "100 visitors" tick themselves off the moment they happen.
 
 • Revenue: Stripe, RevenueCat, App Store Connect, Lemon Squeezy, Paddle, Gumroad, Polar, Shopify
 • Analytics: Plausible, Umami, Fathom, PostHog, Simple Analytics
 • Hosting: Vercel, Netlify
 • Newsletters: Kit, Buttondown, beehiiv
 • Launches and social: YouTube, TikTok, Instagram, Bluesky, Product Hunt, Hacker News, npm
-• GitHub: link a repo and its issues become goals. Commits count toward your momentum.
+• Code: GitHub issues, commits and a plan file in your repo
+
+KEEP, PIVOT OR KILL
+After launch, Prodline watches the numbers against the targets you set. When the observe phase ends it suggests a verdict, so you decide on data instead of a feeling.
 
 A STREAK WORTH KEEPING
-Tick off goals, earn XP, keep your streak alive. A weekly wrap shows what you shipped. Widgets and a deadline Live Activity keep the next checkpoint in sight.
+Tick off goals, earn XP and keep your streak alive. A weekly wrap shows what you shipped. Home Screen and Lock Screen widgets and a deadline Live Activity keep the next checkpoint in sight.
 
 ON YOUR MAC TOO
-A native Mac app with a dashboard, a calendar of every deadline and a menu bar item. Your projects stay in step through iCloud.
+A native Mac app with a dashboard, an activity feed, a calendar of every deadline and a menu bar item. iCloud keeps your iPhone and Mac in step.
 
 PRIVATE BY DESIGN
-No account. Your projects live on your devices and in your own iCloud. API keys stay in your Keychain and the app talks to each service directly. No ads, no tracking.
+No account, no ads, no tracking. Your projects live on your devices and in your own iCloud. API keys stay in your Keychain and the app talks to each service directly.
+
+Free, with no in-app purchases.
 ```
 
 **Support URL:** `https://prodline.build/faq.html`
@@ -139,11 +147,13 @@ iPhone Duo screenshots are optional until April 2027; skip them for 1.0.
 
 ### iPhone (6 frames, in this order)
 
+Each one is the real screen in a drawn iPhone 17 Pro (silver), lit from the top left, on a gradient in the color of the project it shows: green, blue, orange, indigo, purple, teal.
+
 | # | Headline | Subline | Screen |
 |---|---|---|---|
 | 1 | Finish what you start. | Every side project on a short clock. | Dash, Habit Hero in the carousel |
-| 2 | Numbers, on their own. | Revenue and visitors, by themselves. | Tiny Invoice: timeline, traction chart, Stripe and Plausible connected |
-| 3 | A deadline for every step. | Every project, every checkpoint. | Plan: streak, week strip, today's checkpoints with goals |
+| 2 | Numbers that come in on their own. | Revenue and visitors, live from Stripe. | Tiny Invoice: timeline, traction chart, Stripe and Plausible connected |
+| 3 | A deadline for every step. | Checkpoints, goals and a streak. | Plan: streak, week strip, today's checkpoints with goals |
 | 4 | 25+ services, connected. | Your keys stay in your Keychain. | The integration picker |
 | 5 | Keep, pivot or kill. | Decide on numbers, not on a feeling. | Pixel Quest's decision, targets met, Keep suggested |
 | 6 | Always in sight. | Your next deadline on the Home Screen. | Widgets on a neutral Home Screen |
@@ -175,7 +185,7 @@ iPhone Duo screenshots are optional until April 2027; skip them for 1.0.
 1. iPhone 17 Pro simulator, status bar set with `xcrun simctl status_bar <sim> override --time 9:41 --batteryState discharging --batteryLevel 100`.
 2. Shots with `-PRODLINE_STORE YES -PRODLINE_NOLAUNCH YES` plus: nothing (Dash), `-PRODLINE_OPEN "Tiny Invoice"` (scrolled to Traction), `-PRODLINE_TAB plan`, `-PRODLINE_OPEN "Tiny Invoice" -PRODLINE_SHEET picker`, `-PRODLINE_OPEN "Pixel Quest" -PRODLINE_SHEET verdict`, `-PRODLINE_SHEET board`. Save as dash, traction, plan, picker, verdict, board.png.
 3. Mac: the same argument plus `-config.appearance light`; window captures of Dash, `-PRODLINE_OPEN "Tiny Invoice"`, `-PRODLINE_TAB plan`, `-PRODLINE_CREATE YES`; with `-PRODLINE_SNAPSHOT <path>` the snapshot writer adds the menu panel, the menu bar logo and the project cards.
-4. `design/make_store_frames.swift`, `design/make_mac_frames.swift` and `design/make_creative_assets.swift` compose everything (usage at the top of each).
+4. `design/make_store_art.swift` composes the iPhone frames, the header and the search asset with SwiftUI; `design/make_mac_frames.swift` composes the Mac frames (usage at the top of each).
 
 ---
 
@@ -188,8 +198,8 @@ Optional, shown only on iOS 27 / iPadOS 27 and later. Upload them from the versi
 | `marketing/app-store/header-21x9.png` | Product page header | 3840 × 1646 |
 | `marketing/app-store/search-3x2.png` | Search results | 3840 × 2560 |
 
-- **Header:** "Finish what you start." above the five project cards in an arc, Tiny Invoice in the middle.
-- **Search:** "Your side projects, on a deadline." beside two phones (Tiny Invoice's numbers in front, Dash behind).
+- **Header:** "Finish what you start." above the five project cards laid out like the Dash carousel (same 3D swing, scale and floor shadow), Tiny Invoice in the middle, two activity chips floating over the side cards.
+- **Search:** "Your side projects, on a deadline." on the left; on the right a tilted iPhone with Dash, Tiny Invoice's card popping out of it and two chips (first sale, streak).
 - **Later:** both slots also take 5–30 s video loops. A goal ticking itself off and the streak flame lighting would be the strongest one.
 
 ---
