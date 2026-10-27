@@ -78,43 +78,95 @@ windowFrame("02-project", shot: "project.png", title: "Live numbers for every pr
 windowFrame("03-plan", shot: "plan.png", title: "Every deadline in one place.", sub: "An agenda and a calendar across all your projects.", glow: 0xF5A623)
 windowFrame("05-create", shot: "create.png", title: "Plan a build in a minute.", sub: "Name it, pick your rhythm, start.", glow: 0x46B500)
 
-// 04: the menu bar panel on a desktop.
+// 04: the top right corner of the desktop, zoomed in (3 px per point): the menu bar with Prodline's icon
+// highlighted, its panel open, and the Prodline window behind.
 do {
-    let ctx = CGContext(data: nil, width: Int(W), height: Int(H), bitsPerComponent: 8, bytesPerRow: 0,
-                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    let ctx = canvas(glow: 0x8E8E93)
+    text(ctx, "One click away.", font: display(118, 680), color: rgb(0x1C1C1E), x: 0, top: 96, width: W, lineHeight: 128, align: .center)
+    text(ctx, "Today's goals and your numbers, right in the menu bar.", font: ui(46, .medium), color: rgb(0x6C6C70), x: 0, top: 246, width: W, lineHeight: 58, align: .center)
+
+    let screenW = W * 0.78, screenH = H - 360
+    let screen = CGRect(x: (W - screenW) / 2, y: 0, width: screenW, height: screenH)   // bleeds off the bottom
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -24), blur: 80, color: rgb(0x000000, 0.22))
+    ctx.addPath(CGPath(roundedRect: screen, cornerWidth: 26, cornerHeight: 26, transform: nil)); ctx.setFillColor(rgb(0xFFFFFF)); ctx.fillPath()
+    ctx.restoreGState()
+    ctx.saveGState()
+    ctx.addPath(CGPath(roundedRect: screen, cornerWidth: 26, cornerHeight: 26, transform: nil)); ctx.clip()
+
+    // Neutral wallpaper.
     let wall = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
-                          colors: [rgb(0x7FA7FF), rgb(0xB49BFF), rgb(0xFFC9A8)] as CFArray, locations: [0, 0.55, 1])!
-    ctx.drawLinearGradient(wall, start: CGPoint(x: 0, y: H), end: CGPoint(x: W, y: 0), options: [])
-    // Menu bar.
-    let barH: CGFloat = 66
-    ctx.setFillColor(rgb(0xFFFFFF, 0.55)); ctx.fill(CGRect(x: 0, y: H - barH, width: W, height: barH))
-    let iconX = W - 520
-    ctx.setFillColor(rgb(0x000000, 0.12))
-    ctx.addPath(CGPath(roundedRect: CGRect(x: iconX - 14, y: H - barH + 9, width: 76, height: barH - 18), cornerWidth: 12, cornerHeight: 12, transform: nil)); ctx.fillPath()
+                          colors: [rgb(0xE6E6EA), rgb(0xCFCFD6), rgb(0xB9B9C2)] as CFArray, locations: [0, 0.6, 1])!
+    ctx.drawLinearGradient(wall, start: CGPoint(x: screen.minX, y: screen.maxY), end: CGPoint(x: screen.maxX, y: screen.minY), options: [])
+
+    let k: CGFloat = 3            // pixels per point at this zoom
+    let barH = 24 * k
+    let top = screen.maxY
+
+    // The Prodline window behind, its sidebar and greeting in view (window captures are 2 px per point).
+    let win = image("dash.png")
+    let ww = CGFloat(win.width) * k / 2, wh = CGFloat(win.height) * k / 2
+    let winRect = CGRect(x: screen.minX + 40 * k, y: top - barH - 22 * k - wh, width: ww, height: wh)
+    ctx.saveGState()
+    ctx.setShadow(offset: CGSize(width: 0, height: -12 * k), blur: 30 * k, color: rgb(0x000000, 0.25))
+    ctx.addPath(CGPath(roundedRect: winRect, cornerWidth: 10 * k, cornerHeight: 10 * k, transform: nil)); ctx.setFillColor(rgb(0xFFFFFF)); ctx.fillPath()
+    ctx.restoreGState()
+    ctx.saveGState()
+    ctx.addPath(CGPath(roundedRect: winRect, cornerWidth: 10 * k, cornerHeight: 10 * k, transform: nil)); ctx.clip()
+    ctx.interpolationQuality = .high
+    ctx.draw(win, in: winRect)
+    ctx.restoreGState()
+
+    // Menu bar, right side: Prodline's icon (open), then the system items and the clock.
+    ctx.setFillColor(rgb(0xF4F4F6, 0.82)); ctx.fill(CGRect(x: screen.minX, y: top - barH, width: screen.width, height: barH))
+    ctx.setFillColor(rgb(0x000000, 0.08)); ctx.fill(CGRect(x: screen.minX, y: top - barH, width: screen.width, height: 1.5))
+    let clock = NSAttributedString(string: "Tue 27 Oct  9:41", attributes: [.font: ui(13 * k, .medium), .foregroundColor: rgb(0x1C1C1E)])
+    let clockLine = CTLineCreateWithAttributedString(clock)
+    let clockW = CTLineGetTypographicBounds(clockLine, nil, nil, nil)
+    var x = screen.maxX - 14 * k - clockW
+    ctx.textPosition = CGPoint(x: x, y: top - barH + 7.5 * k)
+    CTLineDraw(clockLine, ctx)
+    func symbol(_ name: String, width: CGFloat) {
+        x -= width + 12 * k
+        let cfg = NSImage.SymbolConfiguration(pointSize: 13 * k, weight: .medium)
+        guard let img = NSImage(systemSymbolName: name, accessibilityDescription: nil)?.withSymbolConfiguration(cfg) else { return }
+        let s = img.size, r = CGRect(x: x + (width - s.width) / 2, y: top - barH + (barH - s.height) / 2, width: s.width, height: s.height)
+        NSGraphicsContext.saveGraphicsState()
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: ctx, flipped: false)
+        img.draw(in: r)
+        NSGraphicsContext.restoreGraphicsState()
+    }
+    symbol("switch.2", width: 18 * k)
+    symbol("magnifyingglass", width: 16 * k)
+    symbol("wifi", width: 18 * k)
+    symbol("battery.100percent", width: 26 * k)
+    // Prodline, highlighted because its panel is open.
+    x -= 22 * k + 12 * k
+    let iconBox = CGRect(x: x - 5 * k, y: top - barH + 2.5 * k, width: 32 * k, height: barH - 5 * k)
+    ctx.addPath(CGPath(roundedRect: iconBox, cornerWidth: 5 * k, cornerHeight: 5 * k, transform: nil))
+    ctx.setFillColor(rgb(0x000000, 0.12)); ctx.fillPath()
     ctx.saveGState()
     ctx.setBlendMode(.multiply)
-    ctx.draw(image("logo.png"), in: CGRect(x: iconX - 4, y: H - barH + 6, width: 56, height: 56))
+    ctx.draw(image("logo.png"), in: CGRect(x: iconBox.midX - 12 * k, y: iconBox.midY - 12 * k, width: 24 * k, height: 24 * k))
     ctx.restoreGState()
-    let clock = NSAttributedString(string: "Tue 27 Oct  9:41", attributes: [.font: ui(30, .semibold), .foregroundColor: rgb(0x1C1C1E)])
-    ctx.textPosition = CGPoint(x: W - 300, y: H - barH + 22)
-    CTLineDraw(CTLineCreateWithAttributedString(clock), ctx)
-    // Panel under the icon.
+
+    // The panel, hanging from the icon (the snapshot is 3 px per point already).
     let panel = image("menu.png")
-    let pw: CGFloat = 900, ph = pw * CGFloat(panel.height) / CGFloat(panel.width)
-    let rect = CGRect(x: iconX + 24 - pw * 0.72, y: H - barH - 22 - ph, width: pw, height: ph)
+    let pw = CGFloat(panel.width), ph = CGFloat(panel.height)
+    let rect = CGRect(x: min(iconBox.midX - pw * 0.5, screen.maxX - 10 * k - pw), y: top - barH - 6 * k - ph, width: pw, height: ph)
     ctx.saveGState()
-    ctx.setShadow(offset: CGSize(width: 0, height: -20), blur: 70, color: rgb(0x000000, 0.28))
-    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 36, cornerHeight: 36, transform: nil)); ctx.setFillColor(rgb(0xFFFFFF)); ctx.fillPath()
+    ctx.setShadow(offset: CGSize(width: 0, height: -10 * k), blur: 28 * k, color: rgb(0x000000, 0.3))
+    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 12 * k, cornerHeight: 12 * k, transform: nil)); ctx.setFillColor(rgb(0xFFFFFF)); ctx.fillPath()
     ctx.restoreGState()
     ctx.saveGState()
-    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 36, cornerHeight: 36, transform: nil)); ctx.clip()
+    ctx.addPath(CGPath(roundedRect: rect, cornerWidth: 12 * k, cornerHeight: 12 * k, transform: nil)); ctx.clip()
     ctx.interpolationQuality = .high
     ctx.draw(panel, in: rect)
     ctx.restoreGState()
-    // Headline on the left.
-    let bottom = text(ctx, "One click away.", font: display(150, 680), color: rgb(0x1C1C1E), x: 200, top: 620, width: 1150, lineHeight: 160, align: .left)
-    text(ctx, "Today's goals and your numbers, right in the menu bar.", font: ui(52, .medium), color: rgb(0x1C1C1E, 0.7),
-         x: 200, top: bottom + 40, width: 1050, lineHeight: 66, align: .left)
+    ctx.addPath(CGPath(roundedRect: rect.insetBy(dx: 0.75, dy: 0.75), cornerWidth: 12 * k, cornerHeight: 12 * k, transform: nil))
+    ctx.setStrokeColor(rgb(0x000000, 0.12)); ctx.setLineWidth(1.5); ctx.strokePath()
+
+    ctx.restoreGState()
     save(ctx, "04-menu-bar")
 }
 print("ok")

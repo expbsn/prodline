@@ -148,13 +148,13 @@ struct WidgetGalleryView: View {
 }
 
 #if DEBUG
-/// -PRODLINE_STORE YES -PRODLINE_SHEET board: the widgets on a dark Home Screen, for the App Store frame.
+/// -PRODLINE_STORE YES -PRODLINE_SHEET board: the widgets on a neutral Home Screen, for the App Store frame.
 struct StoreWidgetBoard: View {
     let data: WidgetData
 
     var body: some View {
         let now = Date.now
-        // The green one: Side Shop's black card would vanish on the dark wallpaper.
+        // The green one, so the first widget carries some color.
         let project = data.projects.first { $0.name == "Habit Hero" } ?? data.mostUrgent(on: now)
         VStack(spacing: 26) {
             WidgetTile(size: WidgetSize.medium) {
@@ -175,11 +175,11 @@ struct StoreWidgetBoard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background {
-            LinearGradient(colors: [Color(hex: 0x1B2A6B), Color(hex: 0x3B1E6E), Color(hex: 0x0E0F24)],
+            LinearGradient(colors: [Color(hex: 0xEDEDF0), Color(hex: 0xD9D9DE), Color(hex: 0xC6C6CD)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
                 .ignoresSafeArea()
         }
-        .environment(\.colorScheme, .dark)
+        .environment(\.colorScheme, .light)
     }
 }
 #endif

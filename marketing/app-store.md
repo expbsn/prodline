@@ -146,7 +146,7 @@ iPhone Duo screenshots are optional until April 2027; skip them for 1.0.
 | 3 | A deadline for every step. | Every project, every checkpoint. | Plan: streak, week strip, today's checkpoints with goals |
 | 4 | 25+ services, connected. | Your keys stay in your Keychain. | The integration picker |
 | 5 | Keep, pivot or kill. | Decide on numbers, not on a feeling. | Pixel Quest's decision, targets met, Keep suggested |
-| 6 | Always in sight. | Your next deadline on the Home Screen. | Widgets on a dark Home Screen |
+| 6 | Always in sight. | Your next deadline on the Home Screen. | Widgets on a neutral Home Screen |
 
 ### Mac (5 frames)
 

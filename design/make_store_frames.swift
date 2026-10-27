@@ -40,7 +40,7 @@ let frames = [
     Frame(file: "03-plan", shot: "plan", title: "A deadline for every step.", sub: "Every project, every checkpoint.", glow: 0xF5A623, dark: false),
     Frame(file: "04-services", shot: "picker", title: "25+ services, connected.", sub: "Your keys stay in your Keychain.", glow: 0x635BFF, dark: false),
     Frame(file: "05-decide", shot: "verdict", title: "Keep, pivot or kill.", sub: "Decide on numbers, not on a feeling.", glow: 0x8A45F5, dark: false),
-    Frame(file: "06-widgets", shot: "board", title: "Always in sight.", sub: "Your next deadline on the Home Screen.", glow: 0x6A4CFF, dark: true),
+    Frame(file: "06-widgets", shot: "board", title: "Always in sight.", sub: "Your next deadline on the Home Screen.", glow: 0x8E8E93, dark: false),
 ]
 
 for (size, folder) in [(CGSize(width: 1206, height: 2622), "iphone-6.1"), (CGSize(width: 1320, height: 2868), "iphone-6.9")] {
