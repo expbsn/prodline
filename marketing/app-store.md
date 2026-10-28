@@ -185,7 +185,7 @@ Each one is the real screen in a drawn iPhone 17 Pro (silver), lit from the top 
 1. iPhone 17 Pro simulator, status bar set with `xcrun simctl status_bar <sim> override --time 9:41 --batteryState discharging --batteryLevel 100`.
 2. Shots with `-PRODLINE_STORE YES -PRODLINE_NOLAUNCH YES` plus: nothing (Dash), `-PRODLINE_OPEN "Tiny Invoice"` (scrolled to Traction), `-PRODLINE_TAB plan`, `-PRODLINE_OPEN "Tiny Invoice" -PRODLINE_SHEET picker`, `-PRODLINE_OPEN "Pixel Quest" -PRODLINE_SHEET verdict`, `-PRODLINE_SHEET board`. Save as dash, traction, plan, picker, verdict, board.png.
 3. Mac: the same argument plus `-config.appearance light`; window captures of Dash, `-PRODLINE_OPEN "Tiny Invoice"`, `-PRODLINE_TAB plan`, `-PRODLINE_CREATE YES`; with `-PRODLINE_SNAPSHOT <path>` the snapshot writer adds the menu panel, the menu bar logo and the project cards.
-4. `design/make_store_art.swift` composes the iPhone frames, the header and the search asset with SwiftUI (`/tmp/storeart <shots> marketing/app-store`); `design/make_mac_frames.swift` composes the Mac frames (usage at the top of each).
+4. `design/make_store_art.swift` composes the iPhone frames, the header and the search asset with SwiftUI (`/tmp/storeart <shots> <cards> marketing/app-store`); `design/make_mac_frames.swift` composes the Mac frames (usage at the top of each).
 
 ---
 
@@ -198,9 +198,9 @@ Optional, shown only on iOS 27 / iPadOS 27 and later. Upload them from the versi
 | `marketing/app-store/header-21x9.png` | Product page header | 3840 × 1646 |
 | `marketing/app-store/search-3x2.png` | Search results | 3840 × 2560 |
 
-- **Header:** green, "Finish what you start." and a subline on the left, a hand holding the phone with Dash in the middle, two activity chips (a goal done from GitHub, the streak) on the right.
-- **Search:** after Apple's own search example: green, "Finish what you start." top left, a short line bottom left, the hand-held phone with Dash on the right, its arm running off the bottom edge.
-- Both use `design/mockup.png` (the hand-held mockup, 1600 x 1200). The script upscales it and swaps its screen for the sharp screenshot, keeping the fingers on top.
+- **Header:** the five steps of a project as numbered labels over pieces of the real screens, tied together by the logo's dot-and-dash line: 1 Create (two project cards), 2 Plan (streak, week strip, today's checkpoints), 3 Connect (the integration picker), 4 Track (the traction chart), 5 Decide (keep, pivot or kill). A soft glow in each step's color on a light background.
+- **Search:** after Apple's own search example: a muted green gradient, deeper on top with a light haze at the bottom; "FINISH WHAT YOU START." top left in white, a dark green line bottom left, the hand-held phone with Dash on the right.
+- The search asset uses `design/mockup.png` (the hand-held mockup, 1600 x 1200). The script upscales it and swaps its screen for the sharp screenshot, keeping the fingers on top.
 - **Later:** both slots also take 5–30 s video loops. A goal ticking itself off and the streak flame lighting would be the strongest one.
 
 ---
