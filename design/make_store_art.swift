@@ -1,14 +1,14 @@
-// Composes the iPhone App Store screenshots, the header (21:9) and the search results asset (3:2) with SwiftUI:
-// the real screens in a drawn iPhone 17 Pro, lit from the top left, on a gradient in each screen's color.
-// swiftc -O -parse-as-library design/make_store_art.swift -o /tmp/storeart && /tmp/storeart <shots dir> <cards dir> marketing/app-store
-// Shots: the simulator with -PRODLINE_STORE YES (dash, traction, plan, picker, verdict, board.png); cards: the Mac
-// snapshot writer (card-<project>.png). See marketing/app-store.md.
+// Composes the iPhone App Store screenshots, the header (21:9) and the search results asset (3:2) with SwiftUI.
+// Screenshots: the real screens in a drawn iPhone 17 Pro, lit from the top left, on a gradient in each screen's
+// color. Header and search: the hand-held mockup (design/mockup.png) on green, its screen swapped for the sharp shot.
+// swiftc -O -parse-as-library design/make_store_art.swift -o /tmp/storeart && /tmp/storeart <shots dir> marketing/app-store [shots|header|search]
+// Shots: the simulator with -PRODLINE_STORE YES (dash, traction, plan, picker, verdict, board.png). See marketing/app-store.md.
 import AppKit
 import CoreText
 import SwiftUI
 
 let args = CommandLine.arguments
-let shotsDir = URL(fileURLWithPath: args[1]), cardsDir = URL(fileURLWithPath: args[2]), outDir = URL(fileURLWithPath: args[3])
+let shotsDir = URL(fileURLWithPath: args[1]), outDir = URL(fileURLWithPath: args[2])
 
 // MARK: Basics
 
@@ -220,68 +220,122 @@ struct ScreenshotFrame: View {
     }
 }
 
-// MARK: Header: the Dash carousel
+// MARK: Hand-held phone (design/mockup.png)
 
-/// Same geometry as the carousel on Dash (HomeView's CarouselEffect): side cards swing away around their inner
-/// edge, shrink a little and tuck in.
-struct CarouselCard: View {
-    let slug: String
-    let progress: CGFloat
-    let cardW: CGFloat
-    let step: CGFloat
+/// The hand-held mockup, upscaled, with the screen swapped for the sharp screenshot. The mockup is 1600 x 1200 with
+/// the Dash screen already in it; its screen corners are measured below. Wherever the mockup's screen differs from
+/// the screenshot (the fingers over the edge), the mockup stays on top.
+enum HandPhone {
+    static let mockup = URL(fileURLWithPath: "design/mockup.png")
+    /// Screen corners in mockup pixels, y down: top left, top right, bottom left, bottom right.
+    static let quad: [CGPoint] = [.init(x: 552, y: 283.5), .init(x: 810, y: 283.5), .init(x: 555, y: 844), .init(x: 816, y: 844)]
 
-    var body: some View {
-        let p = min(max(progress, -1.6), 1.6)
-        let u = cardW / 280
-        Image(nsImage: image(cardsDir.appendingPathComponent("card-\(slug).png"))).resizable().interpolation(.high)
-            .frame(width: cardW, height: cardW * 7 / 5)
-            .shadow(color: .black.opacity(0.18), radius: 3 * u, y: 2 * u)
-            .shadow(color: .black.opacity(0.28), radius: 26 * u, x: 6 * u, y: 22 * u)
-            .rotation3DEffect(.degrees(Double(p) * -32), axis: (x: 0, y: 1, z: 0),
-                              anchor: p > 0 ? .leading : .trailing, perspective: 0.55)
-            .scaleEffect(1 - abs(p) * 0.1)
-            .offset(x: progress * step - p * 18 * u)
+    static func image(screen: URL, scale f: CGFloat) -> NSImage {
+        let mock = CIImage(contentsOf: mockup)!
+        let shot = CIImage(contentsOf: screen)!
+        let h = mock.extent.height
+        let ci = CIContext(options: [.workingColorSpace: CGColorSpace(name: CGColorSpace.sRGB)!])
+
+        /// The screenshot (or any image of its size) scaled down to the screen width, then put onto the quad.
+        func warp(_ img: CIImage, _ f: CGFloat) -> CIImage {
+            let w = (quad[1].x - quad[0].x) * f
+            let small = img.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: w / img.extent.width, kCIInputAspectRatioKey: 1])
+            let pt = { (p: CGPoint) in CIVector(x: p.x * f, y: (h - p.y) * f) }
+            return small.applyingFilter("CIPerspectiveTransform", parameters: [
+                "inputTopLeft": pt(quad[0]), "inputTopRight": pt(quad[1]), "inputBottomLeft": pt(quad[2]), "inputBottomRight": pt(quad[3])])
+        }
+        /// White rounded rectangle the size of the screenshot: the screen's shape.
+        let shape: CIImage = {
+            let size = shot.extent.size
+            let ctx = CGContext(data: nil, width: Int(size.width), height: Int(size.height), bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            ctx.setFillColor(.black); ctx.fill(CGRect(origin: .zero, size: size))
+            ctx.setFillColor(.white)
+            ctx.addPath(CGPath(roundedRect: CGRect(origin: .zero, size: size).insetBy(dx: 8, dy: 8), cornerWidth: 140, cornerHeight: 140, transform: nil))
+            ctx.fillPath()
+            return CIImage(cgImage: ctx.makeImage()!)
+        }()
+
+        // Fingers: where the mockup's screen doesn't match the screenshot. The opening is wider than any text stroke,
+        // so only finger-sized blobs survive.
+        let diff = warp(shot, 1).applyingFilter("CIDifferenceBlendMode", parameters: [kCIInputBackgroundImageKey: mock])
+            .applyingFilter("CIColorMatrix", parameters: [
+                "inputRVector": CIVector(x: 0.34, y: 0.33, z: 0.33, w: 0), "inputGVector": CIVector(x: 0.34, y: 0.33, z: 0.33, w: 0),
+                "inputBVector": CIVector(x: 0.34, y: 0.33, z: 0.33, w: 0), "inputAVector": CIVector(x: 0, y: 0, z: 0, w: 1)])
+            .applyingFilter("CIColorThreshold", parameters: ["inputThreshold": 0.16])
+            .applyingFilter("CIMorphologyMinimum", parameters: [kCIInputRadiusKey: 5])
+            .applyingFilter("CIMorphologyMaximum", parameters: [kCIInputRadiusKey: 9])
+            .cropped(to: mock.extent)
+        let keep = warp(shape, 1).cropped(to: mock.extent)
+            .applyingFilter("CIMultiplyCompositing", parameters: [kCIInputBackgroundImageKey: diff.applyingFilter("CIColorInvert")])
+        let mask = keep.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: f, kCIInputAspectRatioKey: 1])
+            .applyingFilter("CIGaussianBlur", parameters: [kCIInputRadiusKey: f * 0.4])
+
+        let big = mock.applyingFilter("CILanczosScaleTransform", parameters: [kCIInputScaleKey: f, kCIInputAspectRatioKey: 1])
+        let out = warp(shot, f).applyingFilter("CIBlendWithMask", parameters: [kCIInputBackgroundImageKey: big, kCIInputMaskImageKey: mask])
+            .cropped(to: big.extent)
+        let cg = ci.createCGImage(out, from: big.extent)!
+        return NSImage(cgImage: cg, size: big.extent.size)
     }
 }
 
-/// The soft floor shadow under a card (ProjectCard.cardFloorShadow).
-struct FloorShadow: View {
-    let width: CGFloat
-    var strength: Double = 1
+/// The hand-held phone with a soft shadow, the way the light falls in the backdrop.
+struct HeldPhone: View {
+    let image: NSImage
+    let tint: Color
     var body: some View {
-        Ellipse()
-            .fill(RadialGradient(colors: [.black.opacity(0.32 * strength), .black.opacity(0)],
-                                 center: .center, startRadius: 0, endRadius: width * 0.62))
-            .frame(width: width * 1.3, height: width * 0.22)
-            .blur(radius: width * 0.05)
+        Image(nsImage: image).resizable().interpolation(.high)
+            .frame(width: image.size.width, height: image.size.height)
+            .shadow(color: tint.opacity(0.35), radius: image.size.width * 0.02, x: image.size.width * 0.012, y: image.size.width * 0.02)
     }
 }
+
+let green = 0x3FA300
+
+/// A green take on the backdrop: deeper at the top right, a light haze toward the bottom left.
+struct GreenBackdrop: View {
+    var body: some View {
+        GeometryReader { geo in
+            let m = max(geo.size.width, geo.size.height)
+            ZStack {
+                LinearGradient(colors: [shade(green, -0.12), shade(green, 0.08)], startPoint: .bottomLeading, endPoint: .topTrailing)
+                RadialGradient(colors: [shade(green, -0.7).opacity(0.75), shade(green, -0.7).opacity(0)],
+                               center: .init(x: 0.05, y: 1.05), startRadius: 0, endRadius: m * 0.75)
+                RadialGradient(colors: [.white.opacity(0.22), .white.opacity(0)], center: .init(x: 0.25, y: 0),
+                               startRadius: 0, endRadius: m * 0.55)
+            }
+        }
+    }
+}
+
+// MARK: Header
 
 struct Header: View {
     let size = CGSize(width: 3840, height: 1646)
     var body: some View {
-        let cardW: CGFloat = 600, step = cardW + 16 * cardW / 280
-        let order: [(String, CGFloat)] = [("moonlog", -2), ("side-shop", 2), ("habit-hero", -1), ("pixel-quest", 1), ("tiny-invoice", 0)]
-        let cardsY = size.height * 0.585
-        ZStack {
-            Backdrop(hex: 0x2F6BFF, light: -0.32, deep: 0.22)
-            Text("Finish what you start.")
-                .font(display(132, 660)).foregroundStyle(.white)
-                .shadow(color: shade(0x2F6BFF, 0.6).opacity(0.35), radius: 20, y: 8)
-                .position(x: size.width / 2, y: 190)
-            ZStack {
-                FloorShadow(width: cardW).offset(y: cardW * 0.7 + cardW * 0.2)
-                ForEach(order, id: \.0) { slug, p in
-                    CarouselCard(slug: slug, progress: p, cardW: cardW, step: step)
-                }
+        // The mockup's bottom edge (the wrist) sits on the canvas's bottom edge.
+        let f: CGFloat = 2.2
+        let phone = HandPhone.image(screen: shotsDir.appendingPathComponent("dash.png"), scale: f)
+        // Mockup point (683, 270) is the top middle of the phone; the arm runs off the bottom edge.
+        let x = 2420 - 683 * f, y = 110 - 270 * f
+        ZStack(alignment: .topLeading) {
+            GreenBackdrop()
+            VStack(alignment: .leading, spacing: 40) {
+                Text("Finish what\nyou start.")
+                    .font(display(210, 680)).foregroundStyle(.white).lineSpacing(-30)
+                Text("Every side project on a short clock:\nbuild, launch, then decide.")
+                    .font(.system(size: 68, weight: .medium)).foregroundStyle(.white.opacity(0.9)).lineSpacing(8)
             }
-            .position(x: size.width / 2, y: cardsY)
-            Chip(symbol: "checkmark", tint: Color(hex: 0x46B500), title: "Habit list done", detail: "Habit Hero · from GitHub", s: 1.9)
+            .shadow(color: shade(green, 0.6).opacity(0.3), radius: 20, y: 8)
+            .padding(.leading, 300).padding(.top, 380)
+            HeldPhone(image: phone, tint: shade(green, 0.75))
+                .position(x: x + phone.size.width / 2, y: y + phone.size.height / 2)
+            Chip(symbol: "checkmark", tint: Color(hex: 0x46B500), title: "Habit list done", detail: "Habit Hero · from GitHub", s: 1.8)
                 .rotationEffect(.degrees(-3))
-                .position(x: size.width / 2 - step * 1.3, y: cardsY - 10)
-            Chip(symbol: "chart.line.uptrend.xyaxis", tint: Color(hex: 0x8A45F5), title: "+1,840 views today", detail: "Pixel Quest", s: 1.9)
-                .rotationEffect(.degrees(2.5))
-                .position(x: size.width / 2 + step * 1.3, y: cardsY + 70)
+                .position(x: 3260, y: 560)
+            Chip(symbol: "flame.fill", tint: Color(hex: 0xFF8A00), title: "28 day streak", detail: "Keep it going", s: 1.8)
+                .rotationEffect(.degrees(3))
+                .position(x: 3330, y: 960)
         }
         .frame(width: size.width, height: size.height)
         .clipped()
@@ -290,37 +344,25 @@ struct Header: View {
 
 // MARK: Search results
 
+/// After the iOS search reference: a big line top left, a short one bottom left, the phone held up on the right.
 struct Search: View {
     let size = CGSize(width: 3840, height: 2560)
     var body: some View {
-        ZStack {
-            Backdrop(hex: 0x2F6BFF, light: -0.32, deep: 0.22)
-            VStack(alignment: .leading, spacing: 56) {
-                Text("Your side\nprojects,\non a deadline.")
-                    .font(display(250, 660)).foregroundStyle(.white).lineSpacing(-30)
-                    .shadow(color: shade(0x2F6BFF, 0.6).opacity(0.3), radius: 24, y: 10)
-                Text("Checkpoints, live numbers from\nStripe and co., and a clear verdict.")
-                    .font(.system(size: 82, weight: .medium)).foregroundStyle(.white.opacity(0.88))
-                    .lineSpacing(10)
-            }
-            .frame(width: 1700, alignment: .leading)
-            .position(x: 140 + 850, y: size.height * 0.48)
-
-            Phone(shot: image(shotsDir.appendingPathComponent("dash.png")), width: 1180, shadowTint: shade(0x2F6BFF, 0.8))
-                .rotationEffect(.degrees(-7))
-                .position(x: 2980, y: size.height * 0.56)
-            Image(nsImage: image(cardsDir.appendingPathComponent("card-tiny-invoice.png"))).resizable().interpolation(.high)
-                .frame(width: 600, height: 840)
-                .shadow(color: .black.opacity(0.2), radius: 6, y: 4)
-                .shadow(color: .black.opacity(0.35), radius: 70, x: 20, y: 60)
-                .rotationEffect(.degrees(6))
-                .position(x: 2260, y: size.height * 0.64)
-            Chip(symbol: "checkmark", tint: Color(hex: 0x34C759), title: "First sale", detail: "Tiny Invoice · via Stripe", s: 2.6)
-                .rotationEffect(.degrees(-3))
-                .position(x: 2250, y: size.height * 0.3)
-            Chip(symbol: "flame.fill", tint: Color(hex: 0xFF8A00), title: "28 day streak", detail: "Keep it going", s: 2.6)
-                .rotationEffect(.degrees(3))
-                .position(x: 3400, y: size.height * 0.9)
+        let f: CGFloat = 3.2
+        let phone = HandPhone.image(screen: shotsDir.appendingPathComponent("dash.png"), scale: f)
+        let x = 2780 - 683 * f, y = 170 - 270 * f
+        ZStack(alignment: .topLeading) {
+            GreenBackdrop()
+            Text("Finish\nwhat you\nstart.")
+                .font(display(330, 700)).foregroundStyle(.white).lineSpacing(-50)
+                .shadow(color: shade(green, 0.6).opacity(0.3), radius: 24, y: 10)
+                .padding(.leading, 230).padding(.top, 230)
+            Text("Plan, ship and track every side\nproject. Live numbers from the\ntools you use, a clear verdict.")
+                .font(.system(size: 96, weight: .medium)).foregroundStyle(.white.opacity(0.92)).lineSpacing(14)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
+                .padding(.leading, 230).padding(.bottom, 230)
+            HeldPhone(image: phone, tint: shade(green, 0.75))
+                .position(x: x + phone.size.width / 2, y: y + phone.size.height / 2)
         }
         .frame(width: size.width, height: size.height)
         .clipped()
@@ -331,7 +373,7 @@ struct Search: View {
 struct StoreArt {
     @MainActor static func main() {
         CTFontManagerRegisterFontsForURL(URL(fileURLWithPath: "prodline/fonts/AfacadFlux-VariableFont_slnt,wght.ttf") as CFURL, .process, nil)
-        let only = args.count > 4 ? args[4] : ""
+        let only = args.count > 3 ? args[3] : ""
         if only.isEmpty || only == "shots" {
             for (size, folder) in [(CGSize(width: 1206, height: 2622), "iphone-6.1"), (CGSize(width: 1320, height: 2868), "iphone-6.9")] {
                 for s in shots { render(ScreenshotFrame(shot: s, size: size), size, to: "\(folder)/\(s.file).png") }
