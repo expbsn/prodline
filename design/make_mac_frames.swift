@@ -48,16 +48,32 @@ func canvas(glow: Int) -> CGContext {
     return ctx
 }
 
+/// The brand green (Suica-card green) as a sky: deeper on top, a light haze at the bottom (make_store_art.swift).
+func brandCanvas() -> CGContext {
+    let ctx = CGContext(data: nil, width: Int(W), height: Int(H), bitsPerComponent: 8, bytesPerRow: 0,
+                        space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+    let hsb = { (s: CGFloat, b: CGFloat, a: CGFloat) in NSColor(hue: 0.345, saturation: s, brightness: b, alpha: a).usingColorSpace(.sRGB)!.cgColor }
+    let sky = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                         colors: [hsb(0.76, 0.64, 1), hsb(0.66, 0.75, 1), hsb(0.34, 0.90, 1), hsb(0.14, 0.96, 1)] as CFArray,
+                         locations: [0, 0.45, 0.8, 1])!
+    ctx.drawLinearGradient(sky, start: CGPoint(x: 0, y: H), end: CGPoint(x: 0, y: 0), options: [])
+    let haze = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!, colors: [rgb(0xFFFFFF, 0.5), rgb(0xFFFFFF, 0)] as CFArray, locations: [0, 1])!
+    ctx.drawRadialGradient(haze, startCenter: CGPoint(x: W * 0.18, y: -H * 0.05), startRadius: 0,
+                           endCenter: CGPoint(x: W * 0.18, y: -H * 0.05), endRadius: W * 0.45, options: [])
+    return ctx
+}
+
 func save(_ ctx: CGContext, _ name: String) {
     try! NSBitmapImageRep(cgImage: ctx.makeImage()!).representation(using: .png, properties: [:])!
         .write(to: out.appendingPathComponent(name + ".png"))
 }
 
 /// A window capture under a centered headline.
-func windowFrame(_ file: String, shot: String, title: String, sub: String, glow: Int) {
-    let ctx = canvas(glow: glow)
-    text(ctx, title, font: display(118, 680), color: rgb(0x1C1C1E), x: 0, top: 96, width: W, lineHeight: 128, align: .center)
-    text(ctx, sub, font: ui(46, .medium), color: rgb(0x6C6C70), x: 0, top: 246, width: W, lineHeight: 58, align: .center)
+/// `brand`: the first frame, on the brand green with white type.
+func windowFrame(_ file: String, shot: String, title: String, sub: String, glow: Int, brand: Bool = false) {
+    let ctx = brand ? brandCanvas() : canvas(glow: glow)
+    text(ctx, title, font: display(118, 680), color: brand ? rgb(0xFFFFFF) : rgb(0x1C1C1E), x: 0, top: 96, width: W, lineHeight: 128, align: .center)
+    text(ctx, sub, font: ui(46, .medium), color: brand ? rgb(0xFFFFFF, 0.88) : rgb(0x6C6C70), x: 0, top: 246, width: W, lineHeight: 58, align: .center)
     let win = image(shot)
     let w = W * 0.78, h = w * CGFloat(win.height) / CGFloat(win.width)
     let rect = CGRect(x: (W - w) / 2, y: H - 360 - h, width: w, height: h)
@@ -73,7 +89,7 @@ func windowFrame(_ file: String, shot: String, title: String, sub: String, glow:
     save(ctx, file)
 }
 
-windowFrame("01-dash", shot: "dash.png", title: "Your week at a glance.", sub: "What's due, what's next and what just happened.", glow: 0x46B500)
+windowFrame("01-dash", shot: "dash.png", title: "Your week at a glance.", sub: "What's due, what's next and what just happened.", glow: 0x46B500, brand: true)
 windowFrame("02-project", shot: "project.png", title: "Live numbers for every project.", sub: "From the services you already use.", glow: 0x2F6BFF)
 windowFrame("03-plan", shot: "plan.png", title: "Every deadline in one place.", sub: "An agenda and a calendar across all your projects.", glow: 0xF5A623)
 windowFrame("05-create", shot: "create.png", title: "Plan a build in a minute.", sub: "Name it, pick your rhythm, start.", glow: 0x46B500)

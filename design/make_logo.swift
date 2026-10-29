@@ -54,7 +54,7 @@ func png(_ name: String, bg: NSColor?, ink: NSColor) {
     try! rep.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: name))
 }
 
-func svg(_ name: String) {
+func svg(_ name: String, bg: String = "#F2F2F5", ink: String = "#1C1C1E") {
     func pt(_ p: CGPoint) -> String { "\(Int(p.x)) \(Int(p.y))" }
     var d = ""
     bowl().applyWithBlock { el in
@@ -69,8 +69,8 @@ func svg(_ name: String) {
     for s in left + down { d += "M\(pt(s.from)) L\(pt(s.to)) " }
     let out = """
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-      <rect width="1024" height="1024" fill="#F2F2F5"/>
-      <path d="\(d)" fill="none" stroke="#1C1C1E" stroke-width="\(Int(stroke))" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect width="1024" height="1024" fill="\(bg)"/>
+      <path d="\(d)" fill="none" stroke="\(ink)" stroke-width="\(Int(stroke))" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
     """
     try! out.write(toFile: name, atomically: true, encoding: .utf8)
@@ -84,4 +84,8 @@ png("AppIcon-dark.png", bg: night, ink: NSColor(white: 0.96, alpha: 1))
 png("AppIcon-tinted.png", bg: .black, ink: .white) // iOS tints the white mark
 png("Mark.png", bg: nil, ink: ink)
 svg("prodline-mark.svg")
+// Brand variant: the white mark on the brand green (Suica-card green, #30B03C), for social avatars and marketing.
+let brandGreen = NSColor(red: 0x30/255, green: 0xB0/255, blue: 0x3C/255, alpha: 1)
+png("Logo-green.png", bg: brandGreen, ink: .white)
+svg("prodline-mark-green.svg", bg: "#30B03C", ink: "#FFFFFF")
 print("done")

@@ -6,6 +6,8 @@ Everything for App Store Connect in one place. Part 1 is ready to paste; Parts 2
 
 ## Decided
 
+**Brand color:** Suica-card green. The first iPhone and Mac screenshot, the header and the search asset all sit on it (a sky gradient: deeper on top, a light haze at the bottom, `BrandBackdrop` in `design/make_store_art.swift`). Logo on green: `design/Logo-green.png` and `design/prodline-mark-green.svg` (white mark on `#30B03C`, from `design/make_logo.swift`), for social avatars and press.
+
 Free, no in-app purchases. Name **Prodline: Side Project Tracker**. Manual release after approval, so iPhone and Mac go live together.
 
 ---
@@ -147,7 +149,7 @@ iPhone Duo screenshots are optional until April 2027; skip them for 1.0.
 
 ### iPhone (6 frames, in this order)
 
-Each one is the real screen in a drawn iPhone 17 Pro (silver), lit from the top left, on a gradient in the color of the project it shows: green, blue, orange, indigo, purple, teal.
+Each one is the real screen in a drawn iPhone 17 Pro (silver), lit from the top left, on a gradient in the color of the project it shows: blue, orange, indigo, purple, teal. The first one is on the brand green with white type.
 
 | # | Headline | Subline | Screen |
 |---|---|---|---|
@@ -185,7 +187,7 @@ Each one is the real screen in a drawn iPhone 17 Pro (silver), lit from the top 
 1. iPhone 17 Pro simulator, status bar set with `xcrun simctl status_bar <sim> override --time 9:41 --batteryState discharging --batteryLevel 100`.
 2. Shots with `-PRODLINE_STORE YES -PRODLINE_NOLAUNCH YES` plus: nothing (Dash), `-PRODLINE_OPEN "Tiny Invoice"` (scrolled to Traction), `-PRODLINE_TAB plan`, `-PRODLINE_OPEN "Tiny Invoice" -PRODLINE_SHEET picker`, `-PRODLINE_OPEN "Pixel Quest" -PRODLINE_SHEET verdict`, `-PRODLINE_SHEET board`. Save as dash, traction, plan, picker, verdict, board.png.
 3. Mac: the same argument plus `-config.appearance light`; window captures of Dash, `-PRODLINE_OPEN "Tiny Invoice"`, `-PRODLINE_TAB plan`, `-PRODLINE_CREATE YES`; with `-PRODLINE_SNAPSHOT <path>` the snapshot writer adds the menu panel, the menu bar logo and the project cards.
-4. `design/make_store_art.swift` composes the iPhone frames, the header and the search asset with SwiftUI (`/tmp/storeart <shots> <cards> marketing/app-store`); `design/make_mac_frames.swift` composes the Mac frames (usage at the top of each).
+4. `design/make_store_art.swift` composes the iPhone frames, the header and the search asset with SwiftUI (`/tmp/storeart <shots> marketing/app-store`); `design/make_mac_frames.swift` composes the Mac frames (usage at the top of each).
 
 ---
 
@@ -198,8 +200,8 @@ Optional, shown only on iOS 27 / iPadOS 27 and later. Upload them from the versi
 | `marketing/app-store/header-21x9.png` | Product page header | 3840 × 1646 |
 | `marketing/app-store/search-3x2.png` | Search results | 3840 × 2560 |
 
-- **Header:** the five steps of a project as numbered labels over pieces of the real screens, tied together by the logo's dot-and-dash line: 1 Create (two project cards), 2 Plan (streak, week strip, today's checkpoints), 3 Connect (the integration picker), 4 Track (the traction chart), 5 Decide (keep, pivot or kill). A soft glow in each step's color on a light background.
-- **Search:** after Apple's own search example: a muted green gradient, deeper on top with a light haze at the bottom; "FINISH WHAT YOU START." top left in white, a dark green line bottom left, the hand-held phone with Dash on the right.
+- **Header:** on the brand green, three pieces of the real screens under one word each: Plan (week strip and today's checkpoints), Track (the traction chart), Decide (keep, pivot or kill). On iPhone the App Store shows only about the middle 70% and puts its back and share buttons over the top corners, so everything sits in the middle and lower part.
+- **Search:** after Apple's own search example: the brand green; "FINISH WHAT YOU START." top left in white, a dark green line bottom left, the hand-held phone with Dash on the right.
 - The search asset uses `design/mockup.png` (the hand-held mockup, 1600 x 1200). The script upscales it and swaps its screen for the sharp screenshot, keeping the fingers on top.
 - **Later:** both slots also take 5–30 s video loops. A goal ticking itself off and the streak flame lighting would be the strongest one.
 

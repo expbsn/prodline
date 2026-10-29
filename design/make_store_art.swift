@@ -1,16 +1,15 @@
 // Composes the iPhone App Store screenshots, the header (21:9) and the search results asset (3:2) with SwiftUI.
 // Screenshots: the real screens in a drawn iPhone 17 Pro, lit from the top left, on a gradient in each screen's
-// color. Header: the five steps (create, plan, connect, track, decide) as pieces of the real screens on one dotted
-// line. Search: the hand-held mockup (design/mockup.png) on green, its screen swapped for the sharp shot.
-// swiftc -O -parse-as-library design/make_store_art.swift -o /tmp/storeart && /tmp/storeart <shots dir> <cards dir> marketing/app-store [shots|header|search]
-// Shots: the simulator with -PRODLINE_STORE YES (dash, traction, plan, picker, verdict, board.png); cards: the Mac
-// snapshot writer (card-<project>.png). See marketing/app-store.md.
+// color (the first one on the brand green). Header: plan, track and decide as pieces of the real screens on the brand
+// green. Search: the hand-held mockup (design/mockup.png) on green, its screen swapped for the sharp shot.
+// swiftc -O -parse-as-library design/make_store_art.swift -o /tmp/storeart && /tmp/storeart <shots dir> marketing/app-store [shots|header|search]
+// Shots: the simulator with -PRODLINE_STORE YES (dash, traction, plan, picker, verdict, board.png). See marketing/app-store.md.
 import AppKit
 import CoreText
 import SwiftUI
 
 let args = CommandLine.arguments
-let shotsDir = URL(fileURLWithPath: args[1]), cardsDir = URL(fileURLWithPath: args[2]), outDir = URL(fileURLWithPath: args[3])
+let shotsDir = URL(fileURLWithPath: args[1]), outDir = URL(fileURLWithPath: args[2])
 
 // MARK: Basics
 
@@ -181,12 +180,33 @@ struct Backdrop: View {
     }
 }
 
+/// The brand green (Suica-card green) as a sky: deeper on top, a light haze at the bottom. Hero frames, header, search.
+let brandHue = 0.345
+struct BrandBackdrop: View {
+    var body: some View {
+        GeometryReader { geo in
+            let m = max(geo.size.width, geo.size.height)
+            ZStack {
+                LinearGradient(stops: [
+                    .init(color: Color(hue: brandHue, saturation: 0.76, brightness: 0.64), location: 0),
+                    .init(color: Color(hue: brandHue, saturation: 0.66, brightness: 0.75), location: 0.45),
+                    .init(color: Color(hue: brandHue, saturation: 0.34, brightness: 0.90), location: 0.8),
+                    .init(color: Color(hue: brandHue, saturation: 0.14, brightness: 0.96), location: 1),
+                ], startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [.white.opacity(0.5), .white.opacity(0)], center: .init(x: 0.18, y: 1.05), startRadius: 0, endRadius: m * 0.45)
+                RadialGradient(colors: [.white.opacity(0.16), .white.opacity(0)], center: .init(x: 0.8, y: 0), startRadius: 0, endRadius: m * 0.4)
+            }
+        }
+    }
+}
+let brandInk = Color(hue: brandHue, saturation: 0.85, brightness: 0.22)
+
 // MARK: iPhone screenshots
 
-struct Shot { let file, shot, title, sub: String; let hex: Int }
+struct Shot { let file, shot, title, sub: String; let hex: Int; var brand = false }
 
 let shots = [
-    Shot(file: "01-dash", shot: "dash", title: "Finish what\nyou start.", sub: "Every side project on a short clock.", hex: 0x46B500),
+    Shot(file: "01-dash", shot: "dash", title: "Finish what\nyou start.", sub: "Every side project on a short clock.", hex: 0x46B500, brand: true),
     Shot(file: "02-numbers", shot: "traction", title: "Numbers that\ncome in on their own.", sub: "Revenue and visitors, live from Stripe.", hex: 0x2F6BFF),
     Shot(file: "03-plan", shot: "plan", title: "A deadline for\nevery step.", sub: "Checkpoints, goals and a streak.", hex: 0xF29A16),
     Shot(file: "04-services", shot: "picker", title: "25+ services,\nconnected.", sub: "Your keys stay in your Keychain.", hex: 0x635BFF),
@@ -200,20 +220,21 @@ struct ScreenshotFrame: View {
 
     var body: some View {
         let k = size.width / 1206
-        let ink = shade(shot.hex, 0.72)
+        // The first frame is the brand one: green with white type.
+        let ink = shot.brand ? .white : shade(shot.hex, 0.72)
         ZStack(alignment: .top) {
-            Backdrop(hex: shot.hex)
+            if shot.brand { BrandBackdrop() } else { Backdrop(hex: shot.hex) }
             VStack(spacing: 0) {
                 Text(shot.title)
                     .font(display(112 * k, 660)).foregroundStyle(ink)
                     .multilineTextAlignment(.center).lineSpacing(-14 * k)
                     .padding(.top, 130 * k)
                 Text(shot.sub)
-                    .font(.system(size: 42 * k, weight: .medium)).foregroundStyle(ink.opacity(0.68))
+                    .font(.system(size: 42 * k, weight: .medium)).foregroundStyle(ink.opacity(shot.brand ? 0.88 : 0.68))
                     .padding(.top, 26 * k)
                 Spacer(minLength: 0)
                 Phone(shot: image(shotsDir.appendingPathComponent(shot.shot + ".png")), width: size.width * 0.79,
-                      shadowTint: shade(shot.hex, 0.75))
+                      shadowTint: shot.brand ? brandInk : shade(shot.hex, 0.75))
                     .padding(.bottom, 92 * k)
             }
         }
@@ -290,33 +311,6 @@ func crop(_ shot: String, _ r: CGRect) -> NSImage {
     return NSImage(cgImage: cg, size: r.size)
 }
 
-/// One step: a numbered label above a piece of the app, floating on its own shadow.
-struct StepPanel<Content: View>: View {
-    let number: Int
-    let verb: String
-    let symbol: String
-    let hex: Int
-    @ViewBuilder var content: () -> Content
-
-    var body: some View {
-        VStack(spacing: 34) {
-            HStack(spacing: 18) {
-                Text("\(number)")
-                    .font(display(46, 760)).foregroundStyle(Color(hex: hex))
-                    .frame(width: 70, height: 70)
-                    .background(Circle().fill(.white))
-                Image(systemName: symbol).font(.system(size: 40, weight: .bold))
-                Text(verb).font(display(64, 680))
-            }
-            .foregroundStyle(.white)
-            .padding(.leading, 16).padding(.trailing, 44).padding(.vertical, 14)
-            .background(Capsule().fill(Color(hex: hex)))
-            .shadow(color: shade(hex, 0.4).opacity(0.45), radius: 22, y: 12)
-            content()
-        }
-    }
-}
-
 /// A screen piece as a floating panel: rounded, with a tight contact shadow and a wide soft one.
 struct Panel: View {
     let image: NSImage
@@ -324,76 +318,37 @@ struct Panel: View {
     var body: some View {
         Image(nsImage: image).resizable().interpolation(.high)
             .frame(width: width, height: width * image.size.height / image.size.width)
-            .clipShape(RoundedRectangle(cornerRadius: 44, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 44, style: .continuous).strokeBorder(.white, lineWidth: 5))
-            .shadow(color: .black.opacity(0.10), radius: 5, y: 3)
-            .shadow(color: .black.opacity(0.20), radius: 60, x: 14, y: 46)
+            .clipShape(RoundedRectangle(cornerRadius: 48, style: .continuous))
+            .shadow(color: brandInk.opacity(0.25), radius: 6, y: 4)
+            .shadow(color: brandInk.opacity(0.4), radius: 70, x: 16, y: 50)
     }
 }
 
-/// The logo's dot, dash and line, drawn as one long path that ties the steps together.
-struct DotLine: View {
-    let points: [CGPoint]
-    var body: some View {
-        Path { p in
-            p.move(to: points[0])
-            for i in 1..<points.count {
-                let a = points[i - 1], b = points[i]
-                p.addCurve(to: b, control1: CGPoint(x: (a.x + b.x) / 2, y: a.y), control2: CGPoint(x: (a.x + b.x) / 2, y: b.y))
-            }
-        }
-        .stroke(Color(hex: 0x1C1C1E).opacity(0.18), style: StrokeStyle(lineWidth: 18, lineCap: .round, dash: [0, 40, 46, 40]))
-    }
-}
-
+/// Plan, track, decide: three pieces of the real screens under one word each, on the brand green. The App Store
+/// crops the header to about the middle 70% on iPhone and lays its buttons over the top corners, so everything sits
+/// in the middle and lower part.
 struct Header: View {
     let size = CGSize(width: 3840, height: 1646)
     var body: some View {
-        let w: CGFloat = 640
-        let xs: [CGFloat] = [-2, -1, 0, 1, 2].map { 1920 + $0 * 735 }
-        let steps = [0x46B500, 0xF29A16, 0x635BFF, 0x2F6BFF, 0x8A45F5]
-        ZStack {
-            Color(hex: 0xF4F4F7)
-            // A soft glow in each step's color.
-            ForEach(0..<5, id: \.self) { i in
-                RadialGradient(colors: [Color(hex: steps[i], 0.26), Color(hex: steps[i], 0)], center: .center, startRadius: 0, endRadius: 620)
-                    .frame(width: 1240, height: 1240)
-                    .position(x: xs[i], y: i.isMultiple(of: 2) ? 880 : 780)
-            }
-            DotLine(points: [CGPoint(x: -80, y: 1000), CGPoint(x: xs[0], y: 940), CGPoint(x: xs[1], y: 760), CGPoint(x: xs[2], y: 940),
-                             CGPoint(x: xs[3], y: 760), CGPoint(x: xs[4], y: 940), CGPoint(x: 3920, y: 860)])
-
-            StepPanel(number: 1, verb: "Create", symbol: "plus", hex: steps[0]) {
-                ZStack {
-                    Image(nsImage: image(cardsDir.appendingPathComponent("card-tiny-invoice.png"))).resizable().interpolation(.high)
-                        .frame(width: 430, height: 602)
-                        .shadow(color: .black.opacity(0.22), radius: 40, x: 10, y: 30)
-                        .rotationEffect(.degrees(-9)).offset(x: -95, y: 14)
-                    Image(nsImage: image(cardsDir.appendingPathComponent("card-habit-hero.png"))).resizable().interpolation(.high)
-                        .frame(width: 450, height: 630)
-                        .shadow(color: .black.opacity(0.12), radius: 5, y: 3)
-                        .shadow(color: .black.opacity(0.26), radius: 50, x: 14, y: 40)
-                        .rotationEffect(.degrees(5)).offset(x: 110)
+        // One scale for all three, so their type matches; tops line up, lengths differ.
+        let k: CGFloat = 0.6
+        let items: [(String, String, NSImage)] = [
+            ("Plan", "calendar", crop("plan", CGRect(x: 48, y: 800, width: 1113, height: 970))),
+            ("Track", "chart.line.uptrend.xyaxis", crop("traction", CGRect(x: 53, y: 1140, width: 1098, height: 1160))),
+            ("Decide", "arrow.triangle.branch", crop("verdict", CGRect(x: 52, y: 995, width: 1083, height: 827))),
+        ]
+        ZStack(alignment: .top) {
+            BrandBackdrop()
+            HStack(alignment: .top, spacing: 120) {
+                ForEach(items, id: \.0) { title, symbol, img in
+                    VStack(spacing: 40) {
+                        Label(title, systemImage: symbol)
+                            .font(display(80, 680)).foregroundStyle(.white)
+                        Panel(image: img, width: img.size.width * k)
+                    }
                 }
-                .frame(width: w, height: 700)
             }
-            .position(x: xs[0], y: 850)
-            StepPanel(number: 2, verb: "Plan", symbol: "calendar", hex: steps[1]) {
-                Panel(image: crop("plan", CGRect(x: 48, y: 450, width: 1113, height: 1300)), width: w)
-            }
-            .position(x: xs[1], y: 790)
-            StepPanel(number: 3, verb: "Connect", symbol: "link", hex: steps[2]) {
-                Panel(image: crop("picker", CGRect(x: 48, y: 1100, width: 1098, height: 1265)), width: w)
-            }
-            .position(x: xs[2], y: 860)
-            StepPanel(number: 4, verb: "Track", symbol: "chart.line.uptrend.xyaxis", hex: steps[3]) {
-                Panel(image: crop("traction", CGRect(x: 53, y: 1135, width: 1098, height: 1164)), width: w)
-            }
-            .position(x: xs[3], y: 780)
-            StepPanel(number: 5, verb: "Decide", symbol: "arrow.triangle.branch", hex: steps[4]) {
-                Panel(image: crop("verdict", CGRect(x: 52, y: 442, width: 1083, height: 1366)), width: w)
-            }
-            .position(x: xs[4], y: 860)
+            .padding(.top, 560)
         }
         .frame(width: size.width, height: size.height)
         .clipped()
@@ -402,8 +357,8 @@ struct Header: View {
 
 // MARK: Search results
 
-/// After Apple's search example: a muted sky-style gradient (deeper on top, a light haze at the bottom), a bold line
-/// top left, a dark short line bottom left, the phone held up on the right.
+/// After Apple's search example: the brand sky, a bold line top left, a dark short line bottom left, the phone held
+/// up on the right.
 struct Search: View {
     let size = CGSize(width: 3840, height: 2560)
     var body: some View {
@@ -412,28 +367,19 @@ struct Search: View {
         let f: CGFloat = 0.78 * H / 560
         let phone = HandPhone.image(screen: shotsDir.appendingPathComponent("dash.png"), scale: f)
         let x = 0.74 * W - 683 * f, y = 0.08 * H - 283 * f
-        let hue = 0.285
         ZStack(alignment: .topLeading) {
-            LinearGradient(stops: [
-                .init(color: Color(hue: hue, saturation: 0.58, brightness: 0.70), location: 0),
-                .init(color: Color(hue: hue, saturation: 0.46, brightness: 0.80), location: 0.45),
-                .init(color: Color(hue: hue, saturation: 0.22, brightness: 0.92), location: 0.8),
-                .init(color: Color(hue: hue, saturation: 0.10, brightness: 0.97), location: 1),
-            ], startPoint: .top, endPoint: .bottom)
-            // Haze low on the left, a little light from the top right.
-            RadialGradient(colors: [.white.opacity(0.55), .white.opacity(0)], center: .init(x: 0.18, y: 1.05), startRadius: 0, endRadius: W * 0.45)
-            RadialGradient(colors: [.white.opacity(0.18), .white.opacity(0)], center: .init(x: 0.8, y: 0), startRadius: 0, endRadius: W * 0.4)
+            BrandBackdrop()
             Text("FINISH\nWHAT YOU\nSTART.")
                 .font(display(268, 720)).foregroundStyle(.white).lineSpacing(-46)
                 .padding(.leading, 0.06 * W).padding(.top, 0.09 * H)
             Text("Plan it, ship it and watch the real\nnumbers come in. Then decide:\nkeep, pivot or kill.")
-                .font(.system(size: 100, weight: .regular)).foregroundStyle(Color(hue: hue, saturation: 0.8, brightness: 0.24))
+                .font(.system(size: 100, weight: .regular)).foregroundStyle(brandInk)
                 .lineSpacing(16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
                 .padding(.leading, 0.06 * W).padding(.bottom, 0.1 * H)
             Image(nsImage: phone).resizable().interpolation(.high)
                 .frame(width: phone.size.width, height: phone.size.height)
-                .shadow(color: Color(hue: hue, saturation: 0.7, brightness: 0.25).opacity(0.25), radius: 40, x: 18, y: 30)
+                .shadow(color: brandInk.opacity(0.25), radius: 40, x: 18, y: 30)
                 .position(x: x + phone.size.width / 2, y: y + phone.size.height / 2)
         }
         .frame(width: W, height: H)
@@ -445,7 +391,7 @@ struct Search: View {
 struct StoreArt {
     @MainActor static func main() {
         CTFontManagerRegisterFontsForURL(URL(fileURLWithPath: "prodline/fonts/AfacadFlux-VariableFont_slnt,wght.ttf") as CFURL, .process, nil)
-        let only = args.count > 4 ? args[4] : ""
+        let only = args.count > 3 ? args[3] : ""
         if only.isEmpty || only == "shots" {
             for (size, folder) in [(CGSize(width: 1206, height: 2622), "iphone-6.1"), (CGSize(width: 1320, height: 2868), "iphone-6.9")] {
                 for s in shots { render(ScreenshotFrame(shot: s, size: size), size, to: "\(folder)/\(s.file).png") }
