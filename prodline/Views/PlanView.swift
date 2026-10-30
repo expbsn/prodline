@@ -63,7 +63,7 @@ struct PlanView: View {
     private var statsRow: some View {
         HStack(spacing: 10) {
             stat(symbol: "flame.fill", tint: Theme.flame, value: "\(profile.streak)", title: "Streak")
-            stat(symbol: "star.fill", tint: Color(hex: 0xFFC800), value: "\(profile.xp)", title: "XP")
+            stat(symbol: "star.fill", tint: Theme.brand, value: "\(profile.xp)", title: "XP")
             stat(symbol: "checkmark.seal.fill", tint: Theme.success,
                  value: profile.onTimeRate.map { "\(Int($0 * 100))%" } ?? "–", title: "On time")
         }

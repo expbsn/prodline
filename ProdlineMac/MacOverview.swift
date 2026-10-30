@@ -197,7 +197,7 @@ struct MacOverview: View {
             FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 24)
         }
         let level = MacStatCell(title: "Level \(profile.level)", value: "\(profile.xp)", detail: "XP") {
-            ChunkyProgressBar(value: profile.levelProgress, color: Accent(hex: 0x5B5BF0).base, height: 8).frame(width: 64)
+            ChunkyProgressBar(value: profile.levelProgress, color: Theme.brand, height: 8).frame(width: 64)
         }
         let checkpoints = MacStatCell(title: "Checkpoints", value: "\(ms.filter(\.isDone).count)/\(ms.count)", detail: "done") {
             Image(systemName: "checkmark.circle.fill").font(.system(size: 20)).foregroundStyle(Theme.success)

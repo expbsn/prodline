@@ -6,6 +6,7 @@ import UserNotifications
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
         UNUserNotificationCenter.current().delegate = self
+        refreshLaunchScreenCache()
         // Instant updates: the relay needs this device's push token.
         if Relay.isEnabled {
             application.registerForRemoteNotifications()
@@ -22,6 +23,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         }
         #endif
         return true
+    }
+
+    /// iOS keeps a snapshot of the launch screen and can go on showing the old one after an update, so the
+    /// first frames come up in the old colors before the green splash. Dropping the snapshot once per launch
+    /// screen change makes the system draw the new one from the next launch on.
+    private func refreshLaunchScreenCache() {
+        let version = 2   // Bump whenever the launch screen changes. 2: brand green.
+        let key = "launchScreenVersion"
+        guard UserDefaults.standard.integer(forKey: key) < version else { return }
+        try? FileManager.default.removeItem(at: URL.libraryDirectory.appending(path: "SplashBoard"))
+        UserDefaults.standard.set(version, forKey: key)
     }
 
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {

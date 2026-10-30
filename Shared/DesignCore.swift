@@ -98,13 +98,16 @@ enum Theme {
     /// Dark text that stays dark in both modes, for bright fills like yellow.
     static let inkFixed = Color(hex: 0x1C1C1E)
 
+    /// The brand green (logo, launch screen, App Store art): XP, and a new project's first color.
+    static let brandHex = 0x30B03C
+    static let brand = Color(hex: brandHex)
     static let flame = Color(hex: 0xFF9600)
     static let success = Color(hex: 0x34C759)
     static let danger = Color(hex: 0xFF3B30)
 
     /// Accent choices when a project has no cover photo.
     static let swatches: [Int] = [
-        0x58CC02, 0x00B894, 0x1CB0F6, 0x5B5BF0, 0xA35CFF,
+        Theme.brandHex, 0x00B894, 0x1CB0F6, 0x5B5BF0, 0xA35CFF,
         0xFF5FA2, 0xFF4B4B, 0xFF9600, 0xFFC800, 0x3C3C43,
     ]
 }

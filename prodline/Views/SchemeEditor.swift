@@ -212,7 +212,7 @@ struct MeView: View {
                 Spacer()
                 Text("Best streak \(profile.bestStreak) day\(profile.bestStreak == 1 ? "" : "s")").font(.ui(13)).foregroundStyle(Theme.secondary)
             }
-            ChunkyProgressBar(value: profile.levelProgress, color: Color(hex: 0xFFC800))
+            ChunkyProgressBar(value: profile.levelProgress, color: Theme.brand)
         }
         .card()
     }
