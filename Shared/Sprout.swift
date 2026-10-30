@@ -8,29 +8,22 @@ enum StreakLook {
     var color: Color { self == .flame ? Theme.flame : Theme.brand }
 }
 
-extension Theme {
-    /// A dried-out sprout: no streak today.
-    static let dry = Color(light: 0xB59A6E, dark: 0x8C785A)
-}
-
 /// Prodline's seedling: a stem out of the soil and two leaves at its top, drawn in a 120 × 92 box.
 /// `grow` raises the stem first and then opens the leaves (around 0.4 a shoot with a closed bud, 1 full,
-/// a little past 1 while it springs up). `wilt` dries it out: the stem bows over, the leaves hang and shrivel.
-/// `time` and `life` sway it in a breeze (life 0 = still, for badges).
+/// a little past 1 while it springs up). `time` and `life` sway it in a breeze (life 0 = still, for badges).
 struct SproutShape: Shape {
     enum Part { case stem, leaves, veins }
     var part: Part
     var grow: Double = 1
-    var wilt: Double = 0
     var time: Double = 0
     var life: Double = 0
     var stemWidth: Double = 8
 
     static let aspect: CGFloat = 120 / 92
 
-    var animatableData: AnimatablePair<Double, AnimatablePair<Double, Double>> {
-        get { AnimatablePair(grow, AnimatablePair(wilt, time)) }
-        set { grow = newValue.first; wilt = newValue.second.first; time = newValue.second.second }
+    var animatableData: AnimatablePair<Double, Double> {
+        get { AnimatablePair(grow, time) }
+        set { grow = newValue.first; time = newValue.second }
     }
 
     func path(in rect: CGRect) -> Path {
@@ -40,28 +33,27 @@ struct SproutShape: Shape {
         let leafK = grow >= 1 ? grow : max(0, (grow - 0.3) / 0.7)
         let sway = sin(time * 1.3) * life
         let h = 46 * stemK
-        let top = (x: 58 + 3 * sway * stemK + 9 * wilt * stemK, y: 88 - h + 7 * wilt * stemK)
+        let top = (x: 58 + 3 * sway * stemK, y: 88 - h)
 
         var path = Path()
         if part == .stem {
             var stem = Path()
             stem.move(to: p(58, 88))
             stem.addCurve(to: p(top.x, top.y), control1: p(58, 88 - h * 0.45),
-                          control2: p(58 + 1.5 * sway, 88 - h * (0.85 + 0.12 * wilt)))
+                          control2: p(58 + 1.5 * sway, 88 - h * 0.85))
             return stem.strokedPath(StrokeStyle(lineWidth: stemWidth * sx * (0.55 + 0.45 * min(1, stemK)), lineCap: .round))
         }
         guard leafK > 0 else { return path }
         // Closed, the two leaves press together into a bud pointing up; open, they spread left and right.
         let o = min(1, leafK), open = o * o * (3 - 2 * o)
-        let leaves = [(closed: -100.0, opened: -158.0, droop: -205.0, length: 46.0, width: 18.0, phase: 0.0),
-                      (closed: -80.0, opened: -28.0, droop: 38.0, length: 54.0, width: 21.0, phase: 2.1)]
+        let leaves = [(closed: -100.0, opened: -158.0, length: 46.0, width: 18.0, phase: 0.0),
+                      (closed: -80.0, opened: -28.0, length: 54.0, width: 21.0, phase: 2.1)]
         for l in leaves {
-            let angle = l.closed + (l.opened - l.closed) * open
-            let deg = angle + (l.droop - angle) * wilt + 5 * sin(time * 1.7 + l.phase) * life
+            let deg = l.closed + (l.opened - l.closed) * open + 5 * sin(time * 1.7 + l.phase) * life
             let th = deg * .pi / 180
             let d = (x: cos(th), y: sin(th)), n = (x: -sin(th), y: cos(th))
-            let len = l.length * leafK * (1 - 0.12 * wilt)
-            let wid = l.width * pow(leafK, 1.3) * (1 - 0.3 * wilt)
+            let len = l.length * leafK
+            let wid = l.width * pow(leafK, 1.3)
             /// `u` along the leaf from its base, `v` across it.
             func at(_ u: Double, _ v: Double) -> CGPoint {
                 p(top.x + d.x * len * u + n.x * v, top.y + d.y * len * u + n.y * v)
@@ -80,20 +72,19 @@ struct SproutShape: Shape {
     }
 }
 
-/// The small still sprout for badges: green when today counts, dried out and hanging when it doesn't.
+/// The small still sprout for badges: green when today counts, gray until then.
 struct SproutMark: View {
     var lit: Bool
 
     var body: some View {
-        let wilt = lit ? 0.0 : 1.0
         ZStack {
-            SproutShape(part: .stem, wilt: wilt, stemWidth: 11).fill(lit ? Color(hex: 0x23933A) : Theme.dry)
-            SproutShape(part: .leaves, wilt: wilt).fill(lit ? Theme.brand : Theme.dry)
-            SproutShape(part: .veins, wilt: wilt)
-                .stroke(.white.opacity(lit ? 0.5 : 0.3), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
+            SproutShape(part: .stem, stemWidth: 11).fill(lit ? Color(hex: 0x23933A) : Theme.tertiary)
+            SproutShape(part: .leaves).fill(lit ? Theme.brand : Theme.tertiary)
+            SproutShape(part: .veins)
+                .stroke(.white.opacity(lit ? 0.5 : 0.35), style: StrokeStyle(lineWidth: 1.2, lineCap: .round))
         }
         .aspectRatio(SproutShape.aspect, contentMode: .fit)
-        .animation(.spring(response: 0.6, dampingFraction: 0.6), value: lit)
+        .animation(.easeInOut(duration: 0.4), value: lit)
     }
 }
 
