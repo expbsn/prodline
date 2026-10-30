@@ -103,8 +103,9 @@
     {"id": "store-listing", "title": "Write App Store listing and screenshots", "day": 26, "done": true},
     {"id": "submit-review", "title": "Submit for App Review", "day": 26, "done": false},
     {"id": "mac-testflight", "title": "Upload the Mac app to TestFlight", "day": 26, "done": true},
+    {"id": "brand-green", "title": "Switch the brand color and launch screen to green", "day": 26, "done": true},
 
-    {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": false},
+    {"id": "aso-keywords", "title": "Research ASO keywords, title and subtitle", "day": 29, "done": true},
     {"id": "app-preview-video", "title": "Record the App Store preview video", "day": 29, "done": false},
     {"id": "press-kit", "title": "Put together a press kit with screenshots and logo", "day": 29, "done": false},
     {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": true},

@@ -43,6 +43,9 @@ struct RootView: View {
                     .transition(.opacity.combined(with: .scale(scale: 1.04)))
             }
         }
+        // No status bar on the green (Info.plist hides it on the system launch screen too); it comes back
+        // the moment the splash starts to dissolve.
+        .statusBarHidden(showSplash && reveal == 0)
         .task {
             guard showSplash, !Self.forceSplash else { return }
             try? await Task.sleep(for: .milliseconds(1300))

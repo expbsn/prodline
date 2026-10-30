@@ -27,13 +27,13 @@ enum LogoGeometry {
     static let leftDot = CGPoint(x: 106, y: barY)
 }
 
-/// The cold-start splash: the mark (where the system launch screen already put it, so the hand-over is
-/// seamless) and a quiet trademark line. RootView holds it briefly, then blurs it away into the app.
+/// The cold-start splash: the white mark on the brand green (where the system launch screen already put it,
+/// so the hand-over is seamless) and a quiet trademark line. Green in light and dark mode alike. RootView holds it briefly, then blurs it away into the app.
 /// (The animated splash it replaced lives in Design/Archive/LaunchAnimation.swift.)
 struct LaunchSplash: View {
     var body: some View {
         ZStack {
-            Theme.background
+            Color("LaunchBackground")
             Image("LaunchMark").resizable().scaledToFit()
                 .frame(width: 96, height: 96)
         }
@@ -41,7 +41,7 @@ struct LaunchSplash: View {
             Text("Prodline™")
                 .font(.ui(12, .medium))
                 .tracking(1)
-                .foregroundStyle(Theme.tertiary)
+                .foregroundStyle(.white.opacity(0.7))
                 .padding(.bottom, 44)
         }
         .ignoresSafeArea()
