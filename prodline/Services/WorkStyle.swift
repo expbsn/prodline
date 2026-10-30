@@ -98,7 +98,7 @@ extension Profile {
     }
 }
 
-/// "Your flame goes out tonight": at the nudge hour on days nothing has counted yet. Scheduled a few
+/// "Your streak ends tonight": at the nudge hour on days nothing has counted yet. Scheduled a few
 /// days ahead (the app may not open), and today's is dropped once today counts.
 enum StreakNudge {
     static let days = 3
@@ -120,7 +120,8 @@ enum StreakNudge {
             let content = UNMutableNotificationContent()
             content.title = "Your \(streak)-day streak ends tonight"
             content.body = ["One tiny tick keeps it alive.", "A single goal is enough. You know you want to.",
-                            "Don't let the flame go out on a technicality."][d % 3]
+                            StreakLook.current == .sprout ? "Don't let it dry out on a technicality."
+                                : "Don't let the flame go out on a technicality."][d % 3]
             content.sound = .default
             center.add(UNNotificationRequest(identifier: id(d), content: content,
                                              trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))

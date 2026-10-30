@@ -502,7 +502,7 @@ struct MeView: View {
                 devButton("Show the missed-deadline nudge", "exclamationmark.bubble") {
                     celebration.nudge(title: "A deadline slipped", subtitle: "Finish it today. Late still earns XP.")
                 }
-                devButton("Play the streak flame", "flame.fill") {
+                devButton("Play the streak moment", StreakLook.current == .flame ? "flame.fill" : "leaf.fill") {
                     celebration.fire(title: "+3 XP", subtitle: "A goal, for the demo", accent: Accent(hex: 0x58CC02), confetti: false)
                     celebration.lightStreak(max(1, profile.streak))
                 }
@@ -740,7 +740,10 @@ struct OnboardingView: View {
                 }
             }
         case 4:
-            BurningFlame(grow: 1, bright: 1, width: 190, alive: .now)
+            switch StreakLook.current {
+            case .flame: BurningFlame(grow: 1, bright: 1, width: 190, alive: .now)
+            case .sprout: GrowingSprout(grow: 1, bright: 1, width: 210, alive: .now, glow: 0.5)
+            }
         default:
             RhythmBeat(p: 1).frame(width: 420)
         }

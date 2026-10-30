@@ -154,14 +154,15 @@ struct HomeView: View {
     private var streakBadgeLabel: some View {
         // Gray until something today counts; then the whole badge lights up.
         let lit = Streak.isActiveToday(profile)
-        let tint = lit ? Theme.flame : Theme.tertiary
+        let tint = lit ? StreakLook.current.color : Theme.tertiary
         return VStack(spacing: -6) {
             ZStack {
                 Circle().fill(Theme.card)
                 Circle().strokeBorder(tint.opacity(0.9), lineWidth: 2.5)
-                FlameMark(color: tint, lit: lit)
-                    .frame(height: 23)
-                    .offset(y: -1)
+                switch StreakLook.current {
+                case .flame: FlameMark(color: tint, lit: lit).frame(height: 23).offset(y: -1)
+                case .sprout: SproutMark(lit: lit).frame(width: 32).offset(x: 0.5, y: -1)
+                }
             }
             .frame(width: 46, height: 46)
             Text("\(profile.streak)")

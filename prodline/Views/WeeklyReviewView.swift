@@ -274,7 +274,8 @@ struct WeeklyReviewView: View {
     private var captionExtra: some View {
         switch scene {
         case .days where stats.streak > 1:
-            Label("\(stats.streak) day streak", systemImage: "flame.fill").font(.ui(15, .bold)).foregroundStyle(Theme.flame)
+            Label { Text("\(stats.streak) day streak") } icon: { StreakSymbol(size: 15) }
+                .font(.ui(15, .bold)).foregroundStyle(StreakLook.current.color)
         case .goals where stats.checkpointsOnTime + stats.checkpointsLate + stats.slipped > 0:
             HStack(spacing: 8) {
                 if stats.checkpointsOnTime > 0 { pill("\(stats.checkpointsOnTime) on time", 0x58CC02) }

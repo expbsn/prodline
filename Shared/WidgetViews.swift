@@ -637,8 +637,8 @@ struct LineupWidgetView: View {
                     HStack {
                         Text("Prodline").display(22, 800).foregroundStyle(Theme.ink)
                         Spacer()
-                        Label("\(data.streak)", systemImage: "flame.fill")
-                            .font(.ui(13, .bold)).foregroundStyle(Theme.flame)
+                        Label { Text("\(data.streak)") } icon: { StreakSymbol(size: 13) }
+                            .font(.ui(13, .bold)).foregroundStyle(StreakLook.current.color)
                     }
                 }
                 ForEach(projects.prefix(limit)) { p in

@@ -62,16 +62,21 @@ struct PlanView: View {
 
     private var statsRow: some View {
         HStack(spacing: 10) {
-            stat(symbol: "flame.fill", tint: Theme.flame, value: "\(profile.streak)", title: "Streak")
-            stat(symbol: "star.fill", tint: Theme.brand, value: "\(profile.xp)", title: "XP")
-            stat(symbol: "checkmark.seal.fill", tint: Theme.success,
-                 value: profile.onTimeRate.map { "\(Int($0 * 100))%" } ?? "–", title: "On time")
+            stat(value: "\(profile.streak)", title: "Streak") { StreakSymbol(lit: Streak.isActiveToday(profile), size: 18) }
+            stat(value: "\(profile.xp)", title: "XP") { symbol("star.fill", Theme.brand) }
+            stat(value: profile.onTimeRate.map { "\(Int($0 * 100))%" } ?? "–", title: "On time") {
+                symbol("checkmark.seal.fill", Theme.success)
+            }
         }
     }
 
-    private func stat(symbol: String, tint: Color, value: String, title: String) -> some View {
+    private func symbol(_ name: String, _ tint: Color) -> some View {
+        Image(systemName: name).font(.system(size: 18)).foregroundStyle(tint)
+    }
+
+    private func stat<Icon: View>(value: String, title: String, @ViewBuilder icon: () -> Icon) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: symbol).font(.system(size: 18)).foregroundStyle(tint)
+            icon().frame(height: 22)
             Text(value).display(26, 750).foregroundStyle(Theme.ink).contentTransition(.numericText())
             Text(title).font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
         }

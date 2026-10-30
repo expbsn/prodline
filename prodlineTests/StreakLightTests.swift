@@ -4,7 +4,7 @@ import Testing
 @testable import prodline
 
 @MainActor
-@Suite("Streak flame")
+@Suite("Streak moment")
 struct StreakLightTests {
     @Test func lightsOnceWhenTodayFirstCounts() throws {
         let ctx = try makeContext()

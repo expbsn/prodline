@@ -89,8 +89,9 @@ enum Cheer {
         guard enabled, days > 0 else { return }
         let lines = days == 1
             ? ("Streak started", "Day 1. Every streak starts somewhere.")
-            : pick([("\(days)-day streak", "Today counts. The flame is happy."),
-                    ("Day \(days), lit", "You showed up again. That's the whole trick.")], seed: days)
+            : pick([("\(days)-day streak", StreakLook.current == .sprout ? "Today counts. The sprout is happy." : "Today counts. The flame is happy."),
+                    (StreakLook.current == .sprout ? "Day \(days), growing" : "Day \(days), lit",
+                     "You showed up again. That's the whole trick.")], seed: days)
         post(id: "streak-\(UUID().uuidString)", title: lines.0, body: lines.1, thread: "streak")
         // Today counts now: the "ends tonight" nudge isn't needed.
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: [StreakNudge.id(0)])

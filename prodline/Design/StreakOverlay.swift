@@ -2,7 +2,8 @@ import SwiftUI
 
 /// Today's first progress: the room slowly goes dark around the edges, the unlit flame emerges, then it
 /// catches — filling from the bottom up with a burst of sparks — and keeps burning, tongues licking and
-/// flickering. The streak ticks up by one. Banners (like the XP that came with it) wait until it's over. Tap to skip.
+/// flickering. As a sprout (StreakLook): a pale shoot comes up out of the soil, then springs up and opens its
+/// leaves in a burst of green. The streak ticks up by one. Banners (like the XP that came with it) wait until it's over. Tap to skip.
 struct StreakOverlay: View {
     @Environment(CelebrationCenter.self) private var center
     @State private var dim = false
@@ -11,7 +12,7 @@ struct StreakOverlay: View {
     @State private var shown = 0
     @State private var label = false
 
-    private static let orange = Color(hex: 0xFF9600)
+    private static let light = StreakLook.current.color
 
     var body: some View {
         if let m = center.streakLit {
@@ -21,17 +22,25 @@ struct StreakOverlay: View {
                 Color.black.opacity(dim ? 0.38 : 0)
                 RadialGradient(colors: [.clear, .black.opacity(0.55)], center: .center, startRadius: 120, endRadius: 560)
                     .opacity(dim ? 1 : 0)
-                // Warm light thrown by the flame once it burns.
-                RadialGradient(colors: [Self.orange.opacity(0.4), Self.orange.opacity(0.1), .clear], center: .center,
+                // Warm light thrown by the flame once it burns (green from the sprout).
+                RadialGradient(colors: [Self.light.opacity(0.4), Self.light.opacity(0.1), .clear], center: .center,
                                startRadius: 10, endRadius: 320)
                     .offset(y: -60)
                     .opacity(lit ? 1 : 0)
                 VStack(spacing: 40) {
-                    Flame3D(lit: lit, ember: ember)
-                        .frame(height: 190, alignment: .bottom)
-                        .overlay(alignment: .bottom) {
-                            Sparks(burst: lit).frame(width: 340, height: 380).offset(y: 40)
+                    Group {
+                        switch StreakLook.current {
+                        case .flame: Flame3D(lit: lit, ember: ember)
+                        case .sprout: Sprout3D(lit: lit, ember: ember)
                         }
+                    }
+                    .frame(height: 190, alignment: .bottom)
+                    .overlay(alignment: .bottom) {
+                        Sparks(burst: lit, colors: StreakLook.current == .flame
+                               ? [Color(hex: 0xFFD23F), Color(hex: 0xFF9600), .white]
+                               : [Color(hex: 0x9BE86A), Theme.brand, .white])
+                            .frame(width: 340, height: 380).offset(y: 40)
+                    }
                     VStack(spacing: 2) {
                         Text("\(shown)").display(72, 850).foregroundStyle(.white).monospacedDigit()
                             .contentTransition(.numericText(value: Double(shown)))
@@ -106,9 +115,37 @@ private struct Flame3D: View {
     }
 }
 
-/// A burst of sparks the moment the flame catches: thrown up and out, slowing and falling back as they fade.
+/// The sprout: a pale shoot pushes up out of the soil and keeps rising in the dark, the leaves still a closed
+/// bud; when it counts it springs up past full height, opens its leaves and settles, swaying.
+private struct Sprout3D: View {
+    let lit: Bool
+    let ember: Bool
+    @State private var grow: Double = 0.02
+    @State private var bright: Double = 0
+    @State private var appeared = Date.distantFuture
+
+    var body: some View {
+        GrowingSprout(grow: grow, bright: bright, width: 180, alive: appeared)
+            .opacity(lit || ember ? 1 : 0)
+            .onChange(of: ember) {
+                guard ember else { return }
+                appeared = .now
+                grow = 0.02
+                withAnimation(.easeOut(duration: 1.6)) { grow = 0.42 }
+            }
+            .onChange(of: lit) {
+                guard lit else { grow = 0.02; bright = 0; return }
+                withAnimation(.spring(response: 0.7, dampingFraction: 0.5)) { grow = 1 }
+                withAnimation(.easeOut(duration: 0.45)) { bright = 1 }
+            }
+    }
+}
+
+/// A burst of sparks the moment the flame catches (little leaves and pollen for the sprout): thrown up and out, slowing and falling back as they fade.
 private struct Sparks: View {
     let burst: Bool
+    /// Bright, main and hot: [yellow, orange, white] for the flame.
+    let colors: [Color]
     @State private var start = Date.distantFuture
     private let count = 90
     private let life = 1.5
@@ -134,7 +171,7 @@ private struct Sparks: View {
                     let x = base.x + CGFloat(cos(angle) * speed * s)
                     let y = base.y + CGFloat(sin(angle) * speed * s + 260 * s * s)
                     let size = CGFloat(2 + r2 * 4) * CGFloat(1 - age * 0.7)
-                    let color = r3 > 0.55 ? Color(hex: 0xFFD23F) : r3 > 0.2 ? Color(hex: 0xFF9600) : .white
+                    let color = r3 > 0.55 ? colors[0] : r3 > 0.2 ? colors[1] : colors[2]
                     ctx.opacity = (1 - age) * min(1, age * 10)
                     // Streaks point the way they fly.
                     let heading = atan2(sin(angle) * speed + 520 * s, cos(angle) * speed)
@@ -155,7 +192,7 @@ private struct Sparks: View {
                     let size = CGFloat(1.5 + r2 * 2.5) * CGFloat(1 - age * 0.5)
                     ctx.opacity = (1 - age) * min(1, age * 5) * 0.9
                     ctx.fill(Path(ellipseIn: CGRect(x: x - size / 2, y: y - size / 2, width: size, height: size)),
-                             with: .color(r1 > 0.5 ? Color(hex: 0xFFD23F) : Color(hex: 0xFF9600)))
+                             with: .color(r1 > 0.5 ? colors[0] : colors[1]))
                 }
             }
         }

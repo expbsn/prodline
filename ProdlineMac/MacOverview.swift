@@ -194,7 +194,10 @@ struct MacOverview: View {
         let today = Date.now.startOfDay
         let onTime = profile.onTimeRate.map { "\(Int(($0 * 100).rounded()))%" } ?? "–"
         let streak = MacStatCell(title: "Streak", value: "\(profile.streak)", detail: profile.streak == 1 ? "day" : "days") {
-            FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 24)
+            switch StreakLook.current {
+            case .flame: FlameMark(color: Theme.flame, lit: profile.streakActiveToday == today).frame(width: 24)
+            case .sprout: SproutMark(lit: profile.streakActiveToday == today).frame(width: 34)
+            }
         }
         let level = MacStatCell(title: "Level \(profile.level)", value: "\(profile.xp)", detail: "XP") {
             ChunkyProgressBar(value: profile.levelProgress, color: Theme.brand, height: 8).frame(width: 64)

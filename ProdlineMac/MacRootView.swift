@@ -268,10 +268,10 @@ struct StreakBadge: View {
     let streak: Int
     var body: some View {
         HStack(spacing: 4) {
-            Image(systemName: "flame.fill")
+            StreakSymbol(lit: streak > 0, size: 15)
             Text("\(streak)").monospacedDigit()
         }
-        .foregroundStyle(streak > 0 ? Theme.flame : Theme.secondary)
+        .foregroundStyle(streak > 0 ? StreakLook.current.color : Theme.secondary)
         .font(.display(15, 750))
         .help("\(streak)-day streak")
     }

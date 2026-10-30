@@ -429,7 +429,9 @@ private struct StoryCanvas: View {
     private static let copy = [
         Copy(title: "Build in short bursts", body: "Two weeks, a few checkpoints, and suddenly your project has a plot. The drawer will miss it."),
         Copy(title: "Set your rhythm", body: "Long builds, quick sprints, checkpoints on Tuesdays. Prodline works the way you do, even if that's weird."),
-        Copy(title: "Show up every day", body: "One little tick a day keeps the flame happy. It's the lowest-maintenance pet you'll ever own."),
+        Copy(title: "Show up every day", body: StreakLook.current == .sprout
+             ? "One little tick a day keeps the sprout growing. It's the lowest-maintenance plant you'll ever own."
+             : "One little tick a day keeps the flame happy. It's the lowest-maintenance pet you'll ever own."),
         Copy(title: "You'll finish early", body: "Turns out ticking things off is weirdly fun. Don't be surprised if you beat your own deadline."),
         Copy(title: "Watch it land", body: "Sales, visits and downloads show up on their own. Refreshing five dashboards is now a hobby, not a job."),
         Copy(title: "Then make the call", body: "Keep it, pivot it or let it go. Whatever you pick, you shipped a thing. That's more than most."),
@@ -672,7 +674,8 @@ struct RhythmBeat: View {
     }
 }
 
-/// Sparks fly in and feed the ember, which swells a little with each; with the last one it catches.
+/// Sparks fly in and feed the ember, which swells a little with each; with the last one it catches. As a
+/// sprout: drops of water feed a shoot, and with the last one it springs up and opens its leaves.
 private struct StreakBeat: View {
     let p: CGFloat
 
@@ -688,15 +691,22 @@ private struct StreakBeat: View {
         let lit = p >= 0.55
         let fed = Double(Self.arrived(p)) / Double(Self.sparks)
         VStack(spacing: 14) {
-            BurningFlame(grow: lit ? 1 : 0.3 + 0.12 * fed, bright: lit ? 1 : 0.15 * fed, width: 110, glow: 0.35)
+            Group {
+                switch StreakLook.current {
+                case .flame: BurningFlame(grow: lit ? 1 : 0.3 + 0.12 * fed, bright: lit ? 1 : 0.15 * fed, width: 110, glow: 0.35)
+                case .sprout: GrowingSprout(grow: lit ? 1 : 0.2 + 0.25 * fed, bright: lit ? 1 : 0.2 + 0.3 * fed, width: 140, glow: 0.35)
+                }
+            }
                 .frame(height: 150, alignment: .bottom)
                 .animation(.spring(response: 0.6, dampingFraction: 0.55), value: lit)
                 .animation(.spring(response: 0.3, dampingFraction: 0.6), value: fed)
                 // Sparks drift in from all sides and feed the ember until it catches.
                 .background { IgniteSparks(p: p).allowsHitTesting(false) }
-                .overlay { SectionBurst(fire: lit, style: .sparks, colors: [0xFF9600, 0xFFC800, 0xFF4B1F, 0xFFE04A]) }
+                .overlay { SectionBurst(fire: lit, style: .sparks, colors: StreakLook.current == .sprout
+                                        ? [0x30B03C, 0x9BE86A, 0x23933A, 0xD4F59A] : [0xFF9600, 0xFFC800, 0xFF4B1F, 0xFFE04A]) }
             VStack(spacing: 0) {
-                ExtrudedText(text: lit ? "3" : "2", size: 48, accent: lit ? Accent(hex: 0xFF9600) : Accent(hex: 0xC7C7CC))
+                ExtrudedText(text: lit ? "3" : "2", size: 48,
+                             accent: lit ? Accent(hex: StreakLook.current == .sprout ? Theme.brandHex : 0xFF9600) : Accent(hex: 0xC7C7CC))
                     .contentTransition(.numericText())
                 Text("DAY STREAK").font(.ui(12, .bold)).tracking(2).foregroundStyle(Theme.secondary)
             }
@@ -705,7 +715,7 @@ private struct StreakBeat: View {
     }
 }
 
-/// The sparks that light the streak flame, placed by the scroll: each one fades in out at the edge, then
+/// The sparks that light the streak flame (drops of water for the sprout), placed by the scroll: each one fades in out at the edge, then
 /// curves in to the base of the flame trailing a short tail. They twinkle on their own while you hold still.
 private struct IgniteSparks: View {
     let p: CGFloat
@@ -724,6 +734,8 @@ private struct IgniteSparks: View {
     }
 
     private func draw(_ ctx: GraphicsContext, size: CGSize, time: Double) {
+        // Tail, glow and head: orange sparks, or blue drops for the sprout.
+        let colors = StreakLook.current == .sprout ? [0x7FD3FF, 0x1CB0F6, 0xCFF0FF] : [0xFFB000, 0xFF9600, 0xFFE04A]
         let target = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
         for i in 0..<StreakBeat.sparks {
             let (a, b) = StreakBeat.window(i)
@@ -751,15 +763,15 @@ private struct IgniteSparks: View {
                 var tail = Path()
                 tail.move(to: at(u - 0.14))
                 tail.addLine(to: head)
-                g.stroke(tail, with: .color(Color(hex: 0xFFB000).opacity(0.7)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                g.stroke(tail, with: .color(Color(hex: colors[0]).opacity(0.7)), style: StrokeStyle(lineWidth: 3, lineCap: .round))
             }
             let rad = 4 * twinkle
             var glow = g
             glow.addFilter(.blur(radius: 5))
             glow.fill(Path(ellipseIn: CGRect(x: head.x - rad * 2.2, y: head.y - rad * 2.2, width: rad * 4.4, height: rad * 4.4)),
-                      with: .color(Color(hex: 0xFF9600).opacity(0.6)))
+                      with: .color(Color(hex: colors[1]).opacity(0.6)))
             g.fill(Path(ellipseIn: CGRect(x: head.x - rad, y: head.y - rad, width: rad * 2, height: rad * 2)),
-                   with: .color(Color(hex: 0xFFE04A)))
+                   with: .color(Color(hex: colors[2])))
         }
     }
 }
