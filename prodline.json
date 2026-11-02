@@ -111,6 +111,7 @@
     {"id": "launch-posts", "title": "Plan launch posts for X, Reddit and Product Hunt", "day": 29, "done": true},
 
     {"id": "streak-sprout", "title": "Replace the streak flame with a growing sprout", "day": 30, "done": true},
+    {"id": "unslop-polish", "title": "Polish labels and banners across the app and site", "day": 30, "done": true},
     {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false},
     {"id": "threads-views", "title": "Turn on Threads views once the Meta app has the Threads API", "day": 33, "done": false}
   ]
