@@ -75,12 +75,44 @@ struct ProjectCardFace: View {
             }
             .frame(width: w, height: h)
             .clipShape(RoundedRectangle(cornerRadius: 30 * s, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 30 * s, style: .continuous)
-                .strokeBorder(Theme.rim, lineWidth: 1.5))
+            // A rim of glass: the art bends a little under it and light catches its edges; the face stays sharp.
+            // Drawn rather than .glassEffect, which breaks on the carousel's tilted side cards.
+            .overlay { glassRim(w: w, h: h, s: s).allowsHitTesting(false) }
         }
         .aspectRatio(5 / 7, contentMode: .fit)
         // Cards look the same in dark mode as in light: white faces, bright rim, real project colors.
         .environment(\.colorScheme, .light)
+    }
+
+    private func glassRim(w: CGFloat, h: CGFloat, s: CGFloat) -> some View {
+        let r = 30 * s, band = 10 * s
+        let shape = RoundedRectangle(cornerRadius: r, style: .continuous)
+        return ZStack {
+            // Lensing: the art seen through the band, magnified and softened.
+            background(w: w, h: h, s: s)
+                .scaleEffect(1.07)
+                .blur(radius: 2.5 * s)
+                .mask(GlassRim(radius: r, width: band).fill(.black))
+            // Frost and thickness: brighter at the top where the light comes from.
+            GlassRim(radius: r, width: band)
+                .fill(LinearGradient(stops: [.init(color: .white.opacity(0.3), location: 0),
+                                             .init(color: .white.opacity(0.08), location: 0.45),
+                                             .init(color: .white.opacity(0.04), location: 0.7),
+                                             .init(color: .white.opacity(0.16), location: 1)],
+                                     startPoint: .top, endPoint: .bottom))
+            // The band's inner edge, a fine line where the glass meets the face.
+            RoundedRectangle(cornerRadius: r - band, style: .continuous)
+                .inset(by: band)
+                .stroke(.white.opacity(0.28), lineWidth: 0.8 * s)
+            // Specular highlights on the outer edge: top left strongest, a softer catch bottom right.
+            shape.strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(0.95), location: 0),
+                                                      .init(color: .white.opacity(0.35), location: 0.3),
+                                                      .init(color: .white.opacity(0.08), location: 0.55),
+                                                      .init(color: .white.opacity(0.5), location: 1)],
+                                              startPoint: .topLeading, endPoint: .bottomTrailing),
+                               lineWidth: 1.6 * s)
+        }
+        .frame(width: w, height: h)
     }
 
     /// Square artwork on top (the cover, or a tinted letter), melting into the accent below:
@@ -243,5 +275,17 @@ extension View {
                 .offset(y: width * 0.2)
                 .allowsHitTesting(false)
         }
+    }
+}
+
+/// The card's outline as a band `width` wide, for the glass edge.
+struct GlassRim: Shape {
+    var radius: CGFloat
+    var width: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let outer = Path(roundedRect: rect, cornerRadius: radius, style: .continuous)
+        let inner = Path(roundedRect: rect.insetBy(dx: width, dy: width), cornerRadius: max(0, radius - width), style: .continuous)
+        return outer.subtracting(inner)
     }
 }
