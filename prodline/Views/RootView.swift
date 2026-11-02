@@ -13,6 +13,7 @@ struct RootView: View {
     @State private var celebration = CelebrationCenter()
     /// The archived animated splash, only when replayed from Me → Demo & testing.
     @State private var showLaunch = false
+    @AppStorage(Theme.brandKey) private var brandHex = 0
     /// Cold start: the logo for a moment, then it blurs away while the app sharpens in (2 s in all).
     @State private var showSplash = LaunchGate.shouldShow
     @State private var reveal: Double = LaunchGate.shouldShow ? 0 : 1
@@ -61,6 +62,7 @@ struct RootView: View {
             if let profile = profiles.first {
                 if profile.onboarded {
                     MainShell(profile: profile)
+                        .id(brandHex)   // a new accent (debug) redraws everything in it
                         .transition(.opacity)
                 } else {
                     OnboardingView(profile: profile)

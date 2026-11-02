@@ -1,11 +1,11 @@
 import SwiftUI
 
-/// What the streak looks like. The flame is kept whole (FlameShape, StreakOverlay); switch back here.
+/// What the streak looks like: a sprout with the green brand color, the flame (in the accent) with a warm one.
 enum StreakLook {
     case flame, sprout
-    static let current: StreakLook = .sprout
+    static var current: StreakLook { Theme.brandHex == Theme.brandGreen ? .sprout : .flame }
 
-    var color: Color { self == .flame ? Theme.flame : Theme.brand }
+    var color: Color { Theme.brand }
 }
 
 /// Prodline's seedling: a stem out of the soil and two leaves at its top, drawn in a 120 × 92 box.

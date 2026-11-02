@@ -20,6 +20,8 @@ struct MacRootView: View {
     @State private var showSplash = true
     @State private var reveal: Double = 0
 
+    @AppStorage(Theme.brandKey) private var brandHex = 0
+
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
@@ -27,6 +29,7 @@ struct MacRootView: View {
             // since it syncs and the iPhone still shows its onboarding on first launch.)
             if let profile = profiles.first {
                 MacShell(profile: profile)
+                    .id(brandHex)   // a new accent (debug) redraws everything in it
             }
         }
         // The streak and ship moments and the confetti use the whole window; banners pop up bottom right
