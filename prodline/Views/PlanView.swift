@@ -96,7 +96,7 @@ struct PlanView: View {
                         } label: {
                             VStack(spacing: 6) {
                                 Text(day.formatted(.dateTime.weekday(.abbreviated)))
-                                    .font(.ui(12, .semibold)).textCase(.uppercase)
+                                    .font(.ui(13, .semibold))
                                 Text(day.formatted(.dateTime.day()))
                                     .display(24, 750)
                                 HStack(spacing: 3) {
@@ -185,8 +185,9 @@ struct DeadlineRow: View {
             }
             VStack(alignment: .leading, spacing: 3) {
                 Text(milestone.title).font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
-                Text("\(milestone.project?.name ?? "") · \(subtitle)")
-                    .font(.ui(13)).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary)
+                (Text("\(milestone.project?.name ?? "") · ").foregroundStyle(Theme.secondary)
+                    + Text(subtitle).foregroundStyle(milestone.isOverdue ? Theme.danger : Theme.secondary))
+                    .font(.ui(13))
                     .lineLimit(1)
                 if let next = milestone.openGoals.first {
                     Label(next.title, systemImage: next.source.symbol)
@@ -215,7 +216,10 @@ struct DeadlineRow: View {
 
     private var subtitle: String {
         if milestone.isDone { return "Done" }
-        if milestone.isOverdue { return "was due \(milestone.dueDate.shortDay)" }
+        if milestone.isOverdue {
+            let days = Date.days(from: milestone.dueDate, to: .now)
+            return "\(days) day\(days == 1 ? "" : "s") late"
+        }
         if milestone.isDueToday { return "Due today" }
         return milestone.dueDate.shortDay
     }

@@ -40,7 +40,7 @@ struct ProjectCardFace: View {
                         VStack(alignment: .trailing, spacing: 0) {
                             if !compact {
                                 Text(cornerLabel)
-                                    .font(.ui(11 * s, .semibold)).tracking(2.2 * s).textCase(.uppercase)
+                                    .font(.ui(12 * s, .semibold))
                                     .foregroundStyle(cover == nil ? Theme.secondary : .white.opacity(0.85))
                             }
                             Text(cornerValue)
@@ -59,7 +59,7 @@ struct ProjectCardFace: View {
                 VStack(alignment: .leading, spacing: 4 * s) {
                     if !footnote.isEmpty && !compact {
                         Text(footnote)
-                            .font(.ui(11 * s, .semibold)).tracking(1.8 * s).textCase(.uppercase)
+                            .font(.ui(12 * s, .semibold))
                             .foregroundStyle(accent.on.opacity(0.8))
                     }
                     Text(name.isEmpty ? "Untitled" : name)

@@ -412,14 +412,13 @@ struct WeeklyReviewChip: View {
                 }
                 .frame(width: 46, height: 46)
                 Text("Week \(WeeklyReview.calendar.component(.weekOfYear, from: WeeklyReview.reviewWeekStart()))")
-                    .display(11, 800)
+                    .display(13, 800)
                     .foregroundStyle(Theme.ink)
-                    .padding(.horizontal, 8).padding(.vertical, 1)
+                    .padding(.horizontal, 10).padding(.vertical, 1)
                     .background(Capsule().fill(Theme.card))
                     .overlay(Capsule().strokeBorder(Color(hex: 0xFFC800), lineWidth: 2))
                     .fixedSize()
             }
-            .shadow(color: Color(hex: 0xFFC800).opacity(0.45), radius: 10)
         }
         .buttonStyle(PressableStyle(scale: 0.92))
         .accessibilityLabel("Weekly review ready")

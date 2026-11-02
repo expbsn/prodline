@@ -186,7 +186,7 @@ struct ShareCardView: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text(data.name).display(22, 800).foregroundStyle(textColor)
                     .lineLimit(1).minimumScaleFactor(0.6)
-                Text(data.status.uppercased()).font(.ui(10, .bold)).tracking(1.2)
+                Text(data.status).font(.ui(11, .semibold))
                     .foregroundStyle(textColor.opacity(0.8))
             }
         }

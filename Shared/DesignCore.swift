@@ -242,8 +242,6 @@ extension Text {
     /// Small tracked uppercase label ("MINIGAMES" style).
     func eyebrow(_ color: Color = Theme.secondary, size: CGFloat = 12) -> some View {
         self.font(.ui(size, .semibold))
-            .tracking(size * 0.2)
-            .textCase(.uppercase)
             .foregroundStyle(color)
     }
 }

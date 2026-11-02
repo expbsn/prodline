@@ -320,9 +320,10 @@ enum ScheduleEngine {
         guard let m = late.first, let p = m.project else { return nil }
         let days = Date.days(from: m.dueDate, to: now)
         let open = m.openGoals.count
+        // One line: the project, what to do, and how many others are late.
         let more = late.count > 1 ? " · \(late.count - 1) more late" : ""
-        return ("\(m.title) is \(days) day\(days == 1 ? "" : "s") late",
-                "\(p.name) · " + (open > 0 ? "\(open) goal\(open == 1 ? "" : "s") still open" : "tick it off when it's done") + more)
+        let todo = open > 0 ? "\(open) goal\(open == 1 ? "" : "s") open" : late.count > 1 ? "tick it off" : "tick it off when it's done"
+        return ("\(m.title) is \(days) day\(days == 1 ? "" : "s") late", "\(p.name) · " + todo + more)
     }
 
     static func praise() -> String {

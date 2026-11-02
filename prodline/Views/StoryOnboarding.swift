@@ -708,7 +708,7 @@ private struct StreakBeat: View {
                 ExtrudedText(text: lit ? "3" : "2", size: 48,
                              accent: lit ? Accent(hex: StreakLook.current == .sprout ? Theme.brandHex : 0xFF9600) : Accent(hex: 0xC7C7CC))
                     .contentTransition(.numericText())
-                Text("DAY STREAK").font(.ui(12, .bold)).tracking(2).foregroundStyle(Theme.secondary)
+                Text("day streak").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
             }
             .animation(.spring(response: 0.4, dampingFraction: 0.7), value: lit)
         }

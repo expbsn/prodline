@@ -45,7 +45,7 @@ struct StreakOverlay: View {
                         Text("\(shown)").display(72, 850).foregroundStyle(.white).monospacedDigit()
                             .contentTransition(.numericText(value: Double(shown)))
                         Text("day streak").font(.ui(18, .bold)).foregroundStyle(.white.opacity(0.8))
-                            .textCase(.uppercase).tracking(2)
+
                     }
                     .opacity(label ? 1 : 0)
                     .offset(y: label ? 0 : 10)

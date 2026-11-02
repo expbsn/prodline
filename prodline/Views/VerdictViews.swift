@@ -237,7 +237,7 @@ struct VerdictSheet: View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(project.name.uppercased()).eyebrow()
+                    Text(project.name).eyebrow()
                     Text("Decision time").display(28, 800).foregroundStyle(Theme.ink)
                 }
                 Spacer()
@@ -359,7 +359,7 @@ struct VerdictSheet: View {
             // In the corner on one line, however narrow the tile gets.
             .overlay(alignment: .topTrailing) {
                 if suggested {
-                    Text("Suggested").font(.ui(10, .bold)).tracking(0.5).textCase(.uppercase)
+                    Text("Suggested").font(.ui(11, .semibold))
                         .lineLimit(1).fixedSize()
                         .foregroundStyle(color.text)
                         .padding(.horizontal, 7).padding(.vertical, 4)
@@ -390,7 +390,7 @@ struct VerdictSheet: View {
                     HStack(spacing: 6) {
                         Text(v.title).display(19, 750).foregroundStyle(Theme.ink)
                         if suggested {
-                            Text("SUGGESTED").font(.ui(10, .bold)).tracking(0.6)
+                            Text("Suggested").font(.ui(11, .semibold))
                                 .foregroundStyle(color.text)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(Capsule().fill(color.tint))

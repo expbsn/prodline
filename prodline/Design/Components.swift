@@ -590,7 +590,7 @@ struct CelebrationOverlay: View {
                 ConfettiView(accent: c.accent).id(c.id)
             }
             if let b = center.banner {
-                // Blur that fades out downward, then a wash of the banner's color on top of it.
+                // Blur that fades out downward, so the banner reads over anything.
                 Rectangle().fill(.ultraThinMaterial)
                     .mask(LinearGradient(stops: [.init(color: .black, location: 0),
                                                  .init(color: .black.opacity(0.85), location: 0.35),
@@ -600,19 +600,10 @@ struct CelebrationOverlay: View {
                     .frame(height: 260)
                     .ignoresSafeArea(edges: .top)
                     .transition(.opacity)
-                LinearGradient(stops: [.init(color: b.accent.base.opacity(0.55), location: 0),
-                                       .init(color: b.accent.base.opacity(0.42), location: 0.3),
-                                       .init(color: b.accent.base.opacity(0.2), location: 0.6),
-                                       .init(color: b.accent.base.opacity(0.06), location: 0.82),
-                                       .init(color: b.accent.base.opacity(0), location: 1)],
-                               startPoint: .top, endPoint: .bottom)
-                    .frame(height: 260)
-                    .ignoresSafeArea(edges: .top)
-                    .transition(.opacity)
                 HStack(spacing: 12) {
                     VStack(alignment: .leading, spacing: 1) {
                         Text(b.title).display(22, 750)
-                        Text(b.subtitle).font(.ui(14, .medium)).opacity(0.85)
+                        Text(b.subtitle).font(.ui(14, .medium)).opacity(0.85).lineLimit(2)
                     }
                     Spacer(minLength: 0)
                 }

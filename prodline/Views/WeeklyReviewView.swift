@@ -202,7 +202,7 @@ struct WeeklyReviewView: View {
                 }
             }
             HStack {
-                Text("WEEK \(stats.week)").eyebrow()
+                Text("Week \(stats.week)").eyebrow()
                 Spacer()
                 CircleIconButton(systemName: "xmark") { onClose() }
             }
@@ -295,7 +295,7 @@ struct WeeklyReviewView: View {
     // Intro: the week number as a solid block, standing on the floor.
     private var introStage: some View {
         VStack(spacing: 0) {
-            Text("WEEKLY REVIEW").eyebrow().focus(1, step, dims: false)
+            Text("Weekly review").eyebrow().focus(1, step, dims: false)
             Spacer(minLength: 0)
             ExtrudedText(text: "\(stats.week)", size: 168, accent: tint)
                 .focus(1, step, dims: false)
@@ -451,7 +451,7 @@ struct WeeklyReviewView: View {
     private var projectStage: some View {
         if let best = stats.projectOfWeek {
             VStack(spacing: 0) {
-                Text("PROJECT OF THE WEEK").eyebrow().focus(1, step, dims: false)
+                Text("Project of the week").eyebrow().focus(1, step, dims: false)
                 Spacer(minLength: 0)
                 Block(width: 200, height: 240, depth: 12, radius: 30,
                       front: best.project.accent.base, side: best.project.accent.dark) {
@@ -485,7 +485,7 @@ struct WeeklyReviewView: View {
     private var nextStage: some View {
         let rows = Array(stats.upcoming.prefix(3))
         return VStack(spacing: 0) {
-            Text("NEXT WEEK").eyebrow().focus(1, step, dims: false)
+            Text("Next week").eyebrow().focus(1, step, dims: false)
             Spacer(minLength: 0)
             VStack(spacing: 10) {
                 if rows.isEmpty {
