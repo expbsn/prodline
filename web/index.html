@@ -3,12 +3,22 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Prodline · Ship your side projects</title>
-  <meta name="description" content="Prodline turns side projects into short plans, daily ticks and real numbers. The iPhone beta is open on TestFlight.">
+  <title>Prodline · Side project tracker for indie hackers</title>
+  <meta name="description" content="Plan side projects in short builds, tick off one goal a day and watch revenue and visitors come in from Stripe and 25 more services. For indie hackers, on iPhone.">
   <meta name="theme-color" content="#07080B">
   <meta name="color-scheme" content="dark">
-  <meta property="og:title" content="Prodline · Ship your side projects">
-  <meta property="og:description" content="Side projects rot in a drawer. Prodline gets yours out the door.">
+  <link rel="canonical" href="https://prodline.build/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Prodline">
+  <meta property="og:url" content="https://prodline.build/">
+  <meta property="og:title" content="Prodline · Side project tracker for indie hackers">
+  <meta property="og:description" content="Plan side projects in short builds, tick off one goal a day and watch revenue and visitors come in from Stripe and 25 more services. For indie hackers, on iPhone.">
+  <meta property="og:image" content="https://prodline.build/img/og.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Prodline: watch your side projects take off">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "WebSite", "@id": "https://prodline.build/#website", "url": "https://prodline.build/", "name": "Prodline", "publisher": {"@id": "https://prodline.build/#org"}}, {"@type": "Organization", "@id": "https://prodline.build/#org", "name": "Prodline", "url": "https://prodline.build/", "logo": "https://prodline.build/apple-touch-icon.png", "email": "info@prodline.build"}, {"@type": "MobileApplication", "@id": "https://prodline.build/#app", "name": "Prodline", "url": "https://prodline.build/", "operatingSystem": "iOS 26", "applicationCategory": "ProductivityApplication", "description": "A side project tracker for indie hackers: short build plans with checkpoints and goals, a daily streak, revenue and visitors from Stripe and 25 more services, and a keep, pivot or kill decision at the end.", "image": "https://prodline.build/img/og.jpg", "screenshot": ["https://prodline.build/shots/dash.jpg", "https://prodline.build/shots/plan.jpg", "https://prodline.build/shots/data.jpg"], "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}, "publisher": {"@id": "https://prodline.build/#org"}}]}</script>
   <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
   <link rel="preload" href="fonts/AfacadFlux.woff2" as="font" type="font/woff2" crossorigin>
@@ -25,8 +35,8 @@
       <a href="#how">How it works</a>
       <a href="#integrations">Integrations</a>
       <a href="#features">Features</a>
-      <a href="docs.html">Docs</a>
-      <a href="faq.html">FAQ</a>
+      <a href="docs">Docs</a>
+      <a href="faq">FAQ</a>
     </nav>
     <a class="btn light small" href="https://testflight.apple.com/join/QjY366XF" data-beta>Join the beta</a>
   </header>
@@ -37,7 +47,7 @@
       <!-- phones skip the wide photo entirely (a 1px stand-in) and use .m-photo below -->
       <picture>
         <source media="(max-width: 700px)" srcset="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7">
-        <img class="header-bg" src="img/header.jpg" alt="" width="3600" height="2688" fetchpriority="high">
+        <img class="header-bg" src="img/header-2400.jpg" srcset="img/header-1600.jpg 1600w, img/header-2400.jpg 2400w, img/header.jpg 3600w" sizes="100vw" alt="" width="3600" height="2688" fetchpriority="high">
       </picture>
       <div class="header-in">
         <!-- phones: the photo full width on top; the headline slides into it and the engine, cut out, sits over the words -->
@@ -47,7 +57,7 @@
           <span class="m-vignette"></span>
         </div>
         <p class="eyebrow up" style="--d:.15s">Prodline for iPhone · Beta</p>
-        <h1 id="h-top" class="up" style="--d:.25s">Watch your projects<br>take off.</h1>
+        <h1 id="h-top" class="up" style="--d:.25s">Watch your side projects<br>take off.</h1>
         <p class="lede up" style="--d:.38s">Short plans, one tick a day, and the numbers that prove it worked. Prodline gets your side projects out of the drawer and into the air.</p>
         <div class="cta-row up" style="--d:.5s">
           <a class="btn light" href="https://testflight.apple.com/join/QjY366XF" data-beta>Join the beta</a>
@@ -64,7 +74,7 @@
           <p class="eyebrow">How it works</p>
           <h2>One dot<br>at a time.</h2>
         </div>
-        <p class="lede" data-reveal style="--d:.08s">Plan it, show up, watch it land. Prodline connects the dots between a vague idea and a thing you actually shipped.</p>
+        <p class="lede" data-reveal style="--d:.08s">Plan it, show up, watch it land. Prodline is a side project tracker that connects the dots between a vague idea and a thing you actually shipped.</p>
       </div>
 
       <div class="flow-line" aria-hidden="true"><i></i></div>
@@ -136,7 +146,7 @@
           <p class="eyebrow">Integrations</p>
           <h2>25 services.<br>Zero dashboards.</h2>
         </div>
-        <p class="lede" data-reveal style="--d:.08s">Payments, stores, analytics, hosting and newsletters report straight into your project. Keyless ones take one tap; keys stay in your Keychain.</p>
+        <p class="lede" data-reveal style="--d:.08s">Payments, stores, analytics, hosting and newsletters report straight into your project: revenue from Stripe, visitors from Plausible, downloads from App Store Connect. Keyless ones take one tap; keys stay in your Keychain.</p>
       </div>
       <div class="ring-stage" data-reveal style="--d:.12s">
         <ul class="ring" aria-label="Supported services">
@@ -167,7 +177,7 @@
           <li>Instagram</li>
         </ul>
       </div>
-      <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else. <a href="docs.html">Setup guide →</a></p>
+      <p class="note center" data-reveal>Plus GitHub for your plan and commits, or your own endpoint for anything else. <a href="docs">Setup guide →</a></p>
     </section>
 
     <!-- Features: a grid of cards, each one showing the thing it describes -->
@@ -177,7 +187,7 @@
           <p class="eyebrow">Features</p>
           <h2>Built for people<br>with too many ideas.</h2>
         </div>
-        <p class="lede" data-reveal style="--d:.08s">The fun part stays fun. Prodline quietly handles the rest, right where you already look.</p>
+        <p class="lede" data-reveal style="--d:.08s">For indie hackers, solo founders and developers with more side projects than evenings. The fun part stays fun; Prodline quietly handles the rest, right where you already look.</p>
       </div>
 
       <!-- Cards size to their content; three columns of different heights, evened out while you scroll (main.js). -->
@@ -241,7 +251,7 @@
               <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
               <button class="btn" type="submit">Notify me</button>
             </form>
-            <p class="fine" id="form-note" aria-live="polite">One email at launch, nothing else. <a href="privacy.html">Privacy</a></p>
+            <p class="fine" id="form-note" aria-live="polite">One email at launch, nothing else. <a href="privacy">Privacy</a></p>
           </div>
         </div>
         <div class="join-art" aria-hidden="true"></div>
@@ -265,7 +275,7 @@
     <div class="foot-in">
       <a class="logo" href="#top"><img src="mark-light.svg" alt="" width="22" height="22"><span>Prodline</span></a>
       <nav class="foot-links" aria-label="Footer">
-        <a href="#how">How it works</a><a href="#integrations">Integrations</a><a href="#features">Features</a><a href="docs.html">Docs</a><a href="faq.html">FAQ &amp; support</a><a href="privacy.html">Privacy</a><a href="terms.html">Terms</a><a href="impressum.html">Impressum</a><a href="mailto:info@prodline.build">Contact</a>
+        <a href="#how">How it works</a><a href="#integrations">Integrations</a><a href="#features">Features</a><a href="docs">Docs</a><a href="faq">FAQ &amp; support</a><a href="privacy">Privacy</a><a href="terms">Terms</a><a href="impressum">Impressum</a><a href="mailto:info@prodline.build">Contact</a>
       </nav>
       <p class="copy">© 2026 Prodline</p>
     </div>

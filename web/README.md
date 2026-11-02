@@ -13,7 +13,7 @@ reports `signups` and `testflight_clicks` (plus `_from_<ref>` per source), which
 adds to Prodline's own metrics feed.
 
 ```bash
-python3 -m http.server 8790 --directory web   # local preview
+python3 -m http.server 8790 --directory web   # local preview (internal links are clean URLs like /docs, which only the deployed site resolves)
 ./web/deploy.sh                               # deploy (Cloudflare static assets, token from relay/.env)
 ```
 

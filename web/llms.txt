@@ -1,0 +1,8 @@
+# Prodline
+
+> Prodline is an iPhone app (with a Mac app) for indie hackers and anyone building side projects. It turns each project into a short build with checkpoints and goals, keeps a daily streak, pulls in real numbers (revenue, visitors, downloads) from Stripe and 25 more services, and ends each run with a keep, pivot or kill decision. Free; currently in beta on TestFlight.
+
+- [Home](https://prodline.build/): what Prodline does, how it works, integrations and features
+- [Docs](https://prodline.build/docs): setting up every integration, GitHub, instant updates and a custom endpoint
+- [FAQ & support](https://prodline.build/faq): common questions and how to get help
+- [Privacy](https://prodline.build/privacy): no account, no tracking; projects stay on the device and in iCloud

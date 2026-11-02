@@ -17,6 +17,7 @@
     {"day": 25, "title": "Web integrations"},
     {"day": 26, "title": "App Store"},
     {"day": 29, "title": "Launch marketing"},
+    {"day": 31, "title": "Get found"},
     {"day": 33, "title": "Build in public"}
   ],
   "goals": [
@@ -112,6 +113,11 @@
 
     {"id": "streak-sprout", "title": "Replace the streak flame with a growing sprout", "day": 30, "done": true},
     {"id": "unslop-polish", "title": "Polish labels and banners across the app and site", "day": 30, "done": true},
+    {"id": "card-glass", "title": "Give the project cards a glass rim", "day": 31, "done": true},
+    {"id": "store-shots-sprout", "title": "Rebuild the App Store screenshots with the sprout", "day": 31, "done": true},
+    {"id": "seo-landing", "title": "Optimize the landing page for search", "day": 31, "done": true},
+    {"id": "search-console", "title": "Submit the sitemap to Google Search Console", "day": 31, "done": false},
+
     {"id": "build-in-public", "title": "Post build-in-public clips of the app's animations", "day": 33, "done": false},
     {"id": "threads-views", "title": "Turn on Threads views once the Meta app has the Threads API", "day": 33, "done": false}
   ]
