@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// What the streak looks like: a sprout with the green brand color, the flame (in the accent) with a warm one.
+/// What the streak looks like. The flame is kept whole (FlameShape, StreakOverlay); switch back here.
 enum StreakLook {
     case flame, sprout
-    static var current: StreakLook { Theme.brandHex == Theme.brandGreen ? .sprout : .flame }
+    static let current: StreakLook = .sprout
 
     var color: Color { Theme.brand }
 }

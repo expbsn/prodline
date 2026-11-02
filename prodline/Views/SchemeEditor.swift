@@ -85,7 +85,6 @@ struct MeView: View {
     @Environment(GitHubService.self) private var github
     @Query private var projects: [Project]
     @AppStorage("mockServerURL") private var mockServerURL = "http://127.0.0.1:8787"
-    @AppStorage(Theme.brandKey) private var brandHex = 0
     @State private var finder = MockServerFinder()
     @State private var demoVisible = false
     @Environment(\.isActiveTab) private var isActiveTab
@@ -451,40 +450,10 @@ struct MeView: View {
         .card()
     }
 
-    /// Accent propositions to compare: XP, the streak and a new project's first color switch at once.
-    private var accentPicker: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Accent color").font(.ui(14, .semibold)).foregroundStyle(Theme.ink)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 12) {
-                    ForEach(Theme.brandOptions, id: \.hex) { option in
-                        let selected = Theme.brandHex == option.hex
-                        Button {
-                            Haptics.select()
-                            brandHex = option.hex == Theme.brandGreen ? 0 : option.hex
-                        } label: {
-                            VStack(spacing: 6) {
-                                Circle().fill(Color(hex: option.hex))
-                                    .frame(width: 40, height: 40)
-                                    .padding(3)
-                                    .overlay(Circle().strokeBorder(selected ? Theme.ink : .clear, lineWidth: 2))
-                                Text(option.name).font(.ui(12, selected ? .semibold : .regular))
-                                    .foregroundStyle(selected ? Theme.ink : Theme.secondary)
-                            }
-                        }
-                        .buttonStyle(PressableStyle(scale: 0.94))
-                    }
-                }
-            }
-        }
-        .padding(.bottom, 4)
-    }
-
     /// Debug builds only (see body): mock server, demo projects and replays.
     private var developerCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle("Demo & testing")
-            accentPicker
             Text("Run `python3 MockProject/server.py --host 0.0.0.0` on your Mac, on the same Wi-Fi as this phone. The address fills in by itself once the server is found.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)

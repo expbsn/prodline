@@ -98,34 +98,18 @@ enum Theme {
     /// Dark text that stays dark in both modes, for bright fills like yellow.
     static let inkFixed = Color(hex: 0x1C1C1E)
 
-    /// The brand color: XP, the streak, and a new project's first color. The green of the logo, launch screen
-    /// and App Store art; debug builds can try others (Me → Demo & testing → Accent color).
-    static var brandHex: Int {
-        #if DEBUG
-        let picked = UserDefaults.standard.integer(forKey: brandKey)
-        return picked == 0 ? brandGreen : picked
-        #else
-        return brandGreen
-        #endif
-    }
-    static var brand: Color { Color(hex: brandHex) }
-    static let brandGreen = 0x30B03C
-    static let brandKey = "debug.brandHex"
-    /// Accents to try: the green, and the warm tones of the night-flight photo on the landing page
-    /// (the engine's glowing rim, the wingtip light, the city below, the dusk clouds, the embers).
-    static let brandOptions: [(name: String, hex: Int)] = [
-        ("Green", brandGreen), ("Engine", 0xE5562B), ("Wingtip", 0xF2792E),
-        ("City lights", 0xE89A3C), ("Dusk", 0xC9674B), ("Ember", 0xC2402A),
-    ]
+    /// The brand green (logo, launch screen, App Store art): XP, the streak, and a new project's first color.
+    static let brandHex = 0x30B03C
+    static let brand = Color(hex: brandHex)
     static let flame = Color(hex: 0xFF9600)
     static let success = Color(hex: 0x34C759)
     static let danger = Color(hex: 0xFF3B30)
 
     /// Accent choices when a project has no cover photo.
-    static var swatches: [Int] { [
+    static let swatches: [Int] = [
         Theme.brandHex, 0x00B894, 0x1CB0F6, 0x5B5BF0, 0xA35CFF,
         0xFF5FA2, 0xFF4B4B, 0xFF9600, 0xFFC800, 0x3C3C43,
-    ] }
+    ]
 }
 
 /// A project's color system, derived from one base color.
