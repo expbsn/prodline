@@ -36,9 +36,8 @@ struct MacRootView: View {
         .overlay { CelebrationOverlay() }
         .overlay {
             if showSplash {
-                // The brand green with the white mark, as on the iPhone.
                 ZStack {
-                    Color("LaunchBackground")
+                    Theme.background
                     Image("LaunchMark").resizable().scaledToFit().frame(width: 96, height: 96)
                 }
                 .ignoresSafeArea()

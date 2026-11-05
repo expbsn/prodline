@@ -50,7 +50,5 @@
 		<key>UIImageRespectsSafeAreaInsets</key>
 		<false/>
 	</dict>
-	<key>UIStatusBarHidden</key>
-	<true/>
 </dict>
 </plist>

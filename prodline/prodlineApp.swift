@@ -29,7 +29,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     /// first frames come up in the old colors before the green splash. Dropping the snapshot once per launch
     /// screen change makes the system draw the new one from the next launch on.
     private func refreshLaunchScreenCache() {
-        let version = 2   // Bump whenever the launch screen changes. 2: brand green.
+        let version = 3   // Bump whenever the launch screen changes. 2: brand green, 3: back to black and white.
         let key = "launchScreenVersion"
         guard UserDefaults.standard.integer(forKey: key) < version else { return }
         try? FileManager.default.removeItem(at: URL.libraryDirectory.appending(path: "SplashBoard"))
