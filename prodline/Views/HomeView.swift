@@ -335,54 +335,56 @@ struct ProjectPanel: View {
                 .lineLimit(2, reservesSpace: true)
                 .minimumScaleFactor(0.85)
             MetaRow(items: meta)
-            if ScheduleEngine.canShip(project) {
-                Button("Let's ship") {
-                    guard let profile = profiles.first else { return }
-                    ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
-                }
+            Button(project.isDraft ? "Plan and start" : "Open project", action: onOpen)
                 .buttonStyle(.chunky)
                 .padding(.top, 4)
-            } else {
-                Button("Open project", action: onOpen)
-                    .buttonStyle(.chunky)
-                    .padding(.top, 4)
-            }
         }
     }
 
     private var summary: String {
         let next = project.nextMilestone
-        switch project.phase() {
-        case .upcoming:
-            return "Kicks off \(project.startDate.shortDay). \(project.buildDays.durationText) of building ahead."
-        case .building where ScheduleEngine.canShip(project):
-            let early = Date.days(from: .now, to: project.launchDay)
-            return early > 0 ? "Every goal is done. Ship today and you're \(early) day\(early == 1 ? "" : "s") early." : "Every goal is done. It's launch day."
-        case .building:
-            let n = next.map { " Next up: \($0.title) on \($0.dueDate.formatted(.dateTime.weekday(.wide)))." } ?? ""
-            return "Day \(project.dayInPhase) of \(project.buildDays) in the build phase.\(n)"
-        case .observing:
-            return "Shipped. Watching traction for \(project.daysLeftInPhase.durationText) more."
-        case .finished:
-            switch project.verdict {
-            case .pivot: return "Pivoted on \(project.verdictAt?.shortDay ?? "–"). The next version took over."
-            case .kill: return "Killed on \(project.verdictAt?.shortDay ?? "–"). Lessons kept, time freed."
-            default: return "Wrapped up on \(project.observeEnd.adding(days: -1).shortDay). Decision time: keep, pivot or kill?"
+        if project.isDraft {
+            return "A draft: \(project.stages.count) stage\(project.stages.count == 1 ? "" : "s"), \(project.totalPlannedDays.durationText). Start it when you're ready."
+        }
+        if project.phase() == .upcoming, let first = project.stages.first {
+            return "Kicks off \(project.startDate.shortDay) with \(first.name), \(first.days.durationText)."
+        }
+        if let span = project.currentSpan(), project.verdict != .pivot, project.verdict != .kill {
+            let name = span.stage.name
+            if span.stage.decides {
+                let over = span.daysOver()
+                return over > 0 ? "\(name) is over. Decision time: keep, pivot or kill?"
+                    : "Day \(span.day()) of \(span.stage.days) in \(name). Then keep, pivot or kill."
             }
+            if StageEngine.canFinishStage(project) { return "Everything in \(name) is done. Finish it and move on." }
+            let n = next.map { " Next up: \($0.title) on \($0.dueDate.formatted(.dateTime.weekday(.wide)))." } ?? ""
+            let over = span.daysOver()
+            return over > 0 ? "\(name) is \(over) day\(over == 1 ? "" : "s") over plan.\(n)" : "Day \(span.day()) of \(span.stage.days) in \(name).\(n)"
+        }
+        switch project.verdict {
+        case .pivot: return "Pivoted on \(project.verdictAt?.shortDay ?? "–"). The next version took over."
+        case .kill: return "Killed on \(project.verdictAt?.shortDay ?? "–"). Lessons kept, time freed."
+        default: return "Wrapped up on \(project.planEnd.adding(days: -1).shortDay)."
         }
     }
 
     private var meta: [(String, String)] {
         var items: [(String, String)] = []
-        switch project.phase() {
-        case .upcoming: items.append(("hourglass", "in \(project.daysLeftInPhase)d"))
-        case .building, .observing: items.append(("clock", "\(project.daysLeftInPhase)d left"))
-        case .finished:
-            if let v = project.verdict, v != .keep { items.append((v.symbol, v.pastTense)) }
-            else { items.append(("scalemass", "Decide")) }
+        if project.isDraft {
+            items.append(("square.stack.3d.up", "\(project.stages.count) stages"))
+        } else if project.phase() == .upcoming {
+            items.append(("hourglass", "in \(project.daysLeftInPhase)d"))
+        } else if let span = project.currentSpan(), project.verdict != .pivot, project.verdict != .kill {
+            let over = span.daysOver()
+            items.append(("clock", over > 0 ? "\(over)d over" : "\(span.daysLeft())d left"))
+        } else if let v = project.verdict, v != .keep {
+            items.append((v.symbol, v.pastTense))
+        } else {
+            items.append(("flag.checkered", "Done"))
         }
         let done = project.sortedMilestones.filter(\.isDone).count
-        items.append(("checkmark.circle", "\(done)/\(project.sortedMilestones.count)"))
+        let total = project.isDraft ? project.plannedCheckpoints.count : project.sortedMilestones.count
+        items.append(("checkmark.circle", "\(done)/\(total)"))
         let momentum = project.phase() == .building ? Momentum.make(project: project) : nil
         if let m = momentum, m.hasCommitData {
             items.append(("chevron.left.forwardslash.chevron.right", "\(m.totalCommits) commits"))

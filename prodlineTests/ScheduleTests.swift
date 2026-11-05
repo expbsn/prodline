@@ -40,7 +40,11 @@ struct ScheduleTests {
         #expect(p.phase(on: day(2026, 1, 18)) == .building)
         #expect(p.phase(on: day(2026, 1, 19)) == .observing)
         #expect(p.phase(on: day(2026, 2, 15)) == .observing)
-        #expect(p.phase(on: day(2026, 2, 16)) == .finished)
+        // Observing until the call is made: past its days, the stage runs over instead of ending.
+        #expect(p.phase(on: day(2026, 2, 16)) == .observing)
+        p.verdictRaw = Verdict.kill.rawValue
+        p.verdictAt = day(2026, 2, 16)
+        #expect(p.phase(on: day(2026, 2, 17)) == .finished)
     }
 
     @Test func xpAndLevels() throws {
@@ -149,6 +153,11 @@ struct BacktestTests {
             let p = Project(name: "P\(i)", accentHex: Theme.swatches[i % Theme.swatches.count], startDate: date,
                             buildDays: build, observeDays: observe)
             ScheduleEngine.createProject(p, profile: profile, context: ctx)
+            // A perfect season: every stage is finished on the day after its last planned day.
+            var stages = p.stages
+            stages[0].finishedAt = date.adding(days: build)
+            stages[1].finishedAt = date.adding(days: build + observe)
+            p.stages = stages
             s.projects.append(p)
             date = ScheduleEngine.nextProjectDate(projects: s.projects, profile: profile)
             i += 1
@@ -250,7 +259,7 @@ struct AwayAndLateTests {
         GoalEngine.addGoals(["Pricing page", "Onboarding"], source: .manual, to: first, context: ctx)
         let r = try #require(ScheduleEngine.lateReminder(projects: [p], now: day(2026, 1, 11)))
         #expect(r.title == "\(first.title) is 2 days late")
-        #expect(r.subtitle.hasPrefix("Late Co · 2 goals still open"))
+        #expect(r.subtitle.hasPrefix("Late Co · 2 goals open"))
         first.completedAt = day(2026, 1, 11)
         #expect(ScheduleEngine.lateReminder(projects: [p], now: day(2026, 1, 11)) == nil)
     }

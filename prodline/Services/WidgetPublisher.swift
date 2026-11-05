@@ -7,7 +7,8 @@ import WidgetKit
 enum WidgetPublisher {
     static func publish(projects: [Project], profile: Profile?, refresher: DataRefresher, now: Date = .now) {
         let data = WidgetData(generatedAt: now, streak: profile?.streak ?? 0,
-                              projects: projects.sorted { $0.startDate < $1.startDate }.map { make($0, refresher: refresher, now: now) })
+                              projects: projects.filter { !$0.isDraft }.sorted { $0.startDate < $1.startDate }
+                                  .map { make($0, refresher: refresher, now: now) })
         var covers: [String: Data] = [:]
         for p in projects {
             if let img = p.cover, let jpeg = ImageTools.squareJPEG(img, side: 240) { covers[p.id.uuidString] = jpeg }
@@ -70,7 +71,8 @@ enum WidgetPublisher {
         }
         return WidgetProject(id: p.id.uuidString, name: p.name, accentHex: p.accentHex,
                              startDate: p.startDate, buildEnd: p.buildEnd, observeEnd: p.observeEnd,
-                             checkpoints: checkpoints, metrics: metrics, momentum: momentum)
+                             checkpoints: checkpoints, metrics: metrics, momentum: momentum,
+                             stages: p.spans(on: now).map { WidgetStage(name: $0.stage.name, start: $0.start, end: $0.end, days: $0.stage.days) })
     }
 
     /// End-of-day values for the last 7 days (oldest first), ending with the live value.

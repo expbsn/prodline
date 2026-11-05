@@ -126,7 +126,10 @@ struct GoalTests {
     }
 
     @Test func tractionTargetsDuringObserve() async throws {
-        let (ctx, p, profile) = try setup(start: Date.now.adding(days: -20)) // observing
+        let (ctx, p, profile) = try setup(start: Date.now.adding(days: -20))
+        var stages = p.stages
+        stages[0].finishedAt = p.startDate.adding(days: 14)   // Build done: observing
+        p.stages = stages
         let r = DataRefresher { _ in (FakeClient { _ in payload(asOf: .now, visits: 1234, revenue: 80) }, false) }
         await r.refresh(projects: [p], context: ctx, force: true)
         GoalEngine.afterRefresh(projects: [p], profile: profile, refresher: r, celebration: nil, context: ctx)

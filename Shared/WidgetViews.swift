@@ -164,7 +164,7 @@ struct WMiniCard: View {
                                        .init(color: project.accent.base, location: 0.68)],
                                startPoint: .top, endPoint: .bottom)
                 VStack(alignment: .leading, spacing: 1) {
-                    Text(project.phase(on: date).title).eyebrow(project.accent.on.opacity(0.8), size: max(7, w * 0.075))
+                    Text(project.stageTitle(on: date)).eyebrow(project.accent.on.opacity(0.8), size: max(7, w * 0.075))
                     Text(project.name).display(w * 0.17, 800).foregroundStyle(project.accent.on)
                         .lineLimit(2).minimumScaleFactor(0.7)
                 }
@@ -281,7 +281,7 @@ struct ProjectWidgetView: View {
             } else {
                 Text("Every checkpoint done").display(16, 750).foregroundStyle(Theme.ink)
                 Spacer(minLength: 6)
-                Text(p.phase(on: date).title).font(.ui(11, .bold)).foregroundStyle(p.accent.text)
+                Text(p.stageTitle(on: date)).font(.ui(11, .bold)).foregroundStyle(p.accent.text)
             }
         }
         .frame(maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
@@ -322,7 +322,7 @@ struct ProjectWidgetView: View {
                 WMiniCard(project: p, cover: WidgetCovers.image(p.id), date: date)
                     .frame(width: 78, height: 109)
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("\(p.phase(on: date).title) · day \(day) of \(of)").eyebrow(p.accent.text, size: 10)
+                    Text("\(p.stageTitle(on: date)) · day \(day) of \(of)").eyebrow(p.accent.text, size: 10)
                     Text(p.name).display(26, 800).foregroundStyle(Theme.ink).lineLimit(1)
                     timeline(p)
                     Text("\(p.doneCount) of \(p.checkpoints.count) deadlines done").font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
@@ -660,10 +660,10 @@ struct LineupWidgetView: View {
                     Text(p.name).font(.ui(14, .semibold)).foregroundStyle(Theme.ink).lineLimit(1)
                     if large {
                         Spacer(minLength: 4)
-                        Text("\(p.phase(on: date).title) · \(day)/\(of)").font(.ui(11, .semibold)).foregroundStyle(p.accent.text)
+                        Text("\(p.stageTitle(on: date)) · \(day)/\(of)").font(.ui(11, .semibold)).foregroundStyle(p.accent.text)
                     }
                 }
-                Text(next.map { "\($0.title) · \($0.dueText(from: date))" } ?? p.phase(on: date).title)
+                Text(next.map { "\($0.title) · \($0.dueText(from: date))" } ?? p.stageTitle(on: date))
                     .font(.ui(12)).foregroundStyle(lateness(next) ? Theme.danger : Theme.secondary).lineLimit(1)
                 if large {
                     GeometryReader { geo in

@@ -548,7 +548,7 @@ private struct BuildBeat: View {
         let done = [0.15, 0.3, 0.45].map { p >= $0 }
         VStack(spacing: 20) {
             ProjectCardFace(name: "Side Shop", initial: "S", accent: Accent(hex: 0x3A3A3C), cover: Self.cover,
-                            cornerLabel: "Day", cornerValue: "12", footnote: "Building · 2d left")
+                            cornerLabel: "Day", cornerValue: "12", footnote: "Build · 2d left")
                 .frame(width: 150)
                 // The card as a solid object: a thick green edge underneath.
                 .background {
@@ -622,8 +622,8 @@ struct RhythmBeat: View {
         let v = Self.values(p)
         let checkpointDays: Set<Int> = [[2, 6], [3, 5], [2, 4, 6], [2, 6]][Self.stage(p)].reduce(into: []) { $0.insert($1) }
         VStack(alignment: .leading, spacing: 16) {
-            row("Build phase", v.build.durationText) { ChunkySlider(value: .constant(v.build), range: 3...42) }
-            row("Observe phase", v.observe.durationText) { ChunkySlider(value: .constant(v.observe), range: 7...90) }
+            row("Build stage", v.build.durationText) { ChunkySlider(value: .constant(v.build), range: 3...42) }
+            row("Observe stage", v.observe.durationText) { ChunkySlider(value: .constant(v.observe), range: 7...90) }
             row("New project every", v.every.durationText) { ChunkySlider(value: .constant(v.every), range: 3...42) }
             VStack(alignment: .leading, spacing: 10) {
                 Text("Checkpoint days").font(.ui(15, .semibold)).foregroundStyle(Theme.ink)

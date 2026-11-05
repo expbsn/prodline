@@ -8,7 +8,7 @@ nonisolated struct SuccessCriterion: Codable, Hashable, Identifiable, Sendable {
     var target: Double
 }
 
-/// The call at the end of the observe phase.
+/// The call at the end of a deciding stage.
 enum Verdict: String, CaseIterable, Identifiable {
     case keep, pivot, kill
 
@@ -102,23 +102,31 @@ enum VerdictEngine {
         return results.contains(where: \.hit) || avg >= 0.4 ? .pivot : .kill
     }
 
-    /// The observe phase is over and nothing has been decided since it ended.
+    /// The current stage ends with the call, and it's time: its days are up or everything in it is done.
     static func isDue(_ p: Project, now: Date = .now) -> Bool {
-        guard p.phase(on: now) == .finished, p.verdict != .pivot, p.verdict != .kill else { return false }
-        guard let at = p.verdictAt else { return true }
-        return at < p.observeEnd.adding(days: -1)
+        guard let span = p.currentSpan(on: now), span.stage.decides, p.verdict != .pivot, p.verdict != .kill else { return false }
+        // Its days are up, or it has checkpoints and every one is done.
+        let hasCheckpoints = !p.milestones(in: span.stage).isEmpty
+        return now.startOfDay >= span.plannedLastDay || (hasCheckpoints && StageEngine.canFinishStage(p, now: now))
     }
 
-    /// Can be decided now: due, or early while observing.
+    /// Can be decided now: the current stage ends with the call (early is fine).
     static func canDecide(_ p: Project, now: Date = .now) -> Bool {
-        isDue(p, now: now) || (p.phase(on: now) == .observing && p.verdict != .pivot && p.verdict != .kill)
+        guard let span = p.currentSpan(on: now) else { return false }
+        return span.stage.decides && p.verdict != .pivot && p.verdict != .kill
+    }
+
+    /// Whether a keep moves on to the next stage (true) or keeps watching in this one.
+    static func keepMovesOn(_ p: Project) -> Bool {
+        guard let span = p.currentSpan() else { return false }
+        return span.index < p.stages.count - 1
     }
 
     static func keep(_ p: Project, days: Int, profile: Profile, now: Date = .now) {
         p.verdictRaw = Verdict.keep.rawValue
         p.verdictAt = now
-        // The new observe phase runs `days` from today, however late the call was made.
-        p.observeDays = max(p.observeDays, Date.days(from: p.buildEnd, to: now) + days)
+        // The last stage runs `days` more from today, however late the call was made; earlier ones move on.
+        StageEngine.keep(p, days: days, now: now)
         profile.xp += xp
     }
 
@@ -128,7 +136,9 @@ enum VerdictEngine {
         p.verdictRaw = Verdict.pivot.rawValue
         p.verdictAt = now
         p.verdictNote = note
+        StageEngine.closeAll(p, now: now)
         let next = Project(name: newName, accentHex: p.accentHex, startDate: now, buildDays: profile.buildDays, observeDays: profile.observeDays)
+        next.stages = profile.newStages
         next.details = note.isEmpty ? p.details : note
         next.coverImage = p.coverImage
         next.githubRepo = p.githubRepo
@@ -151,6 +161,7 @@ enum VerdictEngine {
         p.verdictRaw = Verdict.kill.rawValue
         p.verdictAt = now
         p.verdictNote = lesson
+        StageEngine.closeAll(p, now: now)
         for m in p.milestones ?? [] where !m.isDone { Notifier.cancel(m) }
         profile.xp += xp
     }
@@ -158,6 +169,14 @@ enum VerdictEngine {
     /// Back to undecided (e.g. a mistap), XP included. A pivot's new project stays.
     static func reopen(_ p: Project, profile: Profile) {
         guard p.verdict != nil else { return }
+        // Stages the call closed open again: the deciding one and everything after it.
+        if let day = p.verdictAt?.startOfDay {
+            var all = p.stages
+            if let d = all.lastIndex(where: { $0.decides && $0.finishedAt == day }) {
+                for i in d..<all.count { all[i].finishedAt = nil }
+                p.stages = all
+            }
+        }
         p.verdictRaw = ""
         p.verdictAt = nil
         profile.xp = max(0, profile.xp - xp)

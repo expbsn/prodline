@@ -150,24 +150,24 @@ struct ProjectCardFace: View {
 extension ProjectCardFace {
     init(project: Project, refresher: DataRefresher?) {
         let phase = project.phase()
-        var label = "", value = "", foot = ""
-        switch phase {
-        case .upcoming:
-            label = "Starts in"; value = project.daysLeftInPhase.shortDuration
-            foot = "Starts \(project.startDate.dayMonth)"
-        case .building:
-            label = "Day"; value = "\(project.dayInPhase)"
-            foot = "Building · \(project.daysLeftInPhase)d left"
-        case .observing:
-            // The project's own lead number: a game shows downloads, not visits it doesn't track.
-            let key = refresher?.shownMetrics(for: project).first ?? MetricKey.visits.rawValue
-            label = Stat.title(key)
-            value = refresher?.value(key, for: project).map { Stat.format(key, $0) } ?? "–"
-            foot = "Observing · day \(project.dayInPhase)"
-        case .finished:
-            label = "Revenue"
-            value = refresher?.value(.revenue, for: project).map(MetricKey.money) ?? "–"
-            foot = "Finished"
+        var label = "", value = "", foot = project.stageStatus
+        if project.isDraft {
+            label = "Plan"; value = project.totalPlannedDays.shortDuration
+        } else {
+            switch phase {
+            case .upcoming:
+                label = "Starts in"; value = project.daysLeftInPhase.shortDuration
+            case .building:
+                label = "Day"; value = "\(project.dayInPhase)"
+            case .observing:
+                // The project's own lead number: a game shows downloads, not visits it doesn't track.
+                let key = refresher?.shownMetrics(for: project).first ?? MetricKey.visits.rawValue
+                label = Stat.title(key)
+                value = refresher?.value(key, for: project).map { Stat.format(key, $0) } ?? "–"
+            case .finished:
+                label = "Revenue"
+                value = refresher?.value(.revenue, for: project).map(MetricKey.money) ?? "–"
+            }
         }
         self.init(name: project.name, initial: project.initial, accent: project.accent, cover: project.cover,
                   cornerLabel: label, cornerValue: value, footnote: foot)

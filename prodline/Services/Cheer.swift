@@ -61,7 +61,7 @@ enum Cheer {
         } else if isLaunch && daysEarly >= 0 {
             lines = pick([
                 ("\(project) shipped", daysEarly > 0 ? "\(daysEarly) day\(daysEarly == 1 ? "" : "s") early. Go tell someone. +\(xp) XP." : "Right on time. +\(xp) XP. Now watch the numbers."),
-                ("It's out there: \(project)", "Launch done. +\(xp) XP. The observe phase starts now."),
+                ("It's out there: \(project)", "Launch done. +\(xp) XP. Now watch the numbers."),
             ], seed: xp)
         } else if daysEarly < 0 {
             let late = -daysEarly

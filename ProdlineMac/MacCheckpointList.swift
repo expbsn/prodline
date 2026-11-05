@@ -29,19 +29,40 @@ struct MacCheckpointList: View {
             }
             ChunkyProgressBar(value: ms.isEmpty ? 0 : Double(done) / Double(ms.count), height: 10)
 
-            VStack(spacing: 0) {
-                ForEach(Array(ms.enumerated()), id: \.element.id) { i, m in
-                    MacCheckpointRow(milestone: m, isNext: m.id == project.nextMilestone?.id, fromFile: fromFile,
-                                     onEdit: { onEdit(m) })
-                    if i < ms.count - 1 { Divider().padding(.leading, 66) }
-                }
-                if ms.isEmpty {
-                    Text("No checkpoints yet.").font(.ui(14)).foregroundStyle(Theme.secondary).padding(24)
+            // One block per stage, in order.
+            ForEach(project.spans()) { span in
+                let inStage = ms.filter { project.stageIndex(of: $0) == span.index }
+                if !inStage.isEmpty {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(span.stage.name).font(.ui(15, .semibold))
+                                .foregroundStyle(span.state == .ahead ? Theme.secondary : accent.text)
+                            if span.state == .current {
+                                Text("Now").font(.ui(11, .semibold)).foregroundStyle(accent.text)
+                                    .padding(.horizontal, 7).padding(.vertical, 2)
+                                    .background(Capsule().fill(accent.soft))
+                            }
+                            Text(span.dateRange).font(.ui(12)).foregroundStyle(Theme.secondary)
+                        }
+                        .padding(.leading, 6)
+                        VStack(spacing: 0) {
+                            ForEach(Array(inStage.enumerated()), id: \.element.id) { i, m in
+                                MacCheckpointRow(milestone: m, isNext: m.id == project.nextMilestone?.id, fromFile: fromFile,
+                                                 onEdit: { onEdit(m) })
+                                if i < inStage.count - 1 { Divider().padding(.leading, 66) }
+                            }
+                        }
+                        .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+                    }
                 }
             }
-            .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 14, y: 5)
+            if ms.isEmpty {
+                Text("No checkpoints yet.").font(.ui(14)).foregroundStyle(Theme.secondary).padding(24)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(RoundedRectangle(cornerRadius: 24, style: .continuous).fill(Theme.card))
+            }
         }
     }
 }

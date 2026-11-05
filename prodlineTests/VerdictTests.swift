@@ -24,14 +24,14 @@ struct VerdictTests {
         ctx.insert(profile)
         let p = Project(name: "Verdict", accentHex: 0x58CC02, startDate: day(2026, 9, 1), buildDays: 14, observeDays: 14)
         ctx.insert(p)
-        // Observe ends Sep 29.
+        // Observe (the stage that ends with the call) runs Sep 15–28.
         #expect(!VerdictEngine.isDue(p, now: day(2026, 9, 20)))
         #expect(VerdictEngine.canDecide(p, now: day(2026, 9, 20)))
         #expect(VerdictEngine.isDue(p, now: day(2026, 10, 2)))
 
         VerdictEngine.keep(p, days: 28, profile: profile, now: day(2026, 10, 2))
         #expect(profile.xp == VerdictEngine.xp)
-        #expect(p.observeEnd == day(2026, 10, 30))
+        #expect(p.planEnd(on: day(2026, 10, 2)) == day(2026, 10, 30))
         #expect(!VerdictEngine.isDue(p, now: day(2026, 10, 10)))
         #expect(VerdictEngine.isDue(p, now: day(2026, 10, 31)))
     }

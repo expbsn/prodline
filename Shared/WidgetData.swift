@@ -34,6 +34,8 @@ nonisolated struct WidgetProject: Codable, Equatable, Identifiable, Sendable {
     var metrics: [WidgetMetric]
     /// Build-phase stats (commits, goals, active days); nil once the project has shipped.
     var momentum: WidgetMomentum? = nil
+    /// The plan's stages placed in time (as of publishing). nil from app versions before stages.
+    var stages: [WidgetStage]? = nil
 
     var initial: String { name.trimmingCharacters(in: .whitespaces).first.map { String($0).uppercased() } ?? "?" }
     var accent: Accent { Accent(hex: accentHex) }
@@ -47,9 +49,23 @@ nonisolated struct WidgetProject: Codable, Equatable, Identifiable, Sendable {
         return .finished
     }
 
-    /// Day within the current phase (1-based) and that phase's length.
+    func stage(on date: Date) -> WidgetStage? {
+        let d = date.startOfDay
+        return stages?.first { d >= $0.start && d < $0.end } ?? (d >= startDate ? stages?.last(where: { d >= $0.start }) : nil)
+    }
+
+    /// The current stage's name ("Beta"), else the phase's.
+    func stageTitle(on date: Date) -> String {
+        if phase(on: date) == .finished { return Phase.finished.title }
+        return stage(on: date)?.name ?? phase(on: date).title
+    }
+
+    /// Day within the current stage (1-based) and its planned length.
     func phaseDay(on date: Date) -> (day: Int, of: Int) {
-        switch phase(on: date) {
+        if let s = stage(on: date), phase(on: date) != .finished, phase(on: date) != .upcoming {
+            return (Date.days(from: s.start, to: date.startOfDay) + 1, max(1, s.days))
+        }
+        return switch phase(on: date) {
         case .upcoming: (0, max(1, Date.days(from: startDate, to: buildEnd)))
         case .building: (Date.days(from: startDate, to: date) + 1, max(1, Date.days(from: startDate, to: buildEnd)))
         case .observing: (Date.days(from: buildEnd, to: date) + 1, max(1, Date.days(from: buildEnd, to: observeEnd)))
@@ -65,6 +81,15 @@ nonisolated struct WidgetProject: Codable, Equatable, Identifiable, Sendable {
     func next(on date: Date) -> WidgetCheckpoint? { checkpoints.first { !$0.done } }
     var doneCount: Int { checkpoints.filter(\.done).count }
     func metric(_ key: String) -> WidgetMetric? { metrics.first { $0.key == key } }
+}
+
+nonisolated struct WidgetStage: Codable, Equatable, Sendable {
+    var name: String
+    var start: Date
+    /// The day after its last day.
+    var end: Date
+    /// Planned length.
+    var days: Int
 }
 
 nonisolated struct WidgetCheckpoint: Codable, Equatable, Sendable {

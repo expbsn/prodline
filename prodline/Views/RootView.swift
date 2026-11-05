@@ -77,7 +77,7 @@ struct RootView: View {
         #if DEBUG
         .fullScreenCover(isPresented: $storeBoard) {
             StoreWidgetBoard(data: WidgetData(generatedAt: .now, streak: profiles.first?.streak ?? 0,
-                                              projects: projects.map { WidgetPublisher.make($0, refresher: refresher, now: .now) }))
+                                              projects: projects.filter { !$0.isDraft }.map { WidgetPublisher.make($0, refresher: refresher, now: .now) }))
                 .onAppear { for p in projects { WidgetCovers.overrides[p.id.uuidString] = p.cover } }
         }
         #endif
@@ -281,6 +281,8 @@ struct MainShell: View {
     /// The idea the create flow starts from, if any.
     @State private var startingIdea: Idea?
     @State private var opened: Opened?
+    /// A draft being planned further or started (it opens the create flow, not the project).
+    @State private var editingDraft: Project?
     /// Feedback sheet (from Dash, or with the screen a screenshot was just taken of).
     @State private var feedback: FeedbackRequest?
     @State private var screenshotPrompt: UIImage?
@@ -311,12 +313,12 @@ struct MainShell: View {
             ZStack {
                 tabPage(.projects) {
                     HomeView(profile: profile, focusedID: $focusedID, zoom: zoom,
-                             onOpen: { opened = Opened(project: $0, cardFrame: $1) }, onCreate: { requestCreate() },
+                             onOpen: { open($0, frame: $1) }, onCreate: { requestCreate() },
                              onStreak: { tab = .me }, onReview: { showReview = true },
                              onFeedback: { feedback = FeedbackRequest() })
                 }
                 tabPage(.plan) {
-                    PlanView(profile: profile, onOpen: { opened = Opened(project: $0, cardFrame: nil) }, onCreate: { requestCreate() },
+                    PlanView(profile: profile, onOpen: { open($0, frame: nil) }, onCreate: { requestCreate() },
                              onIdeas: { showIdeas = true })
                 }
                 tabPage(.insights) { InsightsView() }
@@ -411,6 +413,11 @@ struct MainShell: View {
                 withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { focusedID = newID }
             }
         }
+        .sheet(item: $editingDraft) { draft in
+            CreateProjectFlow(profile: profile, editing: draft) { id in
+                withAnimation(.spring(response: 0.5, dampingFraction: 0.8)) { focusedID = id }
+            }
+        }
         .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile) }
         .fullScreenCover(isPresented: $showReview) {
             WeeklyReviewView(stats: WeeklyReview.make(projects: projects, profile: profile, weekStart: WeeklyReview.reviewWeekStart()),
@@ -432,6 +439,10 @@ struct MainShell: View {
     }
 
     /// New project, unless every build slot is taken: then the idea gets parked instead.
+    private func open(_ p: Project, frame: CGRect?) {
+        if p.isDraft { editingDraft = p } else { opened = Opened(project: p, cardFrame: frame) }
+    }
+
     private func requestCreate(from idea: Idea? = nil) {
         if ProjectLimit.isFull(projects, profile: profile) {
             Haptics.warning()

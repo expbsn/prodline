@@ -21,7 +21,7 @@ struct SuccessCard: View {
                         .background(Circle().fill(accent.base))
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Decision time").display(20, 750).foregroundStyle(Theme.ink)
-                        Text("The observe phase is over. Keep it, pivot it or kill it?")
+                        Text("\(project.currentStage?.name ?? "This stage") ends with the call. Keep it, pivot it or kill it?")
                             .font(.ui(13)).foregroundStyle(Theme.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -38,7 +38,7 @@ struct SuccessCard: View {
             }
 
             if results.isEmpty {
-                Text("Pick 1–3 targets, like 1,000 visitors or $200 revenue. When the observe phase ends, Prodline checks them and suggests whether to keep, pivot or kill.")
+                Text("Pick 1–3 targets, like 1,000 visitors or $200 revenue. When a stage that ends with a decision is over, Prodline checks them and suggests whether to keep, pivot or kill.")
                     .font(.ui(14)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 if !due {
@@ -226,6 +226,10 @@ struct VerdictSheet: View {
     @Query(sort: \Profile.createdAt) private var profiles: [Profile]
     @State private var choice: Verdict?
     @State private var keepDays = 28
+    /// A keep moves on to this stage when the deciding one isn't the last.
+    private var nextStage: Stage? {
+        project.currentSpan().flatMap { project.stages[safe: $0.index + 1] }
+    }
     @State private var newName = ""
     @State private var note = ""
     @FocusState private var noteFocused: Bool
@@ -415,13 +419,19 @@ struct VerdictSheet: View {
         VStack(alignment: .leading, spacing: 10) {
             switch v {
             case .keep:
-                Text("Watch it for").eyebrow()
-                HStack(spacing: 8) {
-                    ForEach(VerdictEngine.keepDays, id: \.self) { d in
-                        Chip(title: "\(d / 7) weeks", isOn: keepDays == d) { keepDays = d }
+                if let next = nextStage {
+                    Text("Next up").eyebrow()
+                    Text("\(next.name) starts today and runs \(next.days.durationText).")
+                        .font(.ui(15)).foregroundStyle(Theme.ink)
+                } else {
+                    Text("Watch it for").eyebrow()
+                    HStack(spacing: 8) {
+                        ForEach(VerdictEngine.keepDays, id: \.self) { d in
+                            Chip(title: "\(d / 7) weeks", isOn: keepDays == d) { keepDays = d }
+                        }
                     }
+                    Text("Next call on \(Date.now.adding(days: keepDays).dayMonth).").font(.ui(13)).foregroundStyle(Theme.secondary)
                 }
-                Text("Next call on \(Date.now.adding(days: keepDays).dayMonth).").font(.ui(13)).foregroundStyle(Theme.secondary)
             case .pivot:
                 Text("New project").eyebrow()
                 TextField("", text: $newName, prompt: Text("Name").foregroundStyle(Theme.tertiary))
@@ -453,8 +463,10 @@ struct VerdictSheet: View {
         let color = Accent(hex: choice.hex)
         switch choice {
         case .keep:
+            let next = nextStage
             VerdictEngine.keep(project, days: keepDays, profile: profile)
-            celebration.fire(title: "Kept · +\(VerdictEngine.xp) XP", subtitle: "\(project.name) earned another \(keepDays / 7) weeks", accent: color)
+            celebration.fire(title: "Kept · +\(VerdictEngine.xp) XP",
+                             subtitle: next.map { "On to \($0.name)" } ?? "\(project.name) earned another \(keepDays / 7) weeks", accent: color)
         case .pivot:
             let next = VerdictEngine.pivot(project, newName: newName.trimmingCharacters(in: .whitespaces), note: lesson,
                                            profile: profile, context: context)

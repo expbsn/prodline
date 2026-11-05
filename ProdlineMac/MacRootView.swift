@@ -122,6 +122,7 @@ struct MacShell: View {
     @State private var showIdeas = false
     @State private var showReview = false
     @State private var startingIdea: Idea?
+    @State private var editingDraft: Project?
 
     private var activeProjects: [Project] { projects.filter { $0.phase() != .finished }.reversed() }
     private var finishedProjects: [Project] { projects.filter { $0.phase() == .finished }.reversed() }
@@ -145,6 +146,10 @@ struct MacShell: View {
                 page = .project(newID)
             }
             .macSheet(width: 980, height: 680)
+        }
+        .sheet(item: $editingDraft) { draft in
+            CreateProjectFlow(profile: profile, editing: draft) { id in page = .project(id) }
+                .macSheet(width: 980, height: 680)
         }
         .sheet(isPresented: $showLimit) { BuildLimitSheet(profile: profile).macSheet(width: 480, height: 560) }
         .sheet(isPresented: $showIdeas) {
@@ -241,7 +246,20 @@ struct MacShell: View {
         case .tab(.me):
             MeView(profile: profile, wide: true).background(Theme.background)
         case .project(let id):
-            if let p = projects.first(where: { $0.id == id }) {
+            if let p = projects.first(where: { $0.id == id }), p.isDraft {
+                // A draft has no dashboard yet: its plan, and the way to start it.
+                VStack(spacing: 18) {
+                    ProjectCardFace(project: p, refresher: nil).frame(width: 220, height: 308)
+                    Text("\(p.name) is a draft").cardTitle(26).foregroundStyle(Theme.ink)
+                    Text("\(p.stages.count) stages, \(p.totalPlannedDays.durationText), \(p.plannedCheckpoints.count) checkpoints. No start date yet.")
+                        .font(.ui(15)).foregroundStyle(Theme.secondary)
+                    Button("Plan and start") { editingDraft = p }
+                        .buttonStyle(.chunky(.accent, height: 46, fullWidth: false))
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Theme.background)
+                .environment(\.accent, p.accent)
+            } else if let p = projects.first(where: { $0.id == id }) {
                 MacProjectDashboard(project: p).id(p.id)
             } else {
                 ContentUnavailableView("Project not found", systemImage: "questionmark.folder")

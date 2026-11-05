@@ -220,7 +220,7 @@ struct BuildLimitSheet: View {
     @FocusState private var focus: IdeaInboxSheet.Field?
 
     var body: some View {
-        let building = ProjectLimit.building(projects).sorted { $0.buildEnd < $1.buildEnd }
+        let building = ProjectLimit.building(projects).sorted { $0.planEnd < $1.planEnd }
         VStack(spacing: 0) {
             HStack {
                 Spacer()
@@ -230,7 +230,7 @@ struct BuildLimitSheet: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(profile.buildLimit == 1 ? "One build at a time" : "\(profile.buildLimit) builds at a time")
+                        Text(profile.buildLimit == 1 ? "One project at a time" : "\(profile.buildLimit) projects at a time")
                             .display(28, 800).foregroundStyle(Theme.ink)
                         Text("Finishing beats starting. Park the idea now and pick it up when a slot frees up.")
                             .font(.ui(15)).foregroundStyle(Theme.secondary)
@@ -244,7 +244,7 @@ struct BuildLimitSheet: View {
                                     .frame(width: 36, height: 36)
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(p.name).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                                    Text(p.phase() == .upcoming ? "Starts \(p.startDate.dayMonth)" : "Ships \(p.launchDay.dayMonth) · \(p.daysLeftInPhase)d left")
+                                    Text(p.phase() == .upcoming ? "Starts \(p.startDate.dayMonth)" : "\(p.stageStatus) · done \(p.planEnd.adding(days: -1).dayMonth)")
                                         .font(.ui(13)).foregroundStyle(Theme.secondary)
                                 }
                                 Spacer()

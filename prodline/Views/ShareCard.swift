@@ -75,7 +75,7 @@ struct ShareCardData {
         case (.pivot?, _): status = "Pivoted"
         case (.kill?, _): status = "Retired"
         case (_, .upcoming): status = "Starting \(p.startDate.dayMonth)"
-        case (_, .building): status = "Day \(p.dayInPhase) of building"
+        case (_, .building): status = p.currentSpan(on: now).map { "Day \($0.day(on: now)) of \($0.stage.name.lowercased())" } ?? "Building"
         case (_, .observing): status = "Shipped \(p.launchDay.dayMonth)"
         case (_, .finished): status = "Shipped and measured"
         }

@@ -82,7 +82,7 @@ struct CheckpointTests {
 
         // A week later start: the plan moves along and nothing is rebuilt.
         let first = p.sortedMilestones[0]
-        ScheduleEngine.changeSchedule(p, start: day(2026, 1, 12), buildDays: 14, observeDays: 28, profile: nil, context: ctx)
+        StageEngine.replaceStages(p, with: p.stages, startDate: day(2026, 1, 12), profile: nil, now: day(2026, 1, 6))
         GoalEngine.syncGitHub(snapshot(plan: plan), project: p, context: ctx)
         try ctx.save()
         #expect(p.sortedMilestones.map(\.dueDate) == [day(2026, 1, 14), day(2026, 1, 18)])
@@ -192,31 +192,34 @@ struct ScheduleChangeTests {
 
     @Test func movingTheStartShiftsOpenCheckpointsAndKeepsGoals() throws {
         let (ctx, p, profile) = try setup()
+        let now = day(2026, 1, 4)
+        StageEngine.assignStages(p)
         let cp2 = p.sortedMilestones[1]
         GoalEngine.addGoals(["Keep me"], source: .manual, to: cp2, context: ctx)
         p.sortedMilestones[0].completedAt = day(2026, 1, 9)
 
-        ScheduleEngine.changeSchedule(p, start: day(2026, 1, 12), buildDays: 14, observeDays: 28, profile: profile, context: ctx)
+        StageEngine.replaceStages(p, with: p.stages, startDate: day(2026, 1, 12), profile: profile, now: now)
         try ctx.save()
         let ms = p.sortedMilestones
         #expect(p.startDate == day(2026, 1, 12))
         #expect(ms.first?.dueDate == day(2026, 1, 9))                     // finished one stays put
         #expect(ms.contains { $0.sortedGoals.first?.title == "Keep me" && $0.dueDate == day(2026, 1, 19) }) // shifted a week
         #expect(ms.first { $0.isLaunch }?.dueDate == day(2026, 1, 25))
-        #expect(ms.last?.dueDate == p.observeEnd.adding(days: -1))
+        #expect(ms.last?.dueDate == day(2026, 2, 22))                     // Observe's last day
     }
 
-    @Test func longerBuildAddsCheckpointsOnTheCheckpointDays() throws {
+    @Test func aLongerStageKeepsItsClosingCheckpointOnTheLastDay() throws {
         let (ctx, p, profile) = try setup()
-        let before = p.sortedMilestones.filter { !$0.isLaunch && $0.dueDate < p.launchDay }.count
-        ScheduleEngine.changeSchedule(p, start: p.startDate, buildDays: 21, observeDays: 28, profile: profile, context: ctx)
+        let now = day(2026, 1, 4)
+        StageEngine.assignStages(p)
+        var stages = p.stages
+        stages[0].days = 21
+        StageEngine.replaceStages(p, with: stages, profile: profile, now: now)
         try ctx.save()
-        let build = p.sortedMilestones.filter { !$0.isLaunch && $0.dueDate < p.launchDay }
-        #expect(build.count > before)
-        #expect(build.map(\.title) == (1...build.count).map { "Checkpoint \($0)" })
-        let weekdays = Set(build.map { Calendar.current.component(.weekday, from: $0.dueDate) })
-        #expect(weekdays.isSubset(of: [2, 6]))
         #expect(p.sortedMilestones.first { $0.isLaunch }?.dueDate == day(2026, 1, 25))
+        #expect(p.sortedMilestones.filter { ScheduleEngine.isAutoName($0.title) }.map(\.dueDate)
+                == [day(2026, 1, 9), day(2026, 1, 12), day(2026, 1, 16)])   // the rest keep their days
+        #expect(p.sortedMilestones.last?.dueDate == day(2026, 2, 22))
     }
 
     @Test func momentumCountsCommitsGoalsAndActiveDays() throws {

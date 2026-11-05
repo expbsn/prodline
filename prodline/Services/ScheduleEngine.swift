@@ -5,25 +5,15 @@ import UserNotifications
 enum ScheduleEngine {
     // MARK: Milestones
 
-    /// Checkpoints on the chosen weekdays during the build phase, a launch day, and a traction review.
+    /// The checkpoints a project's stages start with (see StageEngine.defaultCheckpoints), not yet inserted.
     static func makeMilestones(for p: Project, weekdayMask: Int) -> [Milestone] {
-        let cal = Calendar.current
-        var out: [Milestone] = []
-        var n = 1
-        // Checkpoints fall strictly between start and launch day.
-        if p.buildDays > 2 {
-            for d in 1..<(p.buildDays - 1) {
-                let date = p.startDate.adding(days: d)
-                let wd = cal.component(.weekday, from: date)
-                if weekdayMask & (1 << (wd - 1)) != 0 {
-                    out.append(Milestone(title: "Checkpoint \(n)", dueDate: date))
-                    n += 1
-                }
-            }
+        let stages = p.stages
+        return StageEngine.defaultCheckpoints(stages: stages, start: p.startDate, weekdayMask: weekdayMask).map { c in
+            let m = Milestone(title: c.title, dueDate: StageEngine.date(of: c, stages: stages, start: p.startDate), isLaunch: c.isLaunch)
+            m.stageID = c.stageID.uuidString
+            m.stageDay = c.day
+            return m
         }
-        out.append(Milestone(title: "Ship it", dueDate: p.launchDay, isLaunch: true))
-        out.append(Milestone(title: "Traction review", dueDate: p.observeEnd.adding(days: -1)))
-        return out
     }
 
     // MARK: Editing checkpoints
@@ -36,21 +26,25 @@ enum ScheduleEngine {
         if let p = m.project { renumber(p) }
     }
 
-    static func reschedule(_ m: Milestone, to date: Date, profile: Profile?) {
+    /// Moves a checkpoint to a date, and to a stage when given (else the one it's in).
+    static func reschedule(_ m: Milestone, to date: Date, stage: Stage? = nil, profile: Profile?) {
         m.dueDate = date.startOfDay
         m.missed = false
+        place(m, stage: stage)
         if let p = m.project { renumber(p) }
         Notifier.cancel(m)
         if let profile, profile.remindersEnabled, !m.isDone { Notifier.schedule(m, profile: profile) }
     }
 
     @discardableResult
-    static func addCheckpoint(to p: Project, title raw: String, due: Date, profile: Profile?, context: ModelContext) -> Milestone {
+    static func addCheckpoint(to p: Project, title raw: String, due: Date, stage: Stage? = nil, profile: Profile?,
+                              context: ModelContext) -> Milestone {
         let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         let m = Milestone(title: name.isEmpty ? "Checkpoint" : name, dueDate: due)
         m.titleIsCustom = !name.isEmpty
         context.insert(m)
         m.project = p
+        place(m, stage: stage)
         renumber(p)
         if let profile, profile.remindersEnabled { Notifier.schedule(m, profile: profile) }
         return m
@@ -64,72 +58,16 @@ enum ScheduleEngine {
         if let p { renumber(p) }
     }
 
-    /// Changes a running project's start date and phase lengths. Open checkpoints shift with the start,
-    /// launch and traction review follow the new phase ends, and empty automatic checkpoints are redrawn
-    /// on the checkpoint weekdays. Finished checkpoints, goals and custom names are kept.
-    static func changeSchedule(_ p: Project, start: Date, buildDays: Int, observeDays: Int,
-                               profile: Profile?, context: ModelContext) {
-        // A prodline.json project counts its plan in days from the start: everything moves with it,
-        // finished checkpoints included, so the next sync finds them where the file says.
-        if p.followsPlanFile {
-            let delta = Date.days(from: p.startDate, to: start)
-            p.startDate = start.startOfDay
-            p.buildDays = buildDays
-            p.observeDays = observeDays
-            for m in p.milestones ?? [] { m.dueDate = m.dueDate.adding(days: delta) }
-            if let profile, profile.remindersEnabled {
-                for m in p.sortedMilestones where !m.isDone {
-                    Notifier.cancel(m)
-                    Notifier.schedule(m, profile: profile)
-                }
-            }
-            return
-        }
-        // Decide phase membership on the old schedule, before anything moves.
-        let oldLaunch = p.launchDay
-        let open = p.sortedMilestones.filter { !$0.isDone }
-        let launch = open.first { $0.isLaunch }
-        let observing = open.filter { !$0.isLaunch && $0.dueDate > oldLaunch }   // traction review & co.
-        let building = open.filter { !$0.isLaunch && $0.dueDate <= oldLaunch }
-
-        let delta = Date.days(from: p.startDate, to: start)
-        p.startDate = start.startOfDay
-        p.buildDays = buildDays
-        p.observeDays = observeDays
-
-        launch?.dueDate = p.launchDay
-        let lastObserveDay = p.observeEnd.adding(days: -1)
-        for m in observing {
-            // The review sits on the last day; anything else keeps its distance from launch.
-            let target = m.dueDate.adding(days: delta)
-            m.dueDate = m === observing.last ? lastObserveDay : min(max(target, p.buildEnd), lastObserveDay)
-        }
-
-        // Empty automatic checkpoints are redrawn on the checkpoint weekdays; the rest shift and stay inside the build.
-        var kept: [Milestone] = []
-        for m in building {
-            if !m.titleIsCustom && isAutoName(m.title) && !m.hasGoals {
-                Notifier.cancel(m)
-                m.project = nil
-                context.delete(m)
-            } else {
-                m.dueDate = min(max(m.dueDate.adding(days: delta), p.startDate.adding(days: 1)), p.launchDay.adding(days: -1))
-                kept.append(m)
-            }
-        }
-        let taken = Set(kept.map(\.dueDate) + p.sortedMilestones.filter(\.isDone).map(\.dueDate))
-        let mask = profile?.milestoneWeekdayMask ?? 0b0100010
-        for m in makeMilestones(for: p, weekdayMask: mask) where !m.isLaunch && m.dueDate < p.launchDay && !taken.contains(m.dueDate) {
-            context.insert(m)
-            m.project = p
-        }
-        renumber(p)
-        if let profile, profile.remindersEnabled {
-            for m in p.sortedMilestones where !m.isDone {
-                Notifier.cancel(m)
-                Notifier.schedule(m, profile: profile)
-            }
-        }
+    /// Files a checkpoint into `stage` (or the stage its date falls in) at its day within it.
+    static func place(_ m: Milestone, stage: Stage?) {
+        guard let p = m.project else { return }
+        let spans = p.spans()
+        let span = stage.flatMap { s in spans.first { $0.stage.id == s.id } }
+            ?? spans.first { $0.contains(m.dueDate) }
+            ?? (m.dueDate < p.startDate ? spans.first : spans.last)
+        guard let span else { return }
+        m.stageID = span.stage.id.uuidString
+        m.stageDay = max(0, Date.days(from: span.start, to: m.dueDate))
     }
 
     /// Keeps automatic names in date order ("Checkpoint 1, 2, 3") after adds, moves and deletes.
@@ -145,19 +83,22 @@ enum ScheduleEngine {
         title == "Checkpoint" || title.wholeMatch(of: /Checkpoint \d+/) != nil
     }
 
+    /// Inserts a project. A draft keeps its planned checkpoints for later; otherwise they (or, without a
+    /// plan, the stages' default checkpoints) become real ones with reminders.
     static func createProject(_ p: Project, profile: Profile, context: ModelContext) {
         context.insert(p)
-        for m in makeMilestones(for: p, weekdayMask: profile.milestoneWeekdayMask) {
-            context.insert(m)
-            m.project = p
-            if profile.remindersEnabled { Notifier.schedule(m, profile: profile) }
+        if p.stagesData == nil { p.stages = profile.newStages }
+        if p.plannedCheckpoints.isEmpty {
+            p.plannedCheckpoints = StageEngine.defaultCheckpoints(stages: p.stages, start: p.startDate,
+                                                                  weekdayMask: profile.milestoneWeekdayMask)
         }
+        if !p.isDraft { StageEngine.start(p, on: p.startDate, profile: profile, context: context) }
         try? context.save()
     }
 
     /// When the next project should kick off, based on the cadence.
     static func nextProjectDate(projects: [Project], profile: Profile) -> Date {
-        guard let last = projects.map(\.startDate).max() else { return Date.now.startOfDay }
+        guard let last = projects.filter({ !$0.isDraft }).map(\.startDate).max() else { return Date.now.startOfDay }
         return last.adding(days: profile.newProjectEveryDays)
     }
 
@@ -177,61 +118,6 @@ enum ScheduleEngine {
     /// Bonus for every day a project ships before its launch day.
     static let earlyXPPerDay = 5
     static let earlyXPCap = 50
-
-    /// Building, with goals, and every one of them ticked: time for "Let's ship".
-    static func canShip(_ p: Project, now: Date = .now) -> Bool {
-        guard p.phase(on: now) == .building else { return false }
-        let goals = (p.milestones ?? []).flatMap { $0.goals ?? [] }
-        return !goals.isEmpty && goals.allSatisfy(\.isDone)
-    }
-
-    struct Shipped { let daysEarly: Int; let xp: Int; let plannedDays: Int }
-
-    /// The "Let's ship" button: ship, update the streak, save, and celebrate (the big moment when it's early).
-    @MainActor
-    static func shipNow(_ p: Project, profile: Profile, projects: [Project], celebration: CelebrationCenter, context: ModelContext) {
-        let r = ship(p, profile: profile)
-        try? context.save()
-        if r.daysEarly > 0 {
-            celebration.celebrateShip(.init(daysEarly: r.daysEarly, plannedDays: r.plannedDays, project: p.name, accent: p.accent, xp: r.xp))
-        } else {
-            celebration.fire(title: "Shipped! +\(r.xp) XP", subtitle: "\(p.name) is out · right on time", accent: p.accent,
-                             xp: r.xp, kind: .checkpoint)
-        }
-        // After the ship moment is up, so a freshly lit streak waits its turn.
-        Streak.refresh(profile, projects: projects, celebration: celebration)
-    }
-
-    /// Launch today. The build phase ends now, the launch checkpoint is done (on time, of course), leftover
-    /// build checkpoints close with it, and the observe phase moves up so it keeps its full length.
-    @discardableResult
-    static func ship(_ p: Project, profile: Profile, now: Date = .now) -> Shipped {
-        let today = now.startOfDay
-        let oldLaunch = p.launchDay
-        let planned = p.buildDays
-        let early = max(0, Date.days(from: today, to: oldLaunch))
-        // Sorted out on the old schedule: what belongs to the build and what to the observe phase.
-        let open = p.sortedMilestones.filter { !$0.isDone }
-        let building = open.filter { $0.isLaunch || $0.dueDate <= oldLaunch }
-        let observing = open.filter { !$0.isLaunch && $0.dueDate > oldLaunch }
-
-        var xp = 0
-        if early > 0 {
-            p.buildDays = max(1, Date.days(from: p.startDate, to: today) + 1)
-            for m in observing {
-                m.dueDate = m.dueDate.adding(days: -early)
-                if profile.remindersEnabled { Notifier.cancel(m); Notifier.schedule(m, profile: profile) }
-            }
-            let bonus = min(earlyXPCap, early * earlyXPPerDay)
-            profile.xp += bonus
-            xp += bonus
-        }
-        for m in building {
-            if m.dueDate > today { m.dueDate = today }
-            xp += complete(m, profile: profile, celebration: nil, now: now)
-        }
-        return Shipped(daysEarly: early, xp: xp, plannedDays: planned)
-    }
 
     @discardableResult
     static func complete(_ m: Milestone, profile: Profile, celebration: CelebrationCenter?, now: Date = .now) -> Int {
@@ -433,21 +319,22 @@ enum Notifier {
         WeeklyReview.scheduleNotification(enabled: true)
     }
 
-    /// The morning after the observe phase ends: time for keep, pivot or kill. Re-adding replaces it,
-    /// so a changed schedule or a keep moves it along.
+    /// The morning after the next stage that ends with the call is planned to end: time for keep, pivot or
+    /// kill. Re-adding replaces it, so a changed plan or a keep moves it along.
     static func scheduleVerdict(_ p: Project, hour: Int) {
         let id = "verdict-" + p.id.uuidString
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard p.verdict != .pivot, p.verdict != .kill else { return }
-        var comps = Calendar.current.dateComponents([.year, .month, .day], from: p.observeEnd)
+        guard p.verdict != .pivot, p.verdict != .kill, !p.isDraft,
+              let span = p.spans().first(where: { $0.stage.decides && $0.state != .done }) else { return }
+        var comps = Calendar.current.dateComponents([.year, .month, .day], from: span.plannedEnd)
         comps.hour = hour
         guard let fire = Calendar.current.date(from: comps), fire > .now else { return }
         let content = UNMutableNotificationContent()
         content.title = "\(p.name): decision time"
         content.body = p.criteria.isEmpty
-            ? "The observe phase is over. Keep it, pivot it or kill it?"
-            : "The observe phase is over. See how it did against your targets, then make the call."
+            ? "\(span.stage.name) is over. Keep it, pivot it or kill it?"
+            : "\(span.stage.name) is over. See how it did against your targets, then make the call."
         content.sound = .default
         center.add(UNNotificationRequest(identifier: id, content: content, trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
     }

@@ -1,11 +1,14 @@
 import SwiftUI
 import SwiftData
 
-/// Five short steps: basics → look (card + color) → schedule → connections → goals.
+/// Six short steps: basics → look (card + color) → stages → connections → checkpoints → overview, which
+/// starts the project or saves it as a draft (no start date). A draft opens here again, on the overview.
 struct CreateProjectFlow: View {
     let profile: Profile
     /// Started from the idea inbox: name and pitch come prefilled.
     var idea: Idea? = nil
+    /// A draft to finish planning or start.
+    var editing: Project? = nil
     var onCreated: (UUID) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -22,17 +25,17 @@ struct CreateProjectFlow: View {
     @State private var lockedToPhoto = false
     @State private var accentHex = Theme.swatches[0]
     @State private var startDate = Date.now.startOfDay
-    @State private var buildDays = 14
+    @State private var stages: [Stage] = []
+    /// The checkpoints as planned, per stage.
+    @State private var plan: [PlannedCheckpoint] = []
+    /// The stages the plan was last laid out for (ids and lengths), to fit it again when they change.
+    @State private var planFor: [Stage] = []
     @State private var endpoint = ""
     @State private var apiKey = ""
     @State private var probe: ProbeState = .idle
     @State private var repo = ""
     @State private var token = ""
     @State private var repoCheck: RepoCheck = .idle
-    /// Draft goals per deadline (index = position in the deadline list).
-    @State private var draftGoals: [[DraftGoal]] = []
-    /// Names typed for each deadline; empty keeps the automatic or repo-provided name.
-    @State private var checkpointNames: [String] = []
     @State private var repoPreview: GoalEngine.RepoPreview?
     @State private var loadingRepo = false
     @State private var drafting = false
@@ -40,7 +43,7 @@ struct CreateProjectFlow: View {
     @FocusState private var focus: Field?
     private enum Field { case name, details }
 
-    private let steps = 5
+    private let steps = 6
     private var accent: Accent { Accent(hex: accentHex) }
     private var trimmedName: String { name.trimmingCharacters(in: .whitespaces) }
 
@@ -53,7 +56,7 @@ struct CreateProjectFlow: View {
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(!trimmedName.isEmpty)
         .onAppear {
-            buildDays = profile.buildDays
+            stages = profile.newStages
             startDate = max(ScheduleEngine.nextProjectDate(projects: projects, profile: profile), .now.startOfDay)
             let used = Set(projects.map(\.accentHex))
             accentHex = Theme.swatches.first { !used.contains($0) } ?? Theme.swatches[projects.count % Theme.swatches.count]
@@ -63,6 +66,8 @@ struct CreateProjectFlow: View {
                 details = idea.note
                 startDate = .now.startOfDay
             }
+            if let editing { load(editing) }
+            fitPlan()
             #if DEBUG
             let jump = UserDefaults.standard.integer(forKey: "PRODLINE_CREATE_STEP")
             if jump > 0 { name = "Kite"; details = "A kite-surf spot finder."; step = min(jump, steps - 1); focus = nil }
@@ -83,14 +88,14 @@ struct CreateProjectFlow: View {
                     if step == 1 {
                         CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
                                         accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                                        footnote: "Building · \(buildDays)d")
+                                        footnote: firstStageNote)
                             .frame(width: 250)
                     } else {
                         ProjectCardFace(name: trimmedName.isEmpty ? "Your project" : trimmedName,
                                         initial: trimmedName.first.map { String($0).uppercased() } ?? "?",
                                         accent: accent, cover: imageData.flatMap { UIImage(data: $0) },
                                         cornerLabel: "Starts", cornerValue: startDate.formatted(.dateTime.day()),
-                                        footnote: "Building · \(buildDays)d")
+                                        footnote: firstStageNote)
                             .frame(width: 250, height: 350)
                             .shadow(color: .black.opacity(0.2), radius: 22, y: 12)
                     }
@@ -109,9 +114,10 @@ struct CreateProjectFlow: View {
                         switch step {
                         case 0: basicsStep
                         case 1: lookStep
-                        case 2: scheduleStep
+                        case 2: stagesStep
                         case 3: connectStep
-                        default: goalsStep
+                        case 4: goalsStep
+                        default: overviewStep
                         }
                     }
                     .id(step)
@@ -134,9 +140,10 @@ struct CreateProjectFlow: View {
                     switch step {
                     case 0: basicsStep
                     case 1: lookStep
-                    case 2: scheduleStep
+                    case 2: stagesStep
                     case 3: connectStep
-                    default: goalsStep
+                    case 4: goalsStep
+                    default: overviewStep
                     }
                 }
                 .id(step)
@@ -194,12 +201,32 @@ struct CreateProjectFlow: View {
 
     @ViewBuilder
     private var bottomBar: some View {
-        Button(step == steps - 1 ? "Create project" : "Continue", action: next)
-            .buttonStyle(.chunky)
-            .disabled(step == 0 && trimmedName.isEmpty)
-        if step == 3 && endpoint.isEmpty {
-            BarFootnote("No endpoint yet? You'll see sample data until you connect.")
+        if step == steps - 1 {
+            Button(startDate <= .now.startOfDay ? "Start today" : "Start on \(startDate.shortDay)") { create(asDraft: false) }
+                .buttonStyle(.chunky)
+            Button("Save as draft") { create(asDraft: true) }
+                .buttonStyle(.chunky(.neutral, height: 50))
+        } else {
+            Button("Continue", action: next)
+                .buttonStyle(.chunky)
+                .disabled(!canContinue)
+            if step == 3 && endpoint.isEmpty {
+                BarFootnote("No endpoint yet? You'll see sample data until you connect.")
+            }
         }
+    }
+
+    private var canContinue: Bool {
+        switch step {
+        case 0: !trimmedName.isEmpty
+        case 2: !stages.isEmpty && stages.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+        default: true
+        }
+    }
+
+    private var firstStageNote: String {
+        guard let first = stages.first else { return "" }
+        return "\(first.name.isEmpty ? "Stage 1" : first.name) · \(first.days)d"
     }
 
     private func stepTitle(_ eyebrow: String, _ title: String) -> some View {
@@ -214,7 +241,7 @@ struct CreateProjectFlow: View {
 
     private var basicsStep: some View {
         VStack(alignment: .leading, spacing: 22) {
-            stepTitle("Step 1 of 5", "What are you building?")
+            stepTitle("Step 1 of 6", "What are you building?")
 
             VStack(alignment: .leading, spacing: 8) {
                 Text("Name").eyebrow()
@@ -275,11 +302,11 @@ struct CreateProjectFlow: View {
 
     private var lookStep: some View {
         VStack(alignment: .leading, spacing: 22) {
-            stepTitle("Step 2 of 5", "Give it a face")
+            stepTitle("Step 2 of 6", "Give it a face")
             if !wide {
                 CardCoverEditor(name: trimmedName, imageData: $imageData, accentHex: $accentHex,
                                 photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                                footnote: "Building · \(buildDays)d")
+                                footnote: firstStageNote)
                     .frame(width: 236)
                     .frame(maxWidth: .infinity)
             }
@@ -287,50 +314,33 @@ struct CreateProjectFlow: View {
         }
     }
 
-    private var scheduleStep: some View {
-        let draft = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
-                            buildDays: buildDays, observeDays: profile.observeDays)
-        let ms = ScheduleEngine.makeMilestones(for: draft, weekdayMask: profile.milestoneWeekdayMask)
-        return VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 3 of 5", "Set the clock")
-            VStack(alignment: .leading, spacing: 16) {
-                HStack {
-                    Text("Starts").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    DatePicker("", selection: $startDate, displayedComponents: .date)
-                        .labelsHidden().tint(accent.base)
-                }
-                Divider()
-                HStack {
-                    Text("Build phase").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(buildDays.durationText).display(20, 700).foregroundStyle(accent.text)
-                        .contentTransition(.numericText())
-                }
-                ChunkySlider(value: $buildDays, range: 3...42)
+    private var stagesStep: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            stepTitle("Step 3 of 6", "Plan the stages")
+            Text("Split the project into stretches, as broad or as fine as you like: a build and a launch, or research, prototype, beta, launch week. You move on to the next stage once everything in this one is done.")
+                .font(.ui(14)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Text("Starts").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
+                Spacer()
+                DatePicker("", selection: $startDate, in: Date.now.startOfDay..., displayedComponents: .date)
+                    .labelsHidden().tint(accent.base)
             }
-            .card()
-
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Your deadlines").eyebrow()
-                ForEach(ms, id: \.id) { m in
-                    HStack {
-                        Image(systemName: m.isLaunch ? "flag.checkered" : (m.title == "Traction review" ? "chart.line.uptrend.xyaxis" : "checkmark.circle"))
-                            .foregroundStyle(accent.text)
-                            .frame(width: 22)
-                        Text(m.title).font(.ui(15, .semibold)).foregroundStyle(Theme.ink)
-                        Spacer()
-                        Text(m.dueDate.shortDay).font(.ui(14)).foregroundStyle(Theme.secondary)
-                    }
-                }
+            .card(padding: 16, radius: 22)
+            StageListEditor(stages: $stages, start: startDate)
+            if !stages.isEmpty {
+                StageTimelineBar(spans: Project.previewSpans(stages, start: startDate), today: startDate.adding(days: -1))
+                    .padding(.horizontal, 4)
+                Text("\(stages.map(\.days).reduce(0, +).durationText) in all, until \(startDate.adding(days: stages.map(\.days).reduce(0, +) - 1).shortDay)")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .padding(.horizontal, 4)
             }
-            .card()
         }
     }
 
     private var connectStep: some View {
         VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 4 of 5", "Connect your project")
+            stepTitle("Step 4 of 6", "Connect your project")
             ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
             Divider().padding(.vertical, 6)
             GitHubFields(repo: $repo, token: $token, check: $repoCheck)
@@ -341,10 +351,9 @@ struct CreateProjectFlow: View {
 
     struct DraftGoal: Equatable { var title: String; var source: GoalSource }
 
-    private var deadlines: [Milestone] {
-        let draft = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
-                            buildDays: buildDays, observeDays: profile.observeDays)
-        return ScheduleEngine.makeMilestones(for: draft, weekdayMask: profile.milestoneWeekdayMask)
+    /// The plan in date order, with each checkpoint's date.
+    private var deadlines: [(checkpoint: PlannedCheckpoint, date: Date)] {
+        StageEngine.sorted(plan, stages: stages).map { ($0, StageEngine.date(of: $0, stages: stages, start: startDate)) }
     }
 
     private var githubSnapshot: GitHubSnapshot? {
@@ -356,9 +365,10 @@ struct CreateProjectFlow: View {
     private var repoHasPlan: Bool { repoPreview?.hasPlanFile ?? false }
 
     private var goalsStep: some View {
-        let ms = deadlines
+        let spans = Project.previewSpans(stages, start: startDate)
+        let order = deadlines.map(\.checkpoint.id)
         return VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 5 of 5", "Plan the checkpoints")
+            stepTitle("Step 5 of 6", "Plan the checkpoints")
 
             if loadingRepo || drafting {
                 HStack(spacing: 12) {
@@ -370,8 +380,30 @@ struct CreateProjectFlow: View {
             } else {
                 Text(planIntro).font(.ui(14)).foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                ForEach(Array(ms.enumerated()).dropLast(), id: \.offset) { i, m in
-                    goalEditor(index: i, milestone: m)
+                ForEach(spans) { span in
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text(span.stage.name).display(20, 700).foregroundStyle(Theme.ink)
+                            Spacer()
+                            Text(span.dateRange).font(.ui(13)).foregroundStyle(Theme.secondary)
+                        }
+                        .padding(.horizontal, 4)
+                        ForEach(deadlines.filter { $0.checkpoint.stageID == span.stage.id }, id: \.checkpoint.id) { d in
+                            goalEditor(index: order.firstIndex(of: d.checkpoint.id) ?? 0, checkpoint: d.checkpoint, date: d.date, span: span)
+                        }
+                        Button {
+                            Haptics.select()
+                            withAnimation(.snappy) {
+                                plan.append(PlannedCheckpoint(stageID: span.stage.id, day: max(0, span.stage.days / 2), title: "Checkpoint"))
+                                plan = StageEngine.numbered(plan, stages: stages)
+                            }
+                        } label: {
+                            Label("Add checkpoint to \(span.stage.name)", systemImage: "plus.circle")
+                                .font(.ui(14, .semibold)).foregroundStyle(accent.text)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 4)
+                    }
                 }
                 if GoalPlanner.isEnabled && !repoHasPlan {
                     Button {
@@ -393,6 +425,58 @@ struct CreateProjectFlow: View {
         .task { await draft(force: false) }
     }
 
+    private var overviewStep: some View {
+        let spans = Project.previewSpans(stages, start: startDate)
+        let counts = Dictionary(grouping: plan, by: \.stageID).mapValues(\.count)
+        let goals = plan.map(\.goals.count).reduce(0, +)
+        let total = stages.map(\.days).reduce(0, +)
+        return VStack(alignment: .leading, spacing: 18) {
+            stepTitle("Step 6 of 6", "Ready to go?")
+            VStack(alignment: .leading, spacing: 16) {
+                HStack(spacing: 12) {
+                    miniMark
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(trimmedName).display(22, 750).foregroundStyle(Theme.ink)
+                        if !details.isEmpty {
+                            Text(details).font(.ui(14)).foregroundStyle(Theme.secondary).lineLimit(2)
+                        }
+                    }
+                }
+                StageTimelineBar(spans: spans, today: startDate.adding(days: -1))
+                HStack {
+                    overviewFigure("Starts", startDate <= .now.startOfDay ? "Today" : startDate.shortDay)
+                    Spacer()
+                    overviewFigure("Length", total.durationText)
+                    Spacer()
+                    overviewFigure("Checkpoints", "\(plan.count)")
+                    Spacer()
+                    overviewFigure("Goals", "\(goals)")
+                }
+            }
+            .card()
+            StageLegend(spans: spans, checkpoints: counts).card()
+            if !repo.isEmpty || !endpoint.isEmpty {
+                VStack(alignment: .leading, spacing: 8) {
+                    if let slug = GitHubRepoRef(repo)?.slug { Label(slug, systemImage: "chevron.left.forwardslash.chevron.right") }
+                    if !endpoint.isEmpty { Label(endpoint, systemImage: "bolt.fill").lineLimit(1) }
+                }
+                .font(.ui(14, .medium)).foregroundStyle(Theme.inkSoft)
+                .card()
+            }
+            Text("A draft keeps the plan without a start date: no deadlines, reminders or project slot until you start it from Dash.")
+                .font(.ui(13)).foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 4)
+        }
+    }
+
+    private func overviewFigure(_ title: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title).font(.ui(12, .medium)).foregroundStyle(Theme.secondary)
+            Text(value).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+        }
+    }
+
     private var planIntro: String {
         if repoHasPlan { return "Goals come from prodline.json in your repo and stay in sync with it. Rename checkpoints or add your own goals on top." }
         if repoPreview.map({ !$0.isEmpty }) ?? false {
@@ -402,19 +486,44 @@ struct CreateProjectFlow: View {
         return GoalPlanner.unavailableReason + " Name your checkpoints and add goals yourself, or leave them simple and tick them off."
     }
 
-    private func goalEditor(index i: Int, milestone m: Milestone) -> some View {
+    private func planIndex(_ id: UUID) -> Int? { plan.firstIndex { $0.id == id } }
+
+    private func goalEditor(index i: Int, checkpoint c: PlannedCheckpoint, date: Date, span: StageSpan) -> some View {
         let repoGoals = repoPreview?.goals[safe: i] ?? []
-        let placeholder = (repoPreview?.names[safe: i] ?? nil) ?? m.title
+        let placeholder = (repoPreview?.names[safe: i] ?? nil) ?? c.title
         return VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
+                if c.isLaunch { Image(systemName: "flag.checkered").font(.system(size: 13)).foregroundStyle(accent.text) }
                 TextField(placeholder, text: Binding(
-                    get: { checkpointNames[safe: i] ?? "" },
-                    set: { if checkpointNames.indices.contains(i) { checkpointNames[i] = $0 } }))
+                    get: { planIndex(c.id).map { plan[$0].titleIsCustom ? plan[$0].title : "" } ?? "" },
+                    set: { new in
+                        guard let k = planIndex(c.id) else { return }
+                        let t = new.trimmingCharacters(in: .whitespaces)
+                        plan[k].titleIsCustom = !t.isEmpty
+                        plan[k].title = t.isEmpty ? "Checkpoint" : new
+                        if t.isEmpty { plan = StageEngine.numbered(plan, stages: stages) }
+                    }))
                     .font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
                     .submitLabel(.done)
-                Image(systemName: "pencil").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.tertiary)
                 Spacer(minLength: 8)
-                Text(m.dueDate.shortDay).font(.ui(13)).foregroundStyle(Theme.secondary)
+                DatePicker("", selection: Binding(
+                    get: { date },
+                    set: { new in
+                        guard let k = planIndex(c.id) else { return }
+                        plan[k].day = min(max(0, Date.days(from: span.start, to: new)), span.stage.days - 1)
+                        plan = StageEngine.numbered(plan, stages: stages)
+                    }), in: span.start...span.plannedLastDay, displayedComponents: .date)
+                    .labelsHidden().tint(accent.base)
+                Button {
+                    Haptics.soft()
+                    withAnimation(.snappy) {
+                        plan.removeAll { $0.id == c.id }
+                        plan = StageEngine.numbered(plan, stages: stages)
+                    }
+                } label: {
+                    Image(systemName: "trash").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.tertiary)
+                }
+                .buttonStyle(.plain)
             }
             ForEach(repoGoals.indices, id: \.self) { j in
                 HStack(spacing: 10) {
@@ -424,31 +533,29 @@ struct CreateProjectFlow: View {
                 }
                 .accessibilityHint(repoGoals[j].source.label)
             }
-            if draftGoals.indices.contains(i) {
-                ForEach(draftGoals[i].indices, id: \.self) { j in
-                    HStack(spacing: 10) {
-                        Image(systemName: draftGoals[i][j].source == .ai ? "sparkles" : "circle")
-                            .font(.system(size: 12)).foregroundStyle(accent.text)
-                        TextField("Goal", text: Binding(
-                            get: { draftGoals[safe: i]?[safe: j]?.title ?? "" },
-                            set: { if draftGoals.indices.contains(i) && draftGoals[i].indices.contains(j) { draftGoals[i][j].title = $0 } }))
-                            .font(.ui(15))
-                        Button {
-                            Haptics.soft()
-                            withAnimation(.snappy) { _ = draftGoals[i].remove(at: j) }
-                        } label: {
-                            Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.tertiary)
-                        }
-                        .buttonStyle(.plain)
+            ForEach(c.goals.indices, id: \.self) { j in
+                HStack(spacing: 10) {
+                    Image(systemName: c.goals[j].sourceRaw == GoalSource.ai.rawValue ? "sparkles" : "circle")
+                        .font(.system(size: 12)).foregroundStyle(accent.text)
+                    TextField("Goal", text: Binding(
+                        get: { planIndex(c.id).flatMap { plan[$0].goals[safe: j]?.title } ?? "" },
+                        set: { if let k = planIndex(c.id), plan[k].goals.indices.contains(j) { plan[k].goals[j].title = $0 } }))
+                        .font(.ui(15))
+                    Button {
+                        Haptics.soft()
+                        withAnimation(.snappy) { if let k = planIndex(c.id), plan[k].goals.indices.contains(j) { plan[k].goals.remove(at: j) } }
+                    } label: {
+                        Image(systemName: "xmark").font(.system(size: 11, weight: .bold)).foregroundStyle(Theme.tertiary)
                     }
+                    .buttonStyle(.plain)
                 }
-                Button {
-                    withAnimation(.snappy) { draftGoals[i].append(DraftGoal(title: "", source: .manual)) }
-                } label: {
-                    Label("Add goal", systemImage: "plus").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
-                }
-                .buttonStyle(.plain)
             }
+            Button {
+                withAnimation(.snappy) { if let k = planIndex(c.id) { plan[k].goals.append(PlannedGoal(title: "", sourceRaw: GoalSource.manual.rawValue)) } }
+            } label: {
+                Label("Add goal", systemImage: "plus").font(.ui(13, .semibold)).foregroundStyle(Theme.secondary)
+            }
+            .buttonStyle(.plain)
         }
         .card(padding: 16, radius: 22)
     }
@@ -465,13 +572,28 @@ struct CreateProjectFlow: View {
         .card(padding: 16, radius: 22)
     }
 
+    /// Lays the checkpoints out for the stages: the defaults for a new plan, and after a stage change the
+    /// same checkpoints (days clamped into their stage) plus defaults for stages that have none.
+    private func fitPlan() {
+        guard planFor != stages else { return }
+        let ids = Set(stages.map(\.id))
+        var kept = plan.filter { ids.contains($0.stageID) }
+        for k in kept.indices {
+            if let s = stages.first(where: { $0.id == kept[k].stageID }) { kept[k].day = min(kept[k].day, max(0, s.days - 1)) }
+        }
+        let fresh = StageEngine.defaultCheckpoints(stages: stages, start: startDate, weekdayMask: profile.milestoneWeekdayMask)
+        let covered = Set(kept.map(\.stageID))
+        plan = StageEngine.numbered(kept + fresh.filter { !covered.contains($0.stageID) }, stages: stages)
+        planFor = stages
+    }
+
     /// Repo first (prodline.json, then issues), suggestions only where the repo leaves a checkpoint empty.
     private func draft(force: Bool) async {
+        fitPlan()
         let ms = deadlines
-        if !force && draftGoals.count == ms.count { return }
-        if checkpointNames.count != ms.count { checkpointNames = Array(repeating: "", count: ms.count) }
+        if !force && repoPreview != nil { return }
         // Keep what the user typed; only replace earlier suggestions.
-        draftGoals = (0..<ms.count).map { i in (draftGoals[safe: i] ?? []).filter { $0.source != .ai } }
+        for k in plan.indices { plan[k].goals.removeAll { $0.sourceRaw == GoalSource.ai.rawValue } }
 
         if let ref = GitHubRepoRef(repo) {
             var snap = githubSnapshot
@@ -481,26 +603,26 @@ struct CreateProjectFlow: View {
                 loadingRepo = false
                 if let snap { repoCheck = .ok(snap) }
             }
-            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.dueDate), start: startDate) }
+            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.date), start: startDate) }
             else { draftNote = "Couldn't read the repo right now. Its goals will sync in once the project is created." }
         } else {
             repoPreview = nil
         }
 
         guard GoalPlanner.isEnabled, !repoHasPlan else { return }
-        let empty = Set(ms.indices.filter { (repoPreview?.goals[safe: $0] ?? []).isEmpty })
+        let empty = Set(ms.indices.filter { (repoPreview?.goals[safe: $0] ?? []).isEmpty && ms[$0].checkpoint.goals.isEmpty })
         guard !empty.isEmpty else { return }
         drafting = true
         defer { drafting = false }
         do {
-            let plan = try await GoalPlanner.draft(name: trimmedName, details: details, buildDays: buildDays,
-                                                   deadlines: ms.enumerated().map { i, m in
-                                                       .init(title: name(at: i, default: m.title), date: m.dueDate)
-                                                   },
-                                                   github: githubSnapshot)
+            let working = stages.filter { !$0.decides }.map(\.days).reduce(0, +)
+            let result = try await GoalPlanner.draft(name: trimmedName, details: details, buildDays: max(1, working),
+                                                     deadlines: ms.map { .init(title: $0.checkpoint.title, date: $0.date) },
+                                                     github: githubSnapshot)
             withAnimation(.spring(response: 0.45, dampingFraction: 0.8)) {
-                for (n, titles) in plan where empty.contains(n - 1) {
-                    draftGoals[n - 1] += titles.map { DraftGoal(title: $0, source: .ai) }
+                for (n, titles) in result where empty.contains(n - 1) {
+                    guard let k = planIndex(ms[n - 1].checkpoint.id) else { continue }
+                    plan[k].goals += titles.map { PlannedGoal(title: $0, sourceRaw: GoalSource.ai.rawValue) }
                 }
             }
             draftNote = nil
@@ -510,56 +632,79 @@ struct CreateProjectFlow: View {
         }
     }
 
-    /// Typed name, else the repo's name, else the automatic one.
-    private func name(at i: Int, default fallback: String) -> String {
-        let typed = (checkpointNames[safe: i] ?? "").trimmingCharacters(in: .whitespaces)
-        if !typed.isEmpty { return typed }
-        return (repoPreview?.names[safe: i] ?? nil) ?? fallback
-    }
-
     // MARK: Actions
 
     private func next() {
-        guard !(step == 0 && trimmedName.isEmpty) else { return }
+        guard canContinue else { return }
         focus = nil
+        if step == 2 {
+            for i in stages.indices { stages[i].name = stages[i].name.trimmingCharacters(in: .whitespaces) }
+            fitPlan()
+        }
         if step < steps - 1 {
             withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += 1 }
-        } else {
-            create()
         }
     }
 
-    private func create() {
-        let p = Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
-                        buildDays: buildDays, observeDays: profile.observeDays)
+    /// A draft opens on the overview with everything as it was saved.
+    private func load(_ p: Project) {
+        name = p.name
+        details = p.details
+        imageData = p.coverImage
+        accentHex = p.accentHex
+        lockedToPhoto = p.coverImage != nil
+        endpoint = p.endpoint
+        apiKey = Keychain.get(p.id.uuidString) ?? ""
+        repo = p.githubRepo
+        token = Keychain.get("gh-" + p.id.uuidString) ?? ""
+        stages = p.stages
+        plan = p.plannedCheckpoints
+        planFor = stages
+        startDate = max(.now.startOfDay, ScheduleEngine.nextProjectDate(projects: projects.filter { $0.id != p.id }, profile: profile))
+        step = steps - 1
+        focus = nil
+    }
+
+    private func create(asDraft: Bool) {
+        fitPlan()
+        let p = editing ?? Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
+                                 buildDays: profile.buildDays, observeDays: profile.observeDays)
+        p.name = trimmedName
+        p.accentHex = accentHex
+        p.startDate = startDate.startOfDay
         p.details = details.trimmingCharacters(in: .whitespacesAndNewlines)
         p.coverImage = imageData
-        p.criteria = profile.defaultCriteria
+        if p.criteria.isEmpty { p.criteria = profile.defaultCriteria }
         p.endpoint = endpoint.trimmingCharacters(in: .whitespaces)
         Keychain.set(apiKey.trimmingCharacters(in: .whitespaces), for: p.id.uuidString)
         p.githubRepo = GitHubRepoRef(repo)?.slug ?? ""
         Keychain.set(token.trimmingCharacters(in: .whitespaces), for: "gh-" + p.id.uuidString)
-        ScheduleEngine.createProject(p, profile: profile, context: context)
-        let ms = p.sortedMilestones
-        for (i, name) in checkpointNames.enumerated() where ms.indices.contains(i) && !name.trimmingCharacters(in: .whitespaces).isEmpty {
-            ScheduleEngine.rename(ms[i], to: name)
+        p.stages = stages.map { Stage(id: $0.id, name: $0.name, days: $0.days, decides: $0.decides) }
+        p.plannedCheckpoints = StageEngine.numbered(plan.map { c in
+            var c = c
+            c.goals = c.goals.filter { !$0.title.trimmingCharacters(in: .whitespaces).isEmpty }
+            return c
+        }, stages: stages)
+        p.isDraft = asDraft
+        if editing == nil {
+            ScheduleEngine.createProject(p, profile: profile, context: context)
+        } else if !asDraft {
+            StageEngine.start(p, on: startDate, profile: profile, context: context)
         }
-        // Your goals and suggestions first, then the repo (whose plan replaces suggestions).
-        for (i, goals) in draftGoals.enumerated() where ms.indices.contains(i) {
-            for source in [GoalSource.ai, .manual] {
-                GoalEngine.addGoals(goals.filter { $0.source == source }.map(\.title), source: source, to: ms[i], context: context)
-            }
-        }
-        if let snap = githubSnapshot { GoalEngine.syncGitHub(snap, project: p, context: context) }
+        if !asDraft, let snap = githubSnapshot { GoalEngine.syncGitHub(snap, project: p, context: context) }
         try? context.save()
-        if profile.remindersEnabled { for m in ms { Notifier.schedule(m, profile: profile) } }
-        if profile.remindersEnabled { Task { _ = await Notifier.requestAuth() } }
+        if !asDraft && profile.remindersEnabled { Task { _ = await Notifier.requestAuth() } }
         if let idea {
             idea.startedAt = .now
             idea.projectID = p.id
             try? context.save()
         }
-        celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(buildDays.durationText). Let's ship.", accent: p.accent)
+        if asDraft {
+            celebration.fire(title: "Saved as a draft", subtitle: "Start \(p.name) from Dash when you're ready.", accent: p.accent, confetti: false)
+        } else {
+            let first = p.stages.first.map { "First up: \($0.name), \($0.days.durationText)." } ?? ""
+            celebration.fire(title: "\(p.name) is live", subtitle: first, accent: p.accent)
+        }
         onCreated(p.id)
         dismiss()
     }

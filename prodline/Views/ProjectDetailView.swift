@@ -22,6 +22,7 @@ struct ProjectDetailView: View {
     @State private var showCriteria = false
     @State private var showVerdict = false
     @State private var showShare = false
+    @State private var confirmFinish = false
     @State private var editingIntegration: Integration?
     @State private var pickingIntegration = false
     @State private var confirmDelete = false
@@ -61,7 +62,6 @@ struct ProjectDetailView: View {
             VStack(spacing: 16) {
                 hero
                 VStack(spacing: 16) {
-                    if ScheduleEngine.canShip(project) { shipCard }
                     if VerdictEngine.isDue(project) {
                         SuccessCard(project: project, onSetTargets: { showCriteria = true }, onDecide: { showVerdict = true },
                                     onUndo: undoVerdict)
@@ -89,6 +89,15 @@ struct ProjectDetailView: View {
             .padding(.horizontal, 16)
             .padding(.bottom, 40)
         }
+        // Moving on: always at hand at the bottom of the screen, whatever is scrolled into view.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            StageBar(project: project, onFinish: { confirmFinish = true }, onDecide: { showVerdict = true })
+                .opacity(revealed ? 1 : 0)
+        }
+        .confirmationDialog(finishTitle, isPresented: $confirmFinish, titleVisibility: .visible) {
+            Button(finishTitle) { finishStage() }
+            Button("Cancel", role: .cancel) {}
+        } message: { Text(finishMessage) }
         .onScrollGeometryChange(for: Bool.self) { $0.contentOffset.y + $0.contentInsets.top > 2 } action: { _, away in
             scrolledAway = away
         }
@@ -188,7 +197,7 @@ struct ProjectDetailView: View {
             Group {
             HStack(spacing: 8) {
                 Image(systemName: project.phase().symbol)
-                Text(project.phase().title)
+                Text(project.currentStage?.name ?? project.phase().title)
             }
             .font(.ui(14, .semibold))
             .foregroundStyle(accent.on)
@@ -268,36 +277,13 @@ struct ProjectDetailView: View {
     // MARK: Timeline
 
     private var timelineCard: some View {
-        let total = Double(project.buildDays + project.observeDays)
-        let buildFrac = Double(project.buildDays) / total
+        let spans = project.spans()
+        let total = spans.map(\.length).reduce(0, +)
+        let day = max(Date.days(from: project.startDate, to: .now) + 1, 0)
         return VStack(alignment: .leading, spacing: 14) {
-            SectionTitle("Timeline", trailing: "Day \(max(Date.days(from: project.startDate, to: .now) + 1, 0)) of \(Int(total))")
-            GeometryReader { geo in
-                let w = geo.size.width
-                ZStack(alignment: .leading) {
-                    HStack(spacing: 4) {
-                        Capsule().fill(accent.base).frame(width: w * buildFrac - 2)
-                        Capsule().fill(accent.base.opacity(0.3))
-                    }
-                    .frame(height: 16)
-                    // Today marker
-                    if project.phase() != .finished && project.phase() != .upcoming {
-                        VStack(spacing: 2) {
-                            RoundedRectangle(cornerRadius: 2).fill(Theme.ink).frame(width: 4, height: 28)
-                        }
-                        .offset(x: max(0, min(w - 4, w * project.overallProgress - 2)))
-                    }
-                }
-                .frame(height: 28)
-            }
-            .frame(height: 28)
-            HStack {
-                label("Start", project.startDate)
-                Spacer()
-                label("Launch", project.launchDay)
-                Spacer()
-                label("End", project.observeEnd.adding(days: -1))
-            }
+            SectionTitle("Stages", trailing: project.phase() == .upcoming ? "Starts \(project.startDate.dayMonth)" : "Day \(min(day, total)) of \(total)")
+            StageTimelineBar(spans: spans)
+            StageLegend(spans: spans)
         }
         .card()
     }
@@ -472,16 +458,33 @@ struct ProjectDetailView: View {
             if let draftError {
                 Text(draftError).font(.ui(13)).foregroundStyle(Theme.danger)
             }
-            ForEach(ms) { m in
-                MilestoneLine(milestone: m,
-                              onDone: { complete(m) },
-                              onToggleGoal: { toggle($0) },
-                              onDeleteGoal: { g in context.delete(g); try? context.save() },
-                              onAddGoal: fromFile ? nil : { checkpointSheet = .some(m) },
-                              onEdit: fromFile ? nil : { checkpointSheet = .some(m) },
-                              onUndo: fromFile && m.hasGoals ? nil : { undoing = m },
-                              canToggle: !(fromFile && m.hasGoals))
-                if m.id != ms.last?.id { Divider().padding(.leading, 44) }
+            ForEach(project.spans()) { span in
+                let inStage = ms.filter { project.stageIndex(of: $0) == span.index }
+                if !inStage.isEmpty {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(span.stage.name).font(.ui(15, .semibold))
+                            .foregroundStyle(span.state == .ahead ? Theme.secondary : accent.text)
+                        if span.state == .current {
+                            Text("Now").font(.ui(11, .semibold)).foregroundStyle(accent.text)
+                                .padding(.horizontal, 7).padding(.vertical, 2)
+                                .background(Capsule().fill(accent.soft))
+                        }
+                        Spacer()
+                        Text(span.dateRange).font(.ui(12)).foregroundStyle(Theme.secondary)
+                    }
+                    .padding(.top, 6)
+                    ForEach(inStage) { m in
+                        MilestoneLine(milestone: m,
+                                      onDone: { complete(m) },
+                                      onToggleGoal: { toggle($0) },
+                                      onDeleteGoal: { g in context.delete(g); try? context.save() },
+                                      onAddGoal: fromFile ? nil : { checkpointSheet = .some(m) },
+                                      onEdit: fromFile ? nil : { checkpointSheet = .some(m) },
+                                      onUndo: fromFile && m.hasGoals ? nil : { undoing = m },
+                                      canToggle: !(fromFile && m.hasGoals))
+                        if m.id != inStage.last?.id { Divider().padding(.leading, 44) }
+                    }
+                }
             }
             if fromFile {
                 Label("Checkpoints and goals follow prodline.json in \(project.githubRepo). Edit the file to change them.",
@@ -553,30 +556,26 @@ struct ProjectDetailView: View {
         return m.xpEarned > 0 ? "You'll lose the \(m.xpEarned) XP it earned." : "It goes back to open."
     }
 
-    /// Every goal is ticked while still building.
-    private var shipCard: some View {
-        let early = Date.days(from: .now, to: project.launchDay)
-        return VStack(alignment: .leading, spacing: 14) {
-            HStack(spacing: 10) {
-                Image(systemName: "paperplane.fill").font(.system(size: 17, weight: .bold)).foregroundStyle(accent.on)
-                    .frame(width: 38, height: 38)
-                    .background(Circle().fill(accent.base))
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Ready to ship").display(20, 750).foregroundStyle(Theme.ink)
-                    Text(early > 0
-                         ? "Every goal is done. Launch is \(project.launchDay.shortDay); ship today and you're \(early) day\(early == 1 ? "" : "s") early."
-                         : "Every goal is done, and it's launch day.")
-                        .font(.ui(13)).foregroundStyle(Theme.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-            }
-            Button("Let's ship") {
-                guard let profile = profiles.first else { return }
-                ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
-            }
-            .buttonStyle(.chunky(.accent, height: 50))
+    private var finishTitle: String { "Finish \(project.currentStage?.name ?? "this stage")?" }
+
+    private var finishMessage: String {
+        guard let span = project.currentSpan() else { return "" }
+        let next = project.stages[safe: span.index + 1]
+        let early = Date.days(from: .now.startOfDay, to: span.plannedLastDay)
+        var parts: [String] = []
+        if let next { parts.append("\(next.name) starts today and runs \(next.days.durationText).") }
+        else { parts.append("That's the last stage: the project is done.") }
+        if early > 0 { parts.append("\(early) day\(early == 1 ? "" : "s") early: +\(min(ScheduleEngine.earlyXPCap, early * ScheduleEngine.earlyXPPerDay)) XP.") }
+        parts.append("You can't go back to it.")
+        return parts.joined(separator: " ")
+    }
+
+    private func finishStage() {
+        guard let profile = profiles.first else { return }
+        Haptics.success()
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
+            StageEngine.finishStageNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
         }
-        .card()
     }
 
     private func undoVerdict() {
@@ -639,7 +638,7 @@ struct ProjectDetailView: View {
         let ms = project.sortedMilestones
         do {
             let plan = try await GoalPlanner.draft(
-                name: project.name, details: project.details, buildDays: project.buildDays,
+                name: project.name, details: project.details, buildDays: project.totalPlannedDays,
                 deadlines: ms.map { .init(title: $0.title, date: $0.dueDate) },
                 github: github.snapshots[project.id])
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
@@ -867,13 +866,18 @@ struct EditProjectSheet: View {
     @State private var locked = false
     @State private var accentHex = 0
     @State private var startDate = Date.now
-    @State private var buildDays = 14
-    @State private var observeDays = 28
+    @State private var stages: [Stage] = []
     @Query(sort: \Profile.createdAt) private var profiles: [Profile]
     @Environment(\.wideLayout) private var wide
 
+    private var canMoveStart: Bool { project.phase() == .upcoming }
+
     private var scheduleChanged: Bool {
-        startDate.startOfDay != project.startDate || buildDays != project.buildDays || observeDays != project.observeDays
+        (canMoveStart && startDate.startOfDay != project.startDate) || stages != project.stages
+    }
+
+    private var stagesValid: Bool {
+        !stages.isEmpty && stages.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
     var body: some View {
@@ -932,8 +936,7 @@ struct EditProjectSheet: View {
             photoHex = project.cover.flatMap(ImageTools.dominantAccentHex)
             locked = photoHex == project.accentHex
             startDate = project.startDate
-            buildDays = project.buildDays
-            observeDays = project.observeDays
+            stages = project.stages
         }
     }
 
@@ -961,8 +964,11 @@ struct EditProjectSheet: View {
                 project.coverImage = imageData
                 project.accentHex = accentHex
                 if scheduleChanged {
-                    ScheduleEngine.changeSchedule(project, start: startDate, buildDays: buildDays, observeDays: observeDays,
-                                                  profile: profiles.first, context: context)
+                    StageEngine.replaceStages(project, with: stages.map { s in
+                        var s = s
+                        s.name = s.name.trimmingCharacters(in: .whitespaces)
+                        return s
+                    }, startDate: canMoveStart ? startDate : nil, profile: profiles.first)
                 }
                 try? context.save()
                 Haptics.success()
@@ -970,41 +976,32 @@ struct EditProjectSheet: View {
             }
             .buttonStyle(.chunky)
             .keyboardShortcut(.defaultAction)
+            .disabled(!stagesValid)
     }
 
     private var scheduleSection: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("Schedule").eyebrow()
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Stages").eyebrow()
             HStack {
-                Text("Start").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                Text(canMoveStart ? "Starts" : "Started").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
                 Spacer()
-                DatePicker("Start", selection: $startDate, displayedComponents: .date)
-                    .labelsHidden()
-                    .tint(project.accent.text)
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Build phase").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(buildDays.durationText).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                if canMoveStart {
+                    DatePicker("Start", selection: $startDate, in: Date.now.startOfDay..., displayedComponents: .date)
+                        .labelsHidden()
+                        .tint(project.accent.text)
+                } else {
+                    Text(project.startDate.shortDay).font(.ui(16)).foregroundStyle(Theme.secondary)
                 }
-                ChunkySlider(value: $buildDays, range: 3...42)
             }
-            VStack(alignment: .leading, spacing: 10) {
-                HStack {
-                    Text("Observe phase").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                    Spacer()
-                    Text(observeDays.durationText).font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
-                }
-                ChunkySlider(value: $observeDays, range: 7...90)
-            }
+            .card(padding: 16, radius: 22)
+            StageListEditor(stages: $stages, start: canMoveStart ? startDate : project.startDate,
+                            spans: canMoveStart ? [] : project.spans())
             Text(scheduleChanged
-                 ? "Launch moves to \(startDate.startOfDay.adding(days: buildDays - 1).shortDay). Open checkpoints move along; finished ones and their goals stay."
-                 : "Launch on \(project.launchDay.shortDay), traction review until \(project.observeEnd.adding(days: -1).shortDay).")
+                 ? "Open checkpoints keep their day within their stage and move with it. Checkpoints of a removed stage move to the stage before it."
+                 : "Finished stages stay as they were. Change what's ahead, or add a stage.")
                 .font(.ui(13)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .card(padding: 16, radius: 22)
     }
 }
 
@@ -1325,6 +1322,7 @@ struct CheckpointSheet: View {
     @Query(sort: \Profile.createdAt) private var profiles: [Profile]
     @State private var name = ""
     @State private var due = Date.now.startOfDay
+    @State private var stageID: UUID?
     @State private var confirmDelete = false
     @State private var goalRows: [GoalRow] = []
     @State private var removedGoals: [Goal] = []
@@ -1343,9 +1341,17 @@ struct CheckpointSheet: View {
         var editable: Bool { source == .manual || source == .ai }
     }
 
+    /// Stages a checkpoint can go in: those not finished, plus the one it's in now.
+    private var pickable: [StageSpan] {
+        project.spans().filter { $0.state != .done || $0.stage.id.uuidString == milestone?.stageID }
+    }
+    private var span: StageSpan? { pickable.first { $0.stage.id == stageID } ?? pickable.first }
+
+    /// Inside the stage's planned days (and today on, for open stages).
     private var range: ClosedRange<Date> {
-        let lo = min(project.startDate, .now.startOfDay)
-        return lo...max(project.observeEnd, due, lo)
+        guard let span else { return Date.now.startOfDay...Date.now.startOfDay.adding(days: 365) }
+        let lo = span.state == .done ? span.start : max(span.start, min(Date.now.startOfDay, span.plannedLastDay))
+        return lo...max(lo, span.plannedLastDay, span.state == .current ? span.lastDay : lo)
     }
     private var autoName: String {
         guard let m = milestone else { return "Checkpoint" }
@@ -1365,6 +1371,7 @@ struct CheckpointSheet: View {
                 HStack(alignment: .top, spacing: 24) {
                     VStack(alignment: .leading, spacing: 22) {
                         nameField
+                        stageField
                         dueField
                         if let m = milestone, !m.isLaunch {
                             Button("Delete checkpoint") { confirmDelete = true }
@@ -1384,6 +1391,7 @@ struct CheckpointSheet: View {
                 VStack(alignment: .leading, spacing: 22) {
                     nameField
                     goalsSection
+                    stageField
                     dueField
                     if let m = milestone, !m.isLaunch {
                         Button("Delete checkpoint") { confirmDelete = true }
@@ -1405,11 +1413,14 @@ struct CheckpointSheet: View {
             if let m = milestone {
                 name = m.titleIsCustom || !ScheduleEngine.isAutoName(m.title) ? m.title : ""
                 due = m.dueDate
+                stageID = project.stageIndex(of: m).flatMap { project.stages[safe: $0]?.id }
                 goalRows = m.displayGoals.map { GoalRow(goal: $0, title: $0.title, source: $0.source, isDone: $0.isDone) }
             } else {
                 // Default: halfway between today and the next open deadline.
                 let next = project.nextMilestone?.dueDate ?? project.launchDay
                 due = max(Date.now.startOfDay, project.startDate).adding(days: max(1, Date.days(from: .now, to: next) / 2))
+                stageID = (project.currentSpan() ?? pickable.first)?.stage.id
+                due = min(max(due, range.lowerBound), range.upperBound)
             }
         }
         .confirmationDialog("Delete this checkpoint?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -1429,6 +1440,25 @@ struct CheckpointSheet: View {
             Text("Leave empty for the automatic name. A name you set here wins over one from prodline.json.")
                 .font(.ui(13)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var stageField: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Stage").eyebrow()
+            Picker("Stage", selection: Binding(get: { span?.stage.id }, set: { new in
+                stageID = new
+                due = min(max(due, range.lowerBound), range.upperBound)
+            })) {
+                ForEach(pickable) { s in
+                    Text("\(s.stage.name) · \(s.dateRange)").tag(Optional(s.stage.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(project.accent.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8).padding(.vertical, 6)
+            .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.card))
         }
     }
 
@@ -1535,10 +1565,13 @@ struct CheckpointSheet: View {
             let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
             // Keep a repo-given name unless the user typed something different.
             if trimmed != m.title || m.titleIsCustom { ScheduleEngine.rename(m, to: trimmed) }
-            if m.dueDate != due.startOfDay { ScheduleEngine.reschedule(m, to: due, profile: profiles.first) }
+            if m.dueDate != due.startOfDay || m.stageID != span?.stage.id.uuidString {
+                ScheduleEngine.reschedule(m, to: due, stage: span?.stage, profile: profiles.first)
+            }
             applyGoals(to: m)
         } else {
-            let m = ScheduleEngine.addCheckpoint(to: project, title: name, due: due, profile: profiles.first, context: context)
+            let m = ScheduleEngine.addCheckpoint(to: project, title: name, due: due, stage: span?.stage, profile: profiles.first,
+                                                 context: context)
             applyGoals(to: m)
         }
         try? context.save()

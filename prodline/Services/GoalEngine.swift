@@ -76,6 +76,8 @@ enum GoalEngine {
     /// GitHub issues become goals when they belong to a GitHub milestone or carry the `prodline` label.
     /// A milestone's due date picks the checkpoint; without one, the Nth milestone maps to the Nth checkpoint.
     static func syncGitHub(_ snap: GitHubSnapshot, project: Project, context: ModelContext) {
+        // A draft has no checkpoints yet; its repo syncs in once it starts.
+        guard !project.isDraft else { return }
         if let plan = snap.planFile {
             // prodline.json is the plan: its checkpoints and goals, nothing else.
             project.followsPlanFile = true
@@ -267,10 +269,10 @@ enum GoalEngine {
         return (last.value(key) - first.value(key)) / max(days, 1)
     }
 
-    /// During the observe phase the traction review gets data-driven targets (once).
+    /// In a stage that ends with the call, its last checkpoint (the traction review) gets data-driven targets (once).
     static func ensureTractionTargets(project: Project, refresher: DataRefresher, context: ModelContext, now: Date = .now) {
-        guard !project.followsPlanFile, project.phase(on: now) == .observing,
-              let review = project.sortedMilestones.last, !review.isDone,
+        guard !project.followsPlanFile, let span = project.currentSpan(on: now), span.stage.decides,
+              let review = project.milestones(in: span.stage).last, !review.isDone,
               !(review.goals ?? []).contains(where: { $0.source == .metric }) else { return }
         let daysLeft = Date.days(from: now, to: review.dueDate)
         var order = 100
@@ -380,6 +382,7 @@ enum GoalEngine {
     /// Everything that should happen after new data arrived.
     static func afterRefresh(projects: [Project], profile: Profile, refresher: DataRefresher,
                              celebration: CelebrationCenter?, context: ModelContext, now: Date = .now) {
+        StageEngine.tidy(projects, profile: profile, now: now)
         for p in projects where p.isActive {
             ensureTractionTargets(project: p, refresher: refresher, context: context, now: now)
             evaluateMetricGoals(project: p, refresher: refresher, now: now)

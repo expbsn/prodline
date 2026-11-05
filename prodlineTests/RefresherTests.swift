@@ -107,6 +107,8 @@ struct RefresherTests {
         let ctx = try makeContext()
         let upcoming = Project(name: "U", accentHex: 0, startDate: Date.now.adding(days: 5), buildDays: 14, observeDays: 28)
         let finished = Project(name: "F", accentHex: 0, startDate: Date.now.adding(days: -100), buildDays: 14, observeDays: 28)
+        finished.verdictRaw = Verdict.kill.rawValue   // closed: no more numbers to fetch
+        finished.verdictAt = Date.now.adding(days: -50)
         let active = Project(name: "A", accentHex: 0, startDate: Date.now.adding(days: -20), buildDays: 14, observeDays: 28)
         [upcoming, finished, active].forEach(ctx.insert)
         let client = FakeClient { _ in payload(asOf: self.now, visits: 1) }

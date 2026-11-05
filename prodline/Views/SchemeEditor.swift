@@ -2,23 +2,34 @@ import SwiftUI
 import SwiftData
 import UserNotifications
 
-/// The user's custom building scheme (phase lengths, cadence, checkpoint weekdays).
+/// The user's building scheme: the stages new projects start with, the cadence, checkpoint weekdays.
 struct SchemeEditor: View {
     @Bindable var profile: Profile
 
     private let days: [(Int, String)] = [(2, "Mo"), (3, "Tu"), (4, "We"), (5, "Th"), (6, "Fr"), (7, "Sa"), (1, "Su")]
 
+    private var template: Binding<[Stage]> {
+        Binding(get: { profile.stageTemplate }, set: { profile.stageTemplate = $0 })
+    }
+    private var total: Int { profile.stageTemplate.map(\.days).reduce(0, +) }
+    /// Days of work before the first stage that ends with a decision (drawn dark in the preview).
+    private var working: Int {
+        let t = profile.stageTemplate
+        return t.prefix(t.firstIndex(where: \.decides) ?? t.count).map(\.days).reduce(0, +)
+    }
+
     private var overlap: Int {
-        Int((Double(profile.buildDays + profile.observeDays) / Double(max(profile.newProjectEveryDays, 1))).rounded(.up))
+        Int((Double(total) / Double(max(profile.newProjectEveryDays, 1))).rounded(.up))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            row("Build phase", profile.buildDays.durationText) {
-                ChunkySlider(value: $profile.buildDays, range: 3...42)
-            }
-            row("Observe phase", profile.observeDays.durationText) {
-                ChunkySlider(value: $profile.observeDays, range: 7...90)
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Stages").font(.ui(16, .semibold)).foregroundStyle(Theme.ink)
+                Text("What a new project starts with. Every project can change its own in the create flow.")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                StageListEditor(stages: template)
             }
             row("New project every", profile.newProjectEveryDays.durationText) {
                 ChunkySlider(value: $profile.newProjectEveryDays, range: 3...42)
@@ -32,8 +43,8 @@ struct SchemeEditor: View {
                     }
                 }
             }
-            SchemePreview(build: profile.buildDays, observe: profile.observeDays, every: profile.newProjectEveryDays)
-            Text("A new project every \(profile.newProjectEveryDays.durationText): \(profile.buildDays.durationText) building, then \(profile.observeDays.durationText) watching traction. About \(overlap) project\(overlap == 1 ? "" : "s") run at once.")
+            SchemePreview(build: max(1, working), observe: max(0, total - working), every: profile.newProjectEveryDays)
+            Text("A new project every \(profile.newProjectEveryDays.durationText), each \(total.durationText) from first stage to last. About \(overlap) project\(overlap == 1 ? "" : "s") run at once.")
                 .font(.ui(14)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -288,7 +299,7 @@ struct MeView: View {
                     }
                 }
             }
-            optionRow("Builds at once", "Projects in the build phase at the same time. Past the limit, new ideas go to the idea inbox.") {
+            optionRow("Projects at once", "Running or scheduled at the same time; drafts don't count. Past the limit, new ideas go to the idea inbox.") {
                 HStack(spacing: 6) {
                     ForEach(ProjectLimit.choices, id: \.self) { v in
                         Chip(title: ProjectLimit.label(v), isOn: profile.buildLimit == v) {
@@ -586,7 +597,7 @@ struct OnboardingView: View {
                     ForEach(Array(specs.enumerated()), id: \.offset) { i, spec in
                         ProjectCardFace(name: spec.name, initial: String(spec.name.prefix(1)), accent: Accent(hex: spec.accent),
                                         cover: spec.cover, cornerLabel: ["Day", "Visits", "Day"][i],
-                                        cornerValue: ["9", "5.3K", "2"][i], footnote: ["Building · 5d left", "Observing · day 10", "Building · 12d left"][i])
+                                        cornerValue: ["9", "5.3K", "2"][i], footnote: ["Build · 5d left", "Observe · 18d left", "Build · 12d left"][i])
                             .frame(width: 230)
                             .cardFloorShadow(width: 230)
                             .rotationEffect(.degrees([-11, 0, 11][i]))
@@ -699,7 +710,7 @@ struct OnboardingView: View {
         case 1:
             CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
                             accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                            footnote: "Building · \(profile.buildDays)d")
+                            footnote: "\(profile.stageTemplate.first?.name ?? "Build") · \(profile.stageTemplate.first?.days ?? 14)d")
                 .frame(width: 300)
                 .environment(\.accent, Accent(hex: accentHex))
         case 2:
@@ -866,7 +877,7 @@ struct OnboardingView: View {
             if !wide {
                 CardCoverEditor(name: trimmedName.isEmpty ? "Your project" : trimmedName, imageData: $imageData,
                                 accentHex: $accentHex, photoHex: $photoHex, lockedToPhoto: $lockedToPhoto,
-                                footnote: "Building · \(profile.buildDays)d")
+                                footnote: "\(profile.stageTemplate.first?.name ?? "Build") · \(profile.stageTemplate.first?.days ?? 14)d")
                     .frame(width: 210)
                     .frame(maxWidth: .infinity)
             }
@@ -896,7 +907,7 @@ struct OnboardingView: View {
                             Text(VerdictEngine.title(key).lowercased()).font(.ui(15, .semibold)).foregroundStyle(Theme.secondary)
                         }
                     }
-                    Text("Counted over the observe phase. Change it per project anytime.")
+                    Text("Checked when a stage ends with the call. Change it per project anytime.")
                         .font(.ui(14)).foregroundStyle(Theme.secondary)
                 }
                 .environment(\.accent, Accent(hex: f.hex))
@@ -1094,14 +1105,15 @@ struct OnboardingView: View {
             p.name = trimmedName
             p.accentHex = accentHex
             p.startDate = .now.startOfDay
-            p.buildDays = profile.buildDays
-            p.observeDays = profile.observeDays
+            p.stages = profile.newStages
+            p.plannedCheckpoints = []
             p.coverImage = imageData
             p.criteria = profile.defaultCriteria
             ScheduleEngine.createProject(p, profile: profile, context: context)
             try? context.save()
             if !p.integrations.isEmpty { Task { await refresher.refresh(projects: [p], context: context, force: true) } }
-            celebration.fire(title: "\(p.name) is live", subtitle: "Build phase: \(profile.buildDays.durationText). Let's ship.", accent: p.accent)
+            let first = p.stages.first.map { "First up: \($0.name), \($0.days.durationText)." } ?? ""
+            celebration.fire(title: "\(p.name) is live", subtitle: first, accent: p.accent)
         } else {
             try? context.save()
             celebration.fire(title: "You're set", subtitle: "Create your first project to begin.")

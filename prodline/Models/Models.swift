@@ -21,8 +21,11 @@ final class Profile {
     var completedLate: Int = 0
 
     // Custom building scheme
+    /// Legacy defaults; the stage template below replaces them (and starts from them).
     var buildDays: Int = 14
     var observeDays: Int = 28
+    /// The stages a new project starts with ([Stage] as JSON). nil: Build and Observe from the lengths above.
+    var stageTemplateData: Data? = nil
     var newProjectEveryDays: Int = 14
     /// Bit (weekday - 1) set => checkpoint on that weekday (Calendar weekday, Sunday = 1).
     var milestoneWeekdayMask: Int = 34 // Mon + Fri
@@ -32,7 +35,7 @@ final class Profile {
     /// WorkStyle raw value; empty until picked.
     var workStyleRaw: String = ""
     var remindersEnabled: Bool = true
-    /// Projects allowed in the build phase at once (upcoming ones count too); 0 = no limit.
+    /// Projects allowed to run at once (scheduled ones count too, drafts don't); 0 = no limit.
     var buildLimit: Int = 2
     /// What counts as a win (SuccessFocus raw value) and the target for it; new projects start with it.
     var successFocusRaw: String = ""
@@ -61,8 +64,15 @@ final class Project {
     /// Square JPEG cover. Its dominant color usually becomes the accent.
     @Attribute(.externalStorage) var coverImage: Data? = nil
     var startDate: Date = Date.now.startOfDay
+    /// Legacy build and observe lengths: what projects made before stages convert from (see `stages`).
     var buildDays: Int = 14
     var observeDays: Int = 28
+    /// The plan's stages ([Stage] as JSON), in order. nil until converted from the legacy lengths.
+    var stagesData: Data? = nil
+    /// Saved from the create flow without a start date: no deadlines, reminders or slot taken until started.
+    var isDraft: Bool = false
+    /// A draft's checkpoints ([PlannedCheckpoint] as JSON); they become real ones when it starts.
+    var draftPlanData: Data? = nil
     /// Metrics endpoint. Empty => sample data. The API key lives in the Keychain.
     var endpoint: String = ""
     /// Linked GitHub repository as "owner/name". An optional token lives in the Keychain.
@@ -72,9 +82,9 @@ final class Project {
     var followsPlanFile: Bool = false
     /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
     var commitDaysData: Data? = nil
-    /// What success looks like (1–3 targets), judged when the observe phase ends.
+    /// What success looks like (1–3 targets), judged when a stage that ends with the call is over.
     var criteriaData: Data? = nil
-    /// "keep", "pivot" or "kill" once decided; a keep extends the observe phase and asks again at its end.
+    /// "keep", "pivot" or "kill" once decided; a keep moves on to the next stage, or extends the last one and asks again.
     var verdictRaw: String = ""
     var verdictAt: Date? = nil
     /// What changes (pivot) or what was learned (kill).
@@ -119,48 +129,6 @@ final class Project {
         set { commitDaysData = try? JSONEncoder().encode(newValue) }
     }
 
-    var buildEnd: Date { startDate.adding(days: buildDays) }
-    var observeEnd: Date { buildEnd.adding(days: observeDays) }
-    var launchDay: Date { buildEnd.adding(days: -1) }
-
-    func phase(on date: Date = .now) -> Phase {
-        let d = date.startOfDay
-        if d < startDate { return .upcoming }
-        if d < buildEnd { return .building }
-        if d < observeEnd { return .observing }
-        return .finished
-    }
-
-    var isActive: Bool { phase() == .building || phase() == .observing }
-
-    /// 1-based day within the current phase.
-    var dayInPhase: Int {
-        switch phase() {
-        case .upcoming: 0
-        case .building: Date.days(from: startDate, to: .now) + 1
-        case .observing: Date.days(from: buildEnd, to: .now) + 1
-        case .finished: observeDays
-        }
-    }
-
-    var phaseLength: Int { phase() == .observing ? observeDays : buildDays }
-
-    /// 0...1 across build + observe.
-    var overallProgress: Double {
-        let total = Double(buildDays + observeDays)
-        let done = Double(Date.days(from: startDate, to: .now))
-        return min(max(done / total, 0), 1)
-    }
-
-    var daysLeftInPhase: Int {
-        switch phase() {
-        case .upcoming: Date.days(from: .now, to: startDate)
-        case .building: Date.days(from: .now, to: buildEnd)
-        case .observing: Date.days(from: .now, to: observeEnd)
-        case .finished: 0
-        }
-    }
-
     var sortedMilestones: [Milestone] { (milestones ?? []).sorted { $0.dueDate < $1.dueDate } }
     var nextMilestone: Milestone? { sortedMilestones.first { !$0.isDone } }
     var sortedSnapshots: [MetricSnapshot] { (snapshots ?? []).sorted { $0.date < $1.date } }
@@ -188,6 +156,10 @@ final class Milestone {
     /// XP paid when it was completed, and whether it counted as on time; undoing gives exactly this back.
     var xpEarned: Int = 0
     var countedOnTime: Bool = false
+    /// The stage it belongs to (Stage.id); empty until assigned (by date).
+    var stageID: String = ""
+    /// Days after its stage starts, so it moves along when earlier stages run over or finish early. -1: unset.
+    var stageDay: Int = -1
     var project: Project? = nil
     @Relationship(deleteRule: .cascade, inverse: \Goal.milestone)
     var goals: [Goal]? = []

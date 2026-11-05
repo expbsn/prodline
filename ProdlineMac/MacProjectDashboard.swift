@@ -20,6 +20,7 @@ struct MacProjectDashboard: View {
     @State private var showConnection = false
     @State private var showCriteria = false
     @State private var showVerdict = false
+    @State private var confirmFinish = false
     @State private var checkpointSheet: Milestone??
     @State private var editingIntegration: Integration?
     @State private var pickingIntegration = false
@@ -34,7 +35,6 @@ struct MacProjectDashboard: View {
         MacScroll {
             VStack(alignment: .leading, spacing: 26) {
                 header
-                if ScheduleEngine.canShip(project) { shipBanner }
                 if wide { wideTop } else { narrowTop }
                 MacCheckpointList(project: project, onEdit: { checkpointSheet = .some($0) }, onAdd: { checkpointSheet = .some(nil) })
             }
@@ -50,6 +50,25 @@ struct MacProjectDashboard: View {
                     .backgroundExtensionEffect()
                     .allowsHitTesting(false)
             }
+        }
+        // Moving on stays at hand at the bottom of the window.
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            StageBar(project: project, onFinish: { confirmFinish = true }, onDecide: { showVerdict = true })
+                .environment(\.wideLayout, true)
+        }
+        .confirmationDialog("Finish \(project.currentStage?.name ?? "this stage")?", isPresented: $confirmFinish,
+                            titleVisibility: .visible) {
+            Button("Finish \(project.currentStage?.name ?? "stage")") {
+                guard let profile = profiles.first else { return }
+                withAnimation(.snappy) {
+                    StageEngine.finishStageNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(project.currentSpan().flatMap { project.stages[safe: $0.index + 1] }
+                 .map { "\($0.name) starts today and runs \($0.days.durationText). You can't go back to it." }
+                 ?? "That's the last stage: the project is done.")
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .background(Theme.background.ignoresSafeArea())
@@ -131,14 +150,7 @@ struct MacProjectDashboard: View {
         .fixedSize()
     }
 
-    private var phaseLine: String {
-        switch project.phase() {
-        case .upcoming: "Starts \(project.startDate.shortDay)"
-        case .building: "Building · day \(project.dayInPhase) of \(project.buildDays)"
-        case .observing: "Observing · day \(project.dayInPhase) of \(project.observeDays)"
-        case .finished: project.verdict.map { $0.pastTense } ?? "Finished · decide"
-        }
-    }
+    private var phaseLine: String { project.stageDayText }
 
     // MARK: Layouts
 
@@ -226,38 +238,17 @@ struct MacProjectDashboard: View {
     }
 
     private var timelineCard: some View {
-        let total = Double(project.buildDays + project.observeDays)
-        let buildFrac = Double(project.buildDays) / total
+        let spans = project.spans()
+        let total = spans.map(\.length).reduce(0, +)
         return VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Timeline").cardTitle(17).foregroundStyle(Theme.ink)
+                Text("Stages").cardTitle(17).foregroundStyle(Theme.ink)
                 Spacer(minLength: 6)
-                Text("Day \(min(max(Date.days(from: project.startDate, to: .now) + 1, 0), Int(total))) of \(Int(total))")
+                Text("Day \(min(max(Date.days(from: project.startDate, to: .now) + 1, 0), total)) of \(total)")
                     .eyebrow(size: 10).lineLimit(1)
             }
-            GeometryReader { geo in
-                let w = geo.size.width
-                ZStack(alignment: .leading) {
-                    HStack(spacing: 3) {
-                        Capsule().fill(accent.base).frame(width: max(w * buildFrac - 1.5, 0))
-                        Capsule().fill(accent.base.opacity(0.3))
-                    }
-                    .frame(height: 10)
-                    if project.phase() == .building || project.phase() == .observing {
-                        RoundedRectangle(cornerRadius: 2).fill(Theme.ink).frame(width: 4, height: 22)
-                            .offset(x: max(0, min(w - 4, w * project.overallProgress - 2)))
-                    }
-                }
-                .frame(height: 22)
-            }
-            .frame(height: 22)
-            HStack {
-                dateLabel("Start", project.startDate)
-                Spacer(minLength: 4)
-                dateLabel("Launch", project.launchDay)
-                Spacer(minLength: 4)
-                dateLabel("End", project.observeEnd.adding(days: -1))
-            }
+            StageTimelineBar(spans: spans, height: 12)
+            StageLegend(spans: spans)
         }
         .card(padding: 16, radius: 22)
     }
@@ -401,27 +392,6 @@ struct MacProjectDashboard: View {
         default:
             Text(project.hasDataSource ? "Connecting" : "Sample data").eyebrow(size: 10)
         }
-    }
-
-    private var shipBanner: some View {
-        let early = Date.days(from: .now, to: project.launchDay)
-        return HStack(spacing: 16) {
-            Image(systemName: "paperplane.fill").font(.system(size: 20, weight: .bold)).foregroundStyle(accent.on)
-                .frame(width: 46, height: 46).background(Circle().fill(accent.base))
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Ready to ship").cardTitle(21).foregroundStyle(Theme.ink)
-                Text(early > 0 ? "Every goal is done. Ship today and you're \(early) day\(early == 1 ? "" : "s") early."
-                               : "Every goal is done, and it's launch day.")
-                    .font(.ui(14)).foregroundStyle(Theme.secondary).lineLimit(1).minimumScaleFactor(0.85)
-            }
-            Spacer(minLength: 12)
-            Button("Let's ship") {
-                guard let profile = profiles.first else { return }
-                ScheduleEngine.shipNow(project, profile: profile, projects: allProjects, celebration: celebration, context: context)
-            }
-            .buttonStyle(.chunky(.accent, height: 46, fullWidth: false))
-        }
-        .card(padding: 18, radius: 24)
     }
 
     private func undoVerdict() {
