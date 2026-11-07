@@ -1,7 +1,7 @@
 # Landing page
 
 Static page (no build step, no dependencies): `index.html`, `style.css`, `main.js`, the Afacad Flux font
-subset to Latin as `fonts/AfacadFlux.woff2` (SIL Open Font License), and `mark.svg` / `mark-light.svg`.
+subset to Latin and pinned upright (slant axis removed) as `fonts/Afacad-upright.woff2` (SIL Open Font License), and `mark.svg` / `mark-light.svg`.
 
 Dark and greyscale; the color comes from the header photo and the real app screens in `shots/` (simulator, `-PRODLINE_DEMO YES`,
 status bar set to 9:41 with `xcrun simctl status_bar`). Sections

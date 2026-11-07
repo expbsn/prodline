@@ -1,7 +1,8 @@
 @font-face {
   font-family: "Afacad";
-  src: url("fonts/AfacadFlux.woff2") format("woff2");
+  src: url("fonts/Afacad-upright.woff2") format("woff2");
   font-weight: 100 1000;
+  font-style: normal;
   font-display: swap;
 }
 
@@ -32,6 +33,7 @@ body {
   color: var(--text);
   font-family: var(--ui);
   -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
   overflow-x: clip;
 }
 a { color: inherit; }
