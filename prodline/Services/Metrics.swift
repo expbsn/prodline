@@ -82,6 +82,8 @@ nonisolated struct MetricsPayload: Codable, Sendable, Equatable {
         var due: Date?
         /// Like `due`, but counted from the project's start (day 1 = start date), so it follows schedule changes.
         var day: Int? = nil
+        /// A stage's id or name: `day` then counts from that stage's first day (its last day without one).
+        var stage: String? = nil
         var done: Bool?
         var url: String?
         /// Completes automatically once the metric reaches the target.

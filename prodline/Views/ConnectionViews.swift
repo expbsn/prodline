@@ -487,17 +487,24 @@ struct GoalsGuideView: View {
     static let planFileExample = """
     {
       "version": 1,
+      "stages": [
+        { "id": "build", "name": "Build", "days": 14 },
+        { "id": "beta", "name": "Beta", "days": 7 },
+        { "id": "observe", "name": "Observe", "days": 21,
+          "decides": true }
+      ],
       "checkpoints": [
-        { "day": 3, "title": "Accounts" },
-        { "day": 7, "title": "Payments" }
+        { "stage": "build", "day": 5, "title": "Accounts" },
+        { "stage": "build", "title": "Ship it" },
+        { "stage": "beta", "day": 3, "title": "TestFlight" }
       ],
       "goals": [
         { "id": "auth", "title": "Sign in with Apple",
-          "day": 2, "done": true },
+          "stage": "build", "day": 2, "done": true },
         { "id": "paywall", "title": "Paywall live",
-          "day": 6 },
-        { "id": "launch-post", "title": "Launch post drafted",
-          "day": 12 }
+          "stage": "build", "day": 10 },
+        { "id": "beta-invites", "title": "Invite 20 testers",
+          "stage": "beta", "day": 3 }
       ]
     }
     """
@@ -506,8 +513,9 @@ struct GoalsGuideView: View {
     static let agentInstructions = """
     Keep a prodline.json file in the repository root. It is this project's plan in the Prodline app: the app shows exactly its checkpoints and goals, nothing else, and ticks goals off as they change here.
 
-    Format: {"version": 1, "checkpoints": [{"day": 3, "title": "Accounts"}], "goals": [{"id": "...", "title": "...", "day": 2, "done": false}]}
-    - "day" counts from the project's start in the app (day 1 = start date), so the plan moves along when the schedule changes. A goal lands on the first checkpoint on or after its day.
+    Format: {"version": 1, "stages": [{"id": "build", "name": "Build", "days": 14}, {"id": "observe", "name": "Observe", "days": 21, "decides": true}], "checkpoints": [{"stage": "build", "day": 3, "title": "Accounts"}], "goals": [{"id": "...", "title": "...", "stage": "build", "day": 2, "done": false}]}
+    - "stages" (optional) replace the project's stages in the app: name, planned length in days, and "decides": true for a stage that ends with the keep/pivot/kill call. Keep stage ids stable. Moving on to the next stage is confirmed in the app; never mark stages done here.
+    - "stage" + "day" places a checkpoint or goal on that day of the stage (day 1 = the stage's first day), so it moves with the stage when an earlier one runs over. A checkpoint with a stage and no day sits on the stage's last day. "day" without a stage counts from the project's start. A goal lands on the first checkpoint on or after its day.
     - 1–4 goals per checkpoint. Titles are short, concrete and start with a verb ("Add Stripe checkout"), never vague activities.
     - Keep ids stable and lowercase-with-dashes. Never reuse an id for a different goal.
     - When you finish the work for a goal, set "done": true in the same commit. Never delete goals that are done.
@@ -558,7 +566,7 @@ struct GoalsGuideView: View {
             .padding(.leading, 34)
 
             item("doc.text", "From prodline.json in your repo",
-                 "Link the repo and add a `prodline.json` file at its root with the same goals list. Prodline reads it every 10 minutes. It's the easiest way to let Claude Code (or any coding agent) plan your checkpoints and tick goals off as it ships them.")
+                 "Link the repo and add a `prodline.json` file at its root with the same goals list, and optionally the project's `stages`. Place checkpoints and goals by `stage` and `day`, so they move with their stage. Prodline reads it every 10 minutes. It's the easiest way to let Claude Code (or any coding agent) plan your project and tick goals off as it ships them.")
             VStack(alignment: .leading, spacing: 8) {
                 ScrollView(.horizontal, showsIndicators: false) {
                     Text(Self.planFileExample)

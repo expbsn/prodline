@@ -9,9 +9,10 @@ SwiftUI iOS app (iOS 26, SwiftData + CloudKit) that tracks side projects: metric
 - When a change completes a goal, set `"done": true` **in the same commit** as the work. Never delete goals that are done.
 - If you do meaningful work that no goal covers, add a goal for it (and mark it done if it's finished).
 - Keep `id`s stable, lowercase-with-dashes; never reuse an id for a different goal. Change a goal's title or `due` rather than adding a near-duplicate.
-- Place checkpoints and goals with `"day": N`, counted from the project's start in the app (day 1 = Oct 5, 2026 for Prodline). A goal lands on the first checkpoint on or after its day. Keep the file sorted by day.
+- Place checkpoints and goals with `"stage": "<id>", "day": N`, counted from that stage's first day (day 1), so they move with the stage when an earlier one runs over. A goal lands on the first checkpoint on or after its day. Keep the file sorted by stage, then day. (Prodline's stages: Build, Beta, Launch, Observe. Launch started Oct 30, 2026 as planned; check the app for where it really is.)
 - 1–4 goals per checkpoint. Titles are short, concrete and start with a verb ("Add Stripe checkout"), never vague activities.
-- `"checkpoints": [{"day": N, "title": "..."}]` are the project's checkpoints in the app, exactly these. Add one when a new phase of work starts.
+- `"stages": [{"id": "build", "name": "Build", "days": 30}, ...]` are the project's stages in the app (`"decides": true` = ends with the keep/pivot/kill call). Keep stage ids stable; never mark a stage done here, moving on is confirmed in the app.
+- `"checkpoints": [{"stage": "build", "day": N, "title": "..."}]` are the project's checkpoints in the app, exactly these. With `"stage"`, `day` counts from that stage's first day (no day = its last day); without it, from the project's start. Add one when a new phase of work starts.
 - Optional `"metric": {"key": "signups", "target": 500}` for goals reached by a number rather than code.
 - The file must stay valid JSON. Check with `python3 -m json.tool prodline.json > /dev/null`.
 

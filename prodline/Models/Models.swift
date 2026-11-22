@@ -80,6 +80,8 @@ final class Project {
     var lastCommitAt: Date? = nil
     /// The linked repo has a prodline.json: checkpoints and goals mirror the file exactly, nothing else.
     var followsPlanFile: Bool = false
+    /// That prodline.json lists stages: they replace the project's own and aren't edited in the app.
+    var stagesFromFile: Bool = false
     /// Commits per local day ("yyyy-MM-dd" → count) since the start date, from the linked repo.
     var commitDaysData: Data? = nil
     /// What success looks like (1–3 targets), judged when a stage that ends with the call is over.

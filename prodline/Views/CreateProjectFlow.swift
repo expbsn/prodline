@@ -26,6 +26,10 @@ struct CreateProjectFlow: View {
     @State private var accentHex = Theme.swatches[0]
     @State private var startDate = Date.now.startOfDay
     @State private var stages: [Stage] = []
+    /// The linked repo's prodline.json lists stages: they're the plan, not edited here.
+    @State private var stagesFromRepo = false
+    /// The new project's id, known up front so stages from prodline.json get the ids they'll keep.
+    @State private var projectID = UUID()
     /// The checkpoints as planned, per stage.
     @State private var plan: [PlannedCheckpoint] = []
     /// The stages the plan was last laid out for (ids and lengths), to fit it again when they change.
@@ -210,6 +214,10 @@ struct CreateProjectFlow: View {
             Button("Continue", action: next)
                 .buttonStyle(.chunky)
                 .disabled(!canContinue)
+            if step == 2 && !stagesFromRepo {
+                Button("Skip, use my default stages", action: skipStages)
+                    .buttonStyle(.chunky(.neutral, height: 50))
+            }
             if step == 3 && endpoint.isEmpty {
                 BarFootnote("No endpoint yet? You'll see sample data until you connect.")
             }
@@ -327,7 +335,13 @@ struct CreateProjectFlow: View {
                     .labelsHidden().tint(accent.base)
             }
             .card(padding: 16, radius: 22)
-            StageListEditor(stages: $stages, start: startDate)
+            if stagesFromRepo {
+                infoCard(symbol: "doc.text", title: "Stages from prodline.json",
+                         text: "\(GitHubRepoRef(repo)?.slug ?? "Your repo") lists its stages, so they come from the file and stay in sync with it. Change them there.")
+                StageLegend(spans: Project.previewSpans(stages, start: startDate), checkpoints: [:]).card()
+            } else {
+                StageListEditor(stages: $stages, start: startDate)
+            }
             if !stages.isEmpty {
                 StageTimelineBar(spans: Project.previewSpans(stages, start: startDate), today: startDate.adding(days: -1))
                     .padding(.horizontal, 4)
@@ -590,7 +604,6 @@ struct CreateProjectFlow: View {
     /// Repo first (prodline.json, then issues), suggestions only where the repo leaves a checkpoint empty.
     private func draft(force: Bool) async {
         fitPlan()
-        let ms = deadlines
         if !force && repoPreview != nil { return }
         // Keep what the user typed; only replace earlier suggestions.
         for k in plan.indices { plan[k].goals.removeAll { $0.sourceRaw == GoalSource.ai.rawValue } }
@@ -603,11 +616,14 @@ struct CreateProjectFlow: View {
                 loadingRepo = false
                 if let snap { repoCheck = .ok(snap) }
             }
-            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: ms.map(\.date), start: startDate) }
+            if let snap { useRepoStages(snap.planFile) }
+            if let snap { repoPreview = GoalEngine.repoPreview(snap, dues: deadlines.map(\.date), start: startDate, stages: stages, seed: projectID) }
             else { draftNote = "Couldn't read the repo right now. Its goals will sync in once the project is created." }
         } else {
+            useRepoStages(nil)
             repoPreview = nil
         }
+        let ms = deadlines
 
         guard GoalPlanner.isEnabled, !repoHasPlan else { return }
         let empty = Set(ms.indices.filter { (repoPreview?.goals[safe: $0] ?? []).isEmpty && ms[$0].checkpoint.goals.isEmpty })
@@ -632,7 +648,30 @@ struct CreateProjectFlow: View {
         }
     }
 
+    /// A prodline.json with stages sets the stages and checkpoints; without one, back to the template.
+    private func useRepoStages(_ file: GitHubSnapshot.PlanFile?) {
+        if let file, let fileStages = file.stages, !fileStages.isEmpty {
+            stages = PlanStages.merge(fileStages, seed: projectID, current: [])
+            plan = StageEngine.numbered(PlanStages.plannedCheckpoints(file, stages: stages, start: startDate, seed: projectID), stages: stages)
+            planFor = stages
+            stagesFromRepo = true
+        } else if stagesFromRepo {
+            stagesFromRepo = false
+            stages = profile.newStages
+            fitPlan()
+        }
+    }
+
     // MARK: Actions
+
+    /// The default stages from Me, straight on to connecting.
+    private func skipStages() {
+        Haptics.soft()
+        stages = profile.newStages
+        fitPlan()
+        focus = nil
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.85)) { step += 1 }
+    }
 
     private func next() {
         guard canContinue else { return }
@@ -657,6 +696,7 @@ struct CreateProjectFlow: View {
         apiKey = Keychain.get(p.id.uuidString) ?? ""
         repo = p.githubRepo
         token = Keychain.get("gh-" + p.id.uuidString) ?? ""
+        projectID = p.id
         stages = p.stages
         plan = p.plannedCheckpoints
         planFor = stages
@@ -669,6 +709,7 @@ struct CreateProjectFlow: View {
         fitPlan()
         let p = editing ?? Project(name: trimmedName, accentHex: accentHex, startDate: startDate,
                                  buildDays: profile.buildDays, observeDays: profile.observeDays)
+        if editing == nil { p.id = projectID }
         p.name = trimmedName
         p.accentHex = accentHex
         p.startDate = startDate.startOfDay

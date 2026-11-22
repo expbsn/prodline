@@ -56,10 +56,25 @@ nonisolated struct GitHubSnapshot: Sendable, Equatable {
             var title: String
             var checkpoint: Int?
             var due: Date?
-            /// Day of the project (day 1 = start date). Preferred over `due`: it moves with the schedule.
+            /// Day of the project (day 1 = start date), or of `stage` when it names one. Preferred over `due`:
+            /// it moves with the schedule.
             var day: Int? = nil
+            /// A stage's `id` (or name): `day` then counts from that stage's first day, and without a day
+            /// the checkpoint sits on the stage's last day.
+            var stage: String? = nil
+        }
+        /// One stage of the plan. Finishing it stays a confirmation in the app; the file never marks it done.
+        struct FileStage: Codable, Sendable, Equatable {
+            /// What checkpoints and goals refer to it by; defaults to the name.
+            var id: String? = nil
+            var name: String
+            var days: Int
+            /// Ends with the keep, pivot or kill call.
+            var decides: Bool? = nil
         }
         var version: Int?
+        /// Replace the project's stages when present.
+        var stages: [FileStage]? = nil
         var checkpoints: [Checkpoint]? = nil
         var goals: [MetricsPayload.RemoteGoal]
     }

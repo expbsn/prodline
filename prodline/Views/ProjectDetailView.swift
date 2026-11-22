@@ -994,6 +994,12 @@ struct EditProjectSheet: View {
                 }
             }
             .card(padding: 16, radius: 22)
+            if project.stagesFromFile {
+                StageLegend(spans: project.spans()).card()
+                Text("These stages come from prodline.json in \(project.githubRepo). Change them in the file; finishing a stage still happens here.")
+                    .font(.ui(13)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
             StageListEditor(stages: $stages, start: canMoveStart ? startDate : project.startDate,
                             spans: canMoveStart ? [] : project.spans())
             Text(scheduleChanged
@@ -1001,6 +1007,7 @@ struct EditProjectSheet: View {
                  : "Finished stages stay as they were. Change what's ahead, or add a stage.")
                 .font(.ui(13)).foregroundStyle(Theme.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 }
