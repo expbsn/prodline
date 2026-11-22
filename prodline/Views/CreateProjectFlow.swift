@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Six short steps: basics → look (card + color) → stages → connections → checkpoints → overview, which
+/// Six short steps: basics → look (card + color) → connections → stages → checkpoints → overview, which
 /// starts the project or saves it as a draft (no start date). A draft opens here again, on the overview.
 struct CreateProjectFlow: View {
     let profile: Profile
@@ -28,6 +28,8 @@ struct CreateProjectFlow: View {
     @State private var stages: [Stage] = []
     /// The linked repo's prodline.json lists stages: they're the plan, not edited here.
     @State private var stagesFromRepo = false
+    /// Reading the linked repo's prodline.json for its stages.
+    @State private var readingRepo = false
     /// The new project's id, known up front so stages from prodline.json get the ids they'll keep.
     @State private var projectID = UUID()
     /// The checkpoints as planned, per stage.
@@ -59,6 +61,8 @@ struct CreateProjectFlow: View {
         .environment(\.accent, accent)
         .presentationDragIndicator(.hidden)
         .interactiveDismissDisabled(!trimmedName.isEmpty)
+        // Another repo: read it again for the checkpoints.
+        .onChange(of: repo) { repoPreview = nil }
         .onAppear {
             stages = profile.newStages
             startDate = max(ScheduleEngine.nextProjectDate(projects: projects, profile: profile), .now.startOfDay)
@@ -118,8 +122,8 @@ struct CreateProjectFlow: View {
                         switch step {
                         case 0: basicsStep
                         case 1: lookStep
-                        case 2: stagesStep
-                        case 3: connectStep
+                        case 2: connectStep
+                        case 3: stagesStep
                         case 4: goalsStep
                         default: overviewStep
                         }
@@ -144,8 +148,8 @@ struct CreateProjectFlow: View {
                     switch step {
                     case 0: basicsStep
                     case 1: lookStep
-                    case 2: stagesStep
-                    case 3: connectStep
+                    case 2: connectStep
+                    case 3: stagesStep
                     case 4: goalsStep
                     default: overviewStep
                     }
@@ -214,11 +218,11 @@ struct CreateProjectFlow: View {
             Button("Continue", action: next)
                 .buttonStyle(.chunky)
                 .disabled(!canContinue)
-            if step == 2 && !stagesFromRepo {
+            if step == 3 && !stagesFromRepo && !readingRepo {
                 Button("Skip, use my default stages", action: skipStages)
                     .buttonStyle(.chunky(.neutral, height: 50))
             }
-            if step == 3 && endpoint.isEmpty {
+            if step == 2 && endpoint.isEmpty {
                 BarFootnote("No endpoint yet? You'll see sample data until you connect.")
             }
         }
@@ -227,7 +231,7 @@ struct CreateProjectFlow: View {
     private var canContinue: Bool {
         switch step {
         case 0: !trimmedName.isEmpty
-        case 2: !stages.isEmpty && stages.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
+        case 3: !readingRepo && !stages.isEmpty && stages.allSatisfy { !$0.name.trimmingCharacters(in: .whitespaces).isEmpty }
         default: true
         }
     }
@@ -324,10 +328,12 @@ struct CreateProjectFlow: View {
 
     private var stagesStep: some View {
         VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 3 of 6", "Plan the stages")
-            Text("Split the project into stretches, as broad or as fine as you like: a build and a launch, or research, prototype, beta, launch week. You move on to the next stage once everything in this one is done.")
-                .font(.ui(14)).foregroundStyle(Theme.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            stepTitle("Step 4 of 6", "Plan the stages")
+            if !stagesFromRepo {
+                Text("Split the project into stretches, as broad or as fine as you like: a build and a launch, or research, prototype, beta, launch week. You move on to the next stage once everything in this one is done.")
+                    .font(.ui(14)).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Text("Starts").font(.ui(17, .semibold)).foregroundStyle(Theme.ink)
                 Spacer()
@@ -335,7 +341,14 @@ struct CreateProjectFlow: View {
                     .labelsHidden().tint(accent.base)
             }
             .card(padding: 16, radius: 22)
-            if stagesFromRepo {
+            if readingRepo {
+                HStack(spacing: 12) {
+                    ProgressView().tint(accent.text)
+                    Text("Reading \(GitHubRepoRef(repo)?.slug ?? "your repo")…")
+                        .font(.ui(15, .medium)).foregroundStyle(Theme.inkSoft)
+                }
+                .card()
+            } else if stagesFromRepo {
                 infoCard(symbol: "doc.text", title: "Stages from prodline.json",
                          text: "\(GitHubRepoRef(repo)?.slug ?? "Your repo") lists its stages, so they come from the file and stay in sync with it. Change them there.")
                 StageLegend(spans: Project.previewSpans(stages, start: startDate), checkpoints: [:]).card()
@@ -350,11 +363,12 @@ struct CreateProjectFlow: View {
                     .padding(.horizontal, 4)
             }
         }
+        .task(id: repo) { await loadRepoStages() }
     }
 
     private var connectStep: some View {
         VStack(alignment: .leading, spacing: 18) {
-            stepTitle("Step 4 of 6", "Connect your project")
+            stepTitle("Step 3 of 6", "Connect your project")
             ConnectionFields(endpoint: $endpoint, apiKey: $apiKey, probe: $probe, repo: repo)
             Divider().padding(.vertical, 6)
             GitHubFields(repo: $repo, token: $token, check: $repoCheck)
@@ -648,10 +662,27 @@ struct CreateProjectFlow: View {
         }
     }
 
+    /// Before the stages step: a linked repo whose prodline.json lists stages decides them.
+    private func loadRepoStages() async {
+        guard let ref = GitHubRepoRef(repo) else { useRepoStages(nil); return }
+        var snap = githubSnapshot
+        if snap == nil {
+            readingRepo = true
+            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
+            readingRepo = false
+            if let snap { repoCheck = .ok(snap) }
+        }
+        // Unreachable right now: keep what's there; the file takes over once the project syncs.
+        if let snap { useRepoStages(snap.planFile) }
+    }
+
     /// A prodline.json with stages sets the stages and checkpoints; without one, back to the template.
     private func useRepoStages(_ file: GitHubSnapshot.PlanFile?) {
         if let file, let fileStages = file.stages, !fileStages.isEmpty {
-            stages = PlanStages.merge(fileStages, seed: projectID, current: [])
+            let fromFile = PlanStages.merge(fileStages, seed: projectID, current: [])
+            // Already laid out from this file: keep any checkpoint edits.
+            if stagesFromRepo && fromFile == stages { return }
+            stages = fromFile
             plan = StageEngine.numbered(PlanStages.plannedCheckpoints(file, stages: stages, start: startDate, seed: projectID), stages: stages)
             planFor = stages
             stagesFromRepo = true
@@ -664,7 +695,7 @@ struct CreateProjectFlow: View {
 
     // MARK: Actions
 
-    /// The default stages from Me, straight on to connecting.
+    /// The default stages from Me, straight on to the checkpoints.
     private func skipStages() {
         Haptics.soft()
         stages = profile.newStages
@@ -676,7 +707,7 @@ struct CreateProjectFlow: View {
     private func next() {
         guard canContinue else { return }
         focus = nil
-        if step == 2 {
+        if step == 3 {
             for i in stages.indices { stages[i].name = stages[i].name.trimmingCharacters(in: .whitespaces) }
             fitPlan()
         }

@@ -86,6 +86,35 @@ GITHUB = {
             ],
         },
     },
+    # Not linked by a demo project: type demo/staged in the create flow to plan from a file with stages.
+    "staged": {
+        "repo": {"description": "A plan with its own stages.", "pushed_at": None},
+        "readme": "# Staged\nA project whose prodline.json lists its stages.\n",
+        "milestones": [],
+        "issues": [],
+        "last_commit_days_ago": 1,
+        "plan": {
+            "version": 1,
+            "stages": [
+                {"id": "build", "name": "Build", "days": 10},
+                {"id": "beta", "name": "Beta", "days": 7},
+                {"id": "launch", "name": "Launch week", "days": 5},
+                {"id": "observe", "name": "Observe", "days": 21, "decides": True},
+            ],
+            "checkpoints": [
+                {"stage": "build", "day": 4, "title": "Core loop"},
+                {"stage": "build", "title": "Feature complete"},
+                {"stage": "beta", "day": 3, "title": "TestFlight out"},
+                {"stage": "launch", "title": "Launch day"},
+                {"stage": "observe", "title": "Traction review"},
+            ],
+            "goals": [
+                {"id": "loop", "title": "Log a session in two taps", "stage": "build", "day": 3},
+                {"id": "testers", "title": "Invite 20 testers", "stage": "beta", "day": 2},
+                {"id": "post", "title": "Publish the launch post", "stage": "launch", "day": 5},
+            ],
+        },
+    },
 }
 
 
