@@ -30,6 +30,8 @@ struct CreateProjectFlow: View {
     @State private var stagesFromRepo = false
     /// Reading the linked repo's prodline.json for its stages.
     @State private var readingRepo = false
+    /// Why the linked repo's stages aren't used (unreadable, a broken file, or no stages in it).
+    @State private var repoStagesNote: String?
     /// The new project's id, known up front so stages from prodline.json get the ids they'll keep.
     @State private var projectID = UUID()
     /// The checkpoints as planned, per stage.
@@ -353,6 +355,9 @@ struct CreateProjectFlow: View {
                          text: "\(GitHubRepoRef(repo)?.slug ?? "Your repo") lists its stages, so they come from the file and stay in sync with it. Change them there.")
                 StageLegend(spans: Project.previewSpans(stages, start: startDate), checkpoints: [:]).card()
             } else {
+                if let note = repoStagesNote {
+                    infoCard(symbol: "doc.text", title: "Not from prodline.json", text: note)
+                }
                 StageListEditor(stages: $stages, start: startDate)
             }
             if !stages.isEmpty {
@@ -664,16 +669,32 @@ struct CreateProjectFlow: View {
 
     /// Before the stages step: a linked repo whose prodline.json lists stages decides them.
     private func loadRepoStages() async {
+        repoStagesNote = nil
         guard let ref = GitHubRepoRef(repo) else { useRepoStages(nil); return }
         var snap = githubSnapshot
+        var failure: String?
         if snap == nil {
             readingRepo = true
-            snap = try? await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
+            do {
+                let fetched = try await GitHubClient(repo: ref, token: token.isEmpty ? nil : token, base: GitHubService.base(for: ref)).fetch()
+                snap = fetched
+                repoCheck = .ok(fetched)
+            } catch {
+                failure = error.localizedDescription
+            }
             readingRepo = false
-            if let snap { repoCheck = .ok(snap) }
         }
-        // Unreachable right now: keep what's there; the file takes over once the project syncs.
-        if let snap { useRepoStages(snap.planFile) }
+        guard let snap else {
+            // Unreachable right now: keep what's there; the file takes over once the project syncs.
+            repoStagesNote = "Couldn't read \(ref.slug) right now (\(failure ?? "no answer")), so these are your stages for now. If its prodline.json lists stages, they take over once the project syncs."
+            return
+        }
+        useRepoStages(snap.planFile)
+        if let error = snap.planFileError {
+            repoStagesNote = "prodline.json in \(ref.slug) couldn't be read: \(error) Plan the stages here, or fix the file and come back to this step."
+        } else if let file = snap.planFile, (file.stages ?? []).isEmpty {
+            repoStagesNote = "prodline.json in \(ref.slug) lists no stages, so plan them here. Add a \"stages\" list to the file to plan them there instead."
+        }
     }
 
     /// A prodline.json with stages sets the stages and checkpoints; without one, back to the template.
