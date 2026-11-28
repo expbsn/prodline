@@ -1,0 +1,595 @@
+{
+  "schemaVersion": 1,
+  "project": "prodline",
+  "asOf": "2026-11-28T07:54:23Z",
+  "metrics": [
+    {
+      "key": "revenue",
+      "value": 0,
+      "unit": "USD"
+    },
+    {
+      "key": "github_stars",
+      "value": 0
+    },
+    {
+      "key": "commits",
+      "value": 203
+    },
+    {
+      "key": "forks",
+      "value": 0
+    },
+    {
+      "key": "open_issues",
+      "value": 0
+    },
+    {
+      "key": "goals_done",
+      "value": 79
+    },
+    {
+      "key": "goals_open",
+      "value": 9
+    },
+    {
+      "key": "signups",
+      "value": 0
+    },
+    {
+      "key": "testflight_clicks",
+      "value": 9
+    },
+    {
+      "key": "testflight_clicks_from_direct",
+      "value": 7
+    },
+    {
+      "key": "testflight_clicks_from_sideproject",
+      "value": 2
+    }
+  ],
+  "history": [
+    {
+      "asOf": "2026-10-29T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 183
+        }
+      ]
+    },
+    {
+      "asOf": "2026-10-30T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 188
+        }
+      ]
+    },
+    {
+      "asOf": "2026-10-31T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 188
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-01T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 188
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-02T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 197
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-03T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 197
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-04T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 197
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-05T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 199
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-06T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 199
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-07T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-08T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-09T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-10T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-11T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-12T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-13T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-14T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-15T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-16T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-17T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-18T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-19T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-20T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-21T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 200
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-22T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 202
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-23T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 203
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-24T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 203
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-25T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 203
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-26T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 203
+        }
+      ]
+    },
+    {
+      "asOf": "2026-11-27T23:59:00Z",
+      "metrics": [
+        {
+          "key": "revenue",
+          "value": 0,
+          "unit": "USD"
+        },
+        {
+          "key": "github_stars",
+          "value": 0
+        },
+        {
+          "key": "commits",
+          "value": 203
+        }
+      ]
+    }
+  ],
+  "_views": {}
+}
